@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SO Schedule Board — Atrada</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root{
+    --bg:#f5f6fa;
+    --surface:#ffffff;
+    --border:#e4e7ef;
+    --text:#2b2e3b;
+    --text-dim:#6b7086;
+    --primary:#3a5ceb;
+    --primary-dark:#2c46c4;
+    --green:#12b886;
+    --red:#e64c66;
+    --amber:#f5a623;
+    --gray-pill:#eceef5;
+    --radius:10px;
+    --shadow:0 1px 2px rgba(20,22,40,.04), 0 8px 24px rgba(20,22,40,.05);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Inter',system-ui,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    -webkit-font-smoothing:antialiased;
+  }
+  .hidden{display:none !important;}
+
+  /* ---------- AUTH SCREEN ---------- */
+  #authScreen{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(58,92,235,.10), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(18,184,134,.10), transparent 40%),
+      var(--bg);
+  }
+  .auth-card{
+    width:380px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:16px;
+    box-shadow:var(--shadow);
+    padding:36px 32px 28px;
+  }
+  .auth-mark{
+    width:40px;height:40px;border-radius:10px;
+    background:linear-gradient(135deg,var(--primary),#7c5cf0);
+    display:flex;align-items:center;justify-content:center;
+    color:white;font-weight:800;font-size:18px;margin-bottom:18px;
+  }
+  .auth-card h1{font-size:20px;margin:0 0 4px;letter-spacing:-0.01em;}
+  .auth-card p.sub{color:var(--text-dim);font-size:13.5px;margin:0 0 22px;}
+  .field{margin-bottom:14px;}
+  .field label{font-size:12.5px;font-weight:600;color:var(--text-dim);display:block;margin-bottom:6px;}
+  .field input{
+    width:100%;padding:10px 12px;border:1.5px solid var(--border);
+    border-radius:8px;font-size:14px;font-family:inherit;background:#fbfbfd;
+    transition:border-color .15s;
+  }
+  .field input:focus{outline:none;border-color:var(--primary);background:white;}
+  .btn{
+    width:100%;padding:11px;border:none;border-radius:8px;
+    background:var(--primary);color:white;font-weight:600;font-size:14px;
+    cursor:pointer;transition:background .15s;font-family:inherit;
+  }
+  .btn:hover{background:var(--primary-dark);}
+  .btn:disabled{opacity:.6;cursor:default;}
+  .btn-ghost{background:transparent;color:var(--primary);font-weight:600;font-size:13px;padding:8px;cursor:pointer;border:none;font-family:inherit;}
+  .auth-toggle{text-align:center;margin-top:14px;font-size:13.5px;color:var(--text-dim);}
+  .auth-msg{font-size:13px;padding:9px 11px;border-radius:8px;margin-bottom:14px;}
+  .auth-msg.error{background:#fdecef;color:#c22a44;}
+  .auth-msg.ok{background:#e8f9f2;color:#0d8c62;}
+
+  /* ---------- APP SHELL ---------- */
+  #appScreen{min-height:100vh;}
+  header.topbar{
+    background:var(--surface);border-bottom:1px solid var(--border);
+    padding:14px 26px;display:flex;align-items:center;justify-content:space-between;
+    position:sticky;top:0;z-index:20;
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand .mark{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--primary),#7c5cf0);}
+  .brand h1{font-size:16px;margin:0;letter-spacing:-0.01em;}
+  .brand .sub{font-size:12px;color:var(--text-dim);}
+  .topbar-right{display:flex;align-items:center;gap:14px;}
+  .user-chip{font-size:13px;color:var(--text-dim);}
+  .icon-btn{
+    border:1.5px solid var(--border);background:white;border-radius:8px;
+    padding:7px 13px;font-size:13px;font-weight:600;color:var(--text);
+    cursor:pointer;font-family:inherit;
+  }
+  .icon-btn:hover{border-color:var(--primary);color:var(--primary);}
+
+  main{max-width:1900px;margin:0 auto;padding:22px 26px 80px;}
+
+  .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap;}
+  .search-box{
+    flex:1;min-width:200px;padding:9px 14px;border:1.5px solid var(--border);
+    border-radius:8px;font-size:13.5px;background:white;font-family:inherit;
+  }
+  .search-box:focus{outline:none;border-color:var(--primary);}
+  .btn-primary-sm{
+    background:var(--primary);color:white;border:none;border-radius:8px;
+    padding:9px 16px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;
+  }
+  .btn-primary-sm:hover{background:var(--primary-dark);}
+
+  .group{margin-bottom:26px;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
+  .group-header{
+    padding:11px 16px;display:flex;align-items:center;justify-content:space-between;
+    cursor:pointer;color:white;font-weight:700;font-size:14px;
+  }
+  .group-header .count{font-weight:500;font-size:12.5px;opacity:.85;}
+  .group-header-left{display:flex;align-items:center;gap:10px;}
+  .chevron{transition:transform .15s;font-size:11px;}
+  .group.collapsed .chevron{transform:rotate(-90deg);}
+  .group.collapsed .group-body{display:none;}
+
+  .group-body{background:var(--surface);position:relative;}
+  .table-nav{position:absolute;top:8px;right:14px;display:flex;gap:6px;z-index:5;}
+  .scroll-btn{
+    width:26px;height:26px;border-radius:50%;border:1.5px solid var(--border);
+    background:white;color:var(--text-dim);font-size:15px;font-weight:700;cursor:pointer;
+    box-shadow:0 1px 3px rgba(0,0,0,.08);line-height:1;
+  }
+  .scroll-btn:hover{border-color:var(--primary);color:var(--primary);}
+  .table-scroll{overflow-x:auto;}
+  tfoot .group-foot td{
+    padding:9px 14px;font-size:12.5px;font-weight:700;color:var(--text);
+    background:#fafbff;border-top:2px solid var(--border);white-space:nowrap;
+  }
+  tfoot .group-foot:first-child td{color:var(--text-dim);}
+  tfoot .group-foot:first-child td:nth-child(2){color:var(--green);}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead th{
+    text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;
+    color:var(--text-dim);font-weight:700;padding:9px 14px;border-bottom:1px solid var(--border);
+    white-space:nowrap;background:#fbfbfd;
+  }
+  tbody tr{border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;}
+  tbody tr:hover{background:#f7f8fc;}
+  tbody td{padding:11px 14px;white-space:nowrap;}
+  td.item-name{font-weight:600;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .subtoggle{
+    display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;
+    margin-right:6px;cursor:pointer;color:var(--text-dim);font-size:10px;
+    border-radius:4px;
+  }
+  .subtoggle:hover{background:var(--gray-pill);color:var(--primary);}
+  .subtoggle-empty{cursor:default;visibility:hidden;}
+  .move-group-select{
+    font-size:11.5px;border:1.5px solid var(--border);border-radius:6px;
+    padding:5px 7px;font-family:inherit;background:#fbfbfd;color:var(--text-dim);
+    max-width:190px;
+  }
+  .move-group-select:focus{outline:none;border-color:var(--primary);}
+  td.dim{color:var(--text-dim);}
+  .add-row{padding:10px 14px;color:var(--text-dim);font-size:13px;cursor:pointer;font-weight:600;}
+  .add-row:hover{color:var(--primary);background:#f7f8fc;}
+
+  .pill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700;color:white;white-space:nowrap;}
+  .pill-ongoing{background:var(--amber);}
+  .pill-ontime{background:var(--green);}
+  .pill-late{background:var(--red);}
+  .pill-yes{background:var(--green);}
+  .pill-no{background:var(--gray-pill);color:var(--text-dim);}
+  .pill-blank{background:var(--gray-pill);color:var(--text-dim);}
+  .excess-pos{color:var(--red);font-weight:700;}
+  .excess-neg{color:var(--green);font-weight:700;}
+  .excess-zero{color:var(--text-dim);}
+
+  tr.subrow{cursor:default;background:#fbfbfe;}
+  tr.subrow:hover{background:#f5f6fb;}
+  tr.subrow td{padding:7px 14px 7px 14px;}
+  .sub-content{display:flex;align-items:center;gap:12px;padding-left:28px;}
+  .sub-indent-icon{color:var(--text-dim);font-size:13px;}
+  .sub-label{font-size:12.5px;font-weight:600;color:var(--text);min-width:190px;}
+  .sub-draftee{
+    font-size:12px;border:1.5px solid var(--border);border-radius:6px;
+    padding:4px 8px;font-family:inherit;background:white;width:120px;
+  }
+  .sub-draftee:focus{outline:none;border-color:var(--primary);}
+  .sub-status{
+    font-size:12px;border:1.5px solid var(--border);border-radius:6px;
+    padding:4px 8px;font-family:inherit;background:white;color:var(--text-dim);
+  }
+  .clock-btn{
+    display:flex;align-items:center;gap:6px;border:1.5px solid var(--border);
+    border-radius:20px;padding:4px 12px 4px 10px;font-size:12px;font-weight:700;
+    cursor:pointer;background:white;font-family:inherit;
+  }
+  .clock-btn.running{background:var(--green);border-color:var(--green);color:white;}
+  .clock-btn .dot{width:7px;height:7px;border-radius:50%;background:var(--text-dim);}
+  .clock-btn.running .dot{background:white;animation:pulse 1.2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+  .sub-timer{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--text-dim);min-width:66px;}
+  .clock-btn.running ~ .clock-hover-wrap .sub-timer{color:var(--green);font-weight:700;}
+  .clock-hover-wrap{position:relative;display:inline-block;cursor:default;}
+  .log-tooltip{
+    display:none;position:absolute;top:calc(100% + 8px);left:0;z-index:50;
+    background:var(--surface);border:1px solid var(--border);border-radius:10px;
+    box-shadow:0 10px 30px rgba(20,22,40,.15);padding:10px 12px;min-width:220px;
+    max-height:220px;overflow-y:auto;
+  }
+  .clock-hover-wrap:hover .log-tooltip{display:block;}
+  .log-tooltip-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-dim);margin-bottom:8px;}
+  .log-entry{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;}
+  .log-entry:last-child{border-bottom:none;}
+  .log-entry-times{color:var(--text);}
+  .log-live{color:var(--green);font-weight:700;}
+  .log-entry-dur{font-family:'JetBrains Mono',monospace;color:var(--text-dim);white-space:nowrap;}
+  .log-tooltip-empty{font-size:12px;color:var(--text-dim);}
+
+  .empty-state{padding:60px 20px;text-align:center;color:var(--text-dim);}
+  .empty-state .big{font-size:34px;margin-bottom:6px;}
+
+  /* ---------- MODAL ---------- */
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(20,22,40,.45);
+    display:flex;align-items:flex-start;justify-content:center;
+    padding:5vh 20px;z-index:100;overflow-y:auto;
+  }
+  .modal{
+    background:var(--surface);border-radius:14px;width:100%;max-width:640px;
+    box-shadow:0 20px 60px rgba(0,0,0,.25);
+  }
+  .modal-head{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+  .modal-head h2{margin:0;font-size:16px;}
+  .modal-close{background:none;border:none;font-size:20px;color:var(--text-dim);cursor:pointer;line-height:1;}
+  .modal-body{padding:20px 24px;max-height:65vh;overflow-y:auto;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .field select{
+    width:100%;padding:10px 12px;border:1.5px solid var(--border);
+    border-radius:8px;font-size:13.5px;font-family:inherit;background:#fbfbfd;
+  }
+  .field input[type=checkbox]{width:auto;margin-right:8px;}
+  .checkbox-field{display:flex;align-items:center;font-size:13.5px;margin-top:26px;}
+  .modal-foot{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;gap:10px;}
+  .btn-danger{background:none;border:1.5px solid var(--red);color:var(--red);border-radius:8px;padding:9px 16px;font-weight:600;font-size:13.5px;cursor:pointer;font-family:inherit;}
+  .btn-danger:hover{background:var(--red);color:white;}
+  .foot-right{display:flex;gap:10px;}
+  .btn-secondary{background:white;border:1.5px solid var(--border);border-radius:8px;padding:9px 16px;font-weight:600;font-size:13.5px;cursor:pointer;font-family:inherit;}
+  .section-label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-dim);font-weight:700;margin:18px 0 10px;}
+  .section-label:first-child{margin-top:0;}
+
+  .computed-strip{display:flex;gap:10px;flex-wrap:wrap;background:#fafbff;border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:4px;}
+  .stat{font-size:12px;color:var(--text-dim);}
+  .stat b{color:var(--text);font-size:13px;display:block;}
+
+  ::-webkit-scrollbar{width:9px;height:9px;}
+  ::-webkit-scrollbar-thumb{background:#d6d9e6;border-radius:10px;}
+</style>
+</head>
+<body>
+
+<!-- ===================== AUTH SCREEN ===================== -->
+<div id="authScreen">
+  <div class="auth-card">
+    <div class="auth-mark">SO</div>
+    <h1 id="authTitle">Sign in</h1>
+    <p class="sub" id="authSub">Atrada · SO Schedule Board</p>
+    <div id="authMsg"></div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="authEmail" placeholder="you@atrada.com.au" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn" id="authSubmit">Sign in</button>
+    <div class="auth-toggle">
+      <span id="authToggleText">Don't have an account?</span>
+      <button class="btn-ghost" id="authToggleBtn">Sign up</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== APP SCREEN ===================== -->
+<div id="appScreen" class="hidden">
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark"></div>
+      <div>
+        <h1>SO Schedule</h1>
+        <div class="sub">2026Jul – 2027Jun · STD Products</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="user-chip" id="userChip"></span>
+      <button class="icon-btn" id="refreshBtn">↻ Refresh</button>
+      <button class="icon-btn" id="signOutBtn">Sign out</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="toolbar">
+      <input class="search-box" id="searchBox" placeholder="Search item name or SO number…">
+      <button class="btn-primary-sm" id="newGroupItemBtn">+ New item</button>
+    </div>
+    <div id="boardRoot"></div>
+  </main>
+</div>
+
+<!-- ===================== ITEM MODAL ===================== -->
+<div class="modal-backdrop hidden" id="modalBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="modalTitle">New item</h2>
+      <button class="modal-close" id="modalCloseBtn">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody">
+      <!-- filled by JS -->
+    </div>
+    <div class="modal-foot">
+      <button class="btn-danger hidden" id="deleteBtn">Delete item</button>
+      <div class="foot-right" style="margin-left:auto;">
+        <button class="btn-secondary" id="cancelBtn">Cancel</button>
+        <button class="btn-primary-sm" id="saveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =======================================================================
+   CONFIG — paste your Supabase project values below.
+   Both are safe to expose in client-side code (protected by RLS + Auth).
+   ======================================================================= */
+const SUPABASE_URL = "https://bibkawnltufvyneuljtt.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJpYmthd25sdHVmdnluZXVsanR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwODcyOTMsImV4cCI6MjA5ODY2MzI5M30.hmSe_5TpDYfnnqOGee4XK-QsYNk5A_vaL77jG_P-gtA";
+/* ======================================================================= */
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const GROUP_ORDER = [
+  "Sales Order Drafting & Drawings Prep",
+  "Sales Order Drafting & Drawings Prep (this week)",
+  "Done Drafting & Drawings Prep",
+  "Done Sales Order - Released for Fabrication (from awaiting over a week)",
+  "Done Sales Order - Released for Fabrication (this week)",
+  "Done Sales Order - Awaiting Client Approval (from awaiting over a week)",
+  "Done Sales Order - Awaiting Client Approval (this week)",
+  "Done Sales Order - MTD",
+  "Done Sales Order - For Cost Analysis",
+  "Done Cost Analysis",
+  "Done Sales Order - Finalised"
+];
+const GROUP_COLORS = ["#3a5ceb","#12b886","#f5a623","#e64c66","#7c5cf0","#0aa3a3","#d6534f","#2c9c4a","#9c6b2c","#5c6bc0","#546e7a"];
+
+let session = null;
+let rows = [];
+let subitemsByParent = {};
+let logsBySubitem = {};
+let collapsedSubitems = new Set();
+let editingId = null; // null = new item
+let tickerStarted = false;
+
+/* ---------------- AUTH ---------------- */
+let mode = "signin";
+const authTitle = document.getElementById('authTitle');
+const authSub = document.getElementById('authSub');
+const authSubmit = document.getElementById('authSubmit');
+const authToggleText = document.getElementById('authToggleText');
+const authToggleBtn = document.getElementById('authToggleBtn');
+const authMsg = document.getElementById('authMsg');
+
+authToggleBtn.onclick = () => {
+  mode = mode === "signin" ? "signup" : "signin";
+  authTitle.textContent = mode === "signin" ? "Sign in" : "Create account";
+  authSubmit.textContent = mode === "signin" ? "Sign in" : "Create account";
+  authToggleText.textContent = mode === "signin" ? "Don't have an account?" : "Already have an account?";
+  authToggleBtn.textContent = mode === "signin" ? "Sign up" : "Sign in";
+  authMsg.innerHTML = "";
+};
+
+authSubmit.onclick = async () => {
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  if(!email || !password){ showAuthMsg("Enter an email and password.", true); return; }
+  authSubmit.disabled = true;
+  authSubmit.textContent = "Please wait…";
+  try{
+    let res;
+    if(mode === "signin"){
+      res = await sb.auth.signInWithPassword({ email, password });
+    } else {
+      res = await sb.auth.signUp({ email, password });
+    }
+    if(res.error){ showAuthMsg(res.error.message, true); }
+    else if(mode === "signup" && !res.data.session){
+      showAuthMsg("Account created — check your inbox to confirm, then sign in.", false);
+    } else {
+      session = res.data.session;
+      enterApp();
+    }
+  } finally {
+    authSubmit.disabled = false;
+    authSubmit.textContent = mode === "signin" ? "Sign in" : "Create account";
+  }
+};
+
+function showAuthMsg(text, isError){
+  authMsg.innerHTML = `<div class="auth-msg ${isError?'error':'ok'}">${text}</div>`;
+}
+
+document.getElementById('signOutBtn').onclick = async () => {
+  await sb.auth.signOut();
+  location.reload();
+};
+
+async function checkSession(){
+  const { data } = await sb.auth.getSession();
+  if(data.session){ session = data.session; enterApp(); }
+}
+
+function enterApp(){
+  document.getElementById('authScreen').classList.add('hidden');
+  document.getElementById('appScreen').classList.remove('hidden');
+  document.getElementById('userChip').textContent = session.user.email;
+  loadData();
+}
+
+/* ---------------- DATA ---------------- */
+async function loadData(){
+  document.getElementById('boardRoot').innerHTML = `<div class="empty-state">Loading board…</div>`;
+  const { data, error } = await sb.from('so_schedule_computed').select('*').order('created_at', {ascending:true});
+  if(error){
+    document.getElementById('boardRoot').innerHTML = `<div class="empty-state"><div class="big">⚠️</div>${error.message}</div>`;
+    return;
+  }
+  rows = data || [];
+
+  const { data: subData, error: subError } = await sb.from('so_subitems').select('*').order('sort_order', {ascending:true});
+  subitemsByParent = {};
+  if(!subError && subData){
+    subData.forEach(s => {
+      (subitemsByParent[s.parent_id] = subitemsByParent[s.parent_id] || []).push(s);
+    });
+  }
+
+  const { data: logData, error: logError } = await sb.from('so_time_logs').select('*').order('started_at', {ascending:false});
+  logsBySubitem = {};
+  if(!logError && logData){
+    logData.forEach(l => {
+      (logsBySubitem[l.subitem_id] = logsBySubitem[l.subitem_id] || []).push(l);
+    });
+  }
+
+  renderBoard();
+  startTicker();
+}
+document.getElementById('refreshBtn').onclick = loadData;
+
+document.getElementById('searchBox').addEventListener('input', renderBoard);
+
+function renderBoard(){
+  const q = document.getElementById('searchBox').value.trim().toLowerCase();
+  const filtered = rows.filter(r =>
+    !q || (r.item_name||'').toLowerCase().includes(q) || (r.so_number||'').toLowerCase().includes(q)
+  );
+
+  const groups = {};
+  filtered.forEach(r => {
+    const g = r.group_name || "(No group)";
+    (groups[g] = groups[g] || []).push(r);
+  });
+
+  let groupNames = Object.keys(groups);
+  groupNames.sort((a,b) => {
+    const ia = GROUP_ORDER.indexOf(a), ib = GROUP_ORDER.indexOf(b);
+    if(ia === -1 && ib === -1) return a.localeCompare(b);
+    if(ia === -1) return 1;
+    if(ib === -1) return -1;
+    return ia - ib;
+  });
+
+  const root = document.getElementById('boardRoot');
+  if(groupNames.length === 0){
+    root.innerHTML = `<div class="empty-state"><div class="big">📋</div>No items yet. Click "+ New item" to add the first sales order.</div>`;
+    return;
+  }
+
+  root.innerHTML = groupNames.map((g, idx) => {
+    const color = GROUP_COLORS[GROUP_ORDER.indexOf(g) >= 0 ? GROUP_ORDER.indexOf(g) % GROUP_COLORS.length : idx % GROUP_COLORS.length];
+    const items = groups[g];
+    const scrollId = 'scroll_' + idx;
+    const totalSales = items.reduce((sum,r) => sum + (Number(r.project_sales)||0), 0);
+    const difotVals = items.map(r => r.computed_difot_10days).filter(v => v !== null && v !== undefined);
+    const avgDifot = difotVals.length ? (difotVals.reduce((a,b)=>a+b,0)/difotVals.length) : null;
+    return `
+    <div class="group" data-group="${escapeAttr(g)}">
+      <div class="group-header" style="background:${color}" onclick="toggleGroup(this)">
+        <div class="group-header-left">
+          <span class="chevron">▾</span>
+          <span>${escapeHtml(g)}</span>
+        </div>
+        <span class="count">${items.length} item${items.length===1?'':'s'}</span>
+      </div>
+      <div class="group-body">
+        <div class="table-nav">
+          <button class="scroll-btn" onclick="scrollTable('${scrollId}',-260)" aria-label="Scroll left">‹</button>
+          <button class="scroll-btn" onclick="scrollTable('${scrollId}',260)" aria-label="Scroll right">›</button>
+        </div>
+        <div class="table-scroll" id="${scrollId}">
+        <table>
+          <thead><tr>
+            <th>SO Number</th><th>Item</th><th>Draftee</th><th>Sales Person</th><th>DIFOT</th><th>DIFOT Days</th><th>Std Product</th>
+            <th>Drafting Transfer</th><th>Target Start</th><th>Target Release</th><th>Actual Release to Prodn</th><th>Project Sales</th><th>Aging</th><th>Actual Hrs</th><th>O/A Excess</th><th>Move to Group</th>
+          </tr></thead>
+          <tbody>
+            ${items.map(rowHtml).join('')}
+          </tbody>
+          <tfoot>
+            <tr class="group-foot">
+              <td colspan="11">Group totals</td>
+              <td>${fmtMoney(totalSales)}</td>
+              <td colspan="4"></td>
+            </tr>
+            <tr class="group-foot">
+              <td colspan="5">Average DIFOT days</td>
+              <td>${avgDifot !== null ? avgDifot.toFixed(1) : '—'}</td>
+              <td colspan="10"></td>
+            </tr>
+          </tfoot>
+        </table>
+        </div>
+        <div class="add-row" onclick="openModal(null, '${escapeAttr(g)}')">+ Add item to this group</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function scrollTable(id, deltaX){
+  const el = document.getElementById(id);
+  if(el) el.scrollBy({left: deltaX, behavior:'smooth'});
+}
+
+function rowHtml(r){
+  const difot = difotPill(r.computed_difot_status);
+  const std = r.std_product
+    ? `<span class="pill pill-yes">Yes</span>`
+    : `<span class="pill pill-no">No</span>`;
+  const excess = excessSpan(r.computed_oa_excess_days);
+  const hasSubs = (subitemsByParent[r.id] || []).length > 0;
+  const isCollapsed = collapsedSubitems.has(r.id);
+  const subToggle = hasSubs
+    ? `<span class="subtoggle" onclick="event.stopPropagation(); toggleSubitems('${r.id}')" title="${isCollapsed?'Show':'Hide'} sub-processes">${isCollapsed ? '▸' : '▾'}</span>`
+    : `<span class="subtoggle subtoggle-empty"></span>`;
+  const groupOptions = GROUP_ORDER.map(g =>
+    `<option value="${escapeAttr(g)}" ${g===r.group_name?'selected':''}>${escapeHtml(g)}</option>`
+  ).join('') + (!GROUP_ORDER.includes(r.group_name) ? `<option value="${escapeAttr(r.group_name||'')}" selected>${escapeHtml(r.group_name||'(none)')}</option>` : '');
+  const mainRow = `<tr onclick="openModal('${r.id}')">
+    <td class="item-name">${escapeHtml(r.so_number||'—')}</td>
+    <td class="item-name">${subToggle}${escapeHtml(r.item_name||'(untitled)')}</td>
+    <td>${escapeHtml(r.draftee||'—')}</td>
+    <td>${escapeHtml(r.sales_person||'—')}</td>
+    <td>${difot}</td>
+    <td class="dim">${r.computed_difot_10days ?? '—'}</td>
+    <td>${std}</td>
+    <td class="dim">${fmtDate(r.drafting_transfer_date)}</td>
+    <td class="dim">${fmtDate(r.target_start_date)}</td>
+    <td class="dim">${fmtDate(r.target_release_date)}</td>
+    <td class="dim">${fmtDate(r.actual_release_to_prodn_date)}</td>
+    <td class="dim">${fmtMoney(r.project_sales)}</td>
+    <td class="dim">${r.computed_aging_days ?? '—'}</td>
+    <td class="dim">${(r.computed_actual_hrs ?? 0).toFixed(1)}h</td>
+    <td>${excess}</td>
+    <td onclick="event.stopPropagation()">
+      <select class="move-group-select" onchange="moveToGroup('${r.id}', this.value)">${groupOptions}</select>
+    </td>
+  </tr>`;
+  const subs = isCollapsed ? '' : (subitemsByParent[r.id] || []).map(subRowHtml).join('');
+  return mainRow + subs;
+}
+
+function subRowHtml(s){
+  const elapsed = liveElapsed(s);
+  const statusOptions = ['Not Started','In Progress','Done'].map(opt =>
+    `<option value="${opt}" ${s.status===opt?'selected':''}>${opt}</option>`
+  ).join('');
+  return `<tr class="subrow" onclick="event.stopPropagation()">
+    <td colspan="16">
+      <div class="sub-content">
+        <span class="sub-indent-icon">↳</span>
+        <span class="sub-label">${escapeHtml(s.subitem_type)}</span>
+        <input type="text" class="sub-draftee" placeholder="Draftee" value="${escapeAttr(s.draftee||'')}"
+          onclick="event.stopPropagation()"
+          onchange="updateSubDraftee('${s.id}', this.value)">
+        <select class="sub-status" onchange="updateSubStatus('${s.id}', this.value)" onclick="event.stopPropagation()">${statusOptions}</select>
+        <button class="clock-btn ${s.clock_running?'running':''}" onclick="event.stopPropagation(); toggleClock('${s.id}')">
+          <span class="dot"></span>${s.clock_running ? 'Stop' : 'Start'}
+        </button>
+        <span class="clock-hover-wrap">
+          <span class="sub-timer" data-timer-for="${s.id}">${fmtDuration(elapsed)}</span>
+          ${logTooltipHtml(s.id)}
+        </span>
+      </div>
+    </td>
+  </tr>`;
+}
+
+function logTooltipHtml(subitemId){
+  const logs = logsBySubitem[subitemId] || [];
+  if(logs.length === 0){
+    return `<div class="log-tooltip"><div class="log-tooltip-empty">No time logged yet</div></div>`;
+  }
+  const rows = logs.map(l => {
+    const start = fmtDateTime(l.started_at);
+    const end = l.ended_at ? fmtDateTime(l.ended_at) : null;
+    const dur = l.ended_at ? fmtDuration(l.duration_seconds||0) : fmtDuration(liveElapsedFromStart(l.started_at));
+    return `<div class="log-entry">
+      <div class="log-entry-times">${start} ${end ? '→ ' + end : '<span class=\"log-live\">→ in progress</span>'}</div>
+      <div class="log-entry-dur">${dur}</div>
+    </div>`;
+  }).join('');
+  return `<div class="log-tooltip">
+    <div class="log-tooltip-title">Time log history</div>
+    ${rows}
+  </div>`;
+}
+
+function fmtDateTime(iso){
+  const d = new Date(iso);
+  return d.toLocaleString('en-AU', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+}
+
+function liveElapsedFromStart(startedAt){
+  return Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime())/1000));
+}
+
+function liveElapsed(s){
+  let total = s.total_seconds || 0;
+  if(s.clock_running && s.clock_started_at){
+    total += Math.max(0, Math.floor((Date.now() - new Date(s.clock_started_at).getTime())/1000));
+  }
+  return total;
+}
+
+function fmtDuration(totalSeconds){
+  const h = Math.floor(totalSeconds/3600);
+  const m = Math.floor((totalSeconds%3600)/60);
+  const s = totalSeconds%60;
+  return [h,m,s].map(v => String(v).padStart(2,'0')).join(':');
+}
+
+async function toggleClock(subitemId){
+  const allSubs = Object.values(subitemsByParent).flat();
+  const sub = allSubs.find(s => s.id === subitemId);
+  if(!sub) return;
+  const nowIso = new Date().toISOString();
+  if(sub.clock_running){
+    const { data: openLogs } = await sb.from('so_time_logs').select('*').eq('subitem_id', subitemId).is('ended_at', null).order('started_at', {ascending:false}).limit(1);
+    if(openLogs && openLogs.length){
+      const openLog = openLogs[0];
+      const durationSeconds = Math.max(0, Math.floor((new Date(nowIso).getTime() - new Date(openLog.started_at).getTime())/1000));
+      await sb.from('so_time_logs').update({ ended_at: nowIso, duration_seconds: durationSeconds }).eq('id', openLog.id);
+    }
+    const { data: allLogs } = await sb.from('so_time_logs').select('duration_seconds').eq('subitem_id', subitemId).not('duration_seconds','is',null);
+    const totalSeconds = (allLogs||[]).reduce((sum,l) => sum + (l.duration_seconds||0), 0);
+    await sb.from('so_subitems').update({ clock_running:false, clock_started_at:null, total_seconds: totalSeconds }).eq('id', subitemId);
+  } else {
+    await sb.from('so_time_logs').insert({ subitem_id: subitemId, started_at: nowIso });
+    await sb.from('so_subitems').update({ clock_running:true, clock_started_at: nowIso }).eq('id', subitemId);
+  }
+  await loadData();
+}
+
+async function updateSubStatus(subitemId, status){
+  await sb.from('so_subitems').update({ status }).eq('id', subitemId);
+}
+
+async function updateSubDraftee(subitemId, draftee){
+  await sb.from('so_subitems').update({ draftee: draftee || null }).eq('id', subitemId);
+}
+
+function startTicker(){
+  if(tickerStarted) return;
+  tickerStarted = true;
+  setInterval(() => {
+    const allSubs = Object.values(subitemsByParent).flat();
+    allSubs.forEach(s => {
+      if(!s.clock_running) return;
+      const el = document.querySelector(`[data-timer-for="${s.id}"]`);
+      if(el) el.textContent = fmtDuration(liveElapsed(s));
+    });
+  }, 1000);
+}
+
+function difotPill(status){
+  if(status === 'DIFOT_ON_TIME') return `<span class="pill pill-ontime">DIFOT ✓</span>`;
+  if(status === 'DIFOT_LATE') return `<span class="pill pill-late">Late ✕</span>`;
+  return `<span class="pill pill-ongoing">On-Going</span>`;
+}
+function excessSpan(v){
+  if(v === null || v === undefined) return `<span class="excess-zero">—</span>`;
+  if(v > 0) return `<span class="excess-pos">+${v}d</span>`;
+  if(v < 0) return `<span class="excess-neg">${v}d</span>`;
+  return `<span class="excess-zero">0d</span>`;
+}
+function fmtDate(d){
+  if(!d) return '—';
+  const dt = new Date(d+'T00:00:00');
+  return dt.toLocaleDateString('en-AU', {day:'numeric',month:'short',year:'numeric'});
+}
+function fmtMoney(v){
+  if(v === null || v === undefined || v === '') return '—';
+  return Number(v).toLocaleString('en-AU', {style:'currency', currency:'AUD', minimumFractionDigits:0, maximumFractionDigits:0});
+}
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s){ return escapeHtml(s).replace(/"/g,'&quot;'); }
+
+function toggleGroup(headerEl){
+  headerEl.parentElement.classList.toggle('collapsed');
+}
+
+function toggleSubitems(parentId){
+  if(collapsedSubitems.has(parentId)) collapsedSubitems.delete(parentId);
+  else collapsedSubitems.add(parentId);
+  renderBoard();
+}
+
+async function moveToGroup(id, newGroup){
+  await sb.from('so_schedule').update({ group_name: newGroup }).eq('id', id);
+  await loadData();
+}
+
+/* ---------------- MODAL ---------------- */
+const backdrop = document.getElementById('modalBackdrop');
+const modalBody = document.getElementById('modalBody');
+const modalTitle = document.getElementById('modalTitle');
+const deleteBtn = document.getElementById('deleteBtn');
+
+const FIELDS = [
+  {key:'item_name', label:'Item name', type:'text', required:true},
+  {key:'so_number', label:'SO number', type:'text'},
+  {key:'group_name', label:'Group', type:'select', options: GROUP_ORDER},
+  {key:'draftee', label:'Draftee', type:'text'},
+  {key:'sales_person', label:'Sales person', type:'text'},
+  {key:'difot_status', label:'DIFOT status (manual note)', type:'text'},
+  {key:'std_product', label:'Standard product', type:'checkbox'},
+  {key:'drafting_transfer_date', label:'Drafting transfer date', type:'date'},
+  {key:'schedule_start_date', label:'Schedule start date', type:'date'},
+  {key:'target_sent_for_approval', label:'Target sent for approval', type:'date'},
+  {key:'actual_sent_for_approval', label:'Actual sent for approval', type:'date'},
+  {key:'target_approval_received_date', label:'Target approval received', type:'date'},
+  {key:'actual_approval_received_date', label:'Actual approval received', type:'date'},
+  {key:'actual_release_to_prodn_date', label:'Actual release to Prodn', type:'date'},
+  {key:'released_to_prodn', label:'Released to production', type:'checkbox'},
+  {key:'budget_hrs', label:'Budget hrs', type:'number'},
+  {key:'project_sales', label:'Project sales', type:'number'},
+  {key:'multiple_draftees_project_sales', label:'Multi-draftee project sales', type:'number'},
+  {key:'target_release_remarks', label:'Target release remarks', type:'text'},
+  {key:'late_start_remarks', label:'Late start remarks', type:'text'},
+  {key:'late_sent_remarks', label:'Late sent remarks', type:'text'},
+];
+
+function openModal(id, presetGroup){
+  editingId = id;
+  const record = id ? rows.find(r => r.id === id) : null;
+  modalTitle.textContent = id ? "Edit item" : "New item";
+  deleteBtn.classList.toggle('hidden', !id);
+
+  let computedHtml = '';
+  if(record){
+    computedHtml = `
+      <div class="computed-strip">
+        <div class="stat"><b>${difotPill(record.computed_difot_status)}</b>Status</div>
+        <div class="stat"><b>${record.computed_aging_days ?? '—'}</b>Aging days</div>
+        <div class="stat"><b>${record.computed_difot_10days ?? '—'}</b>DIFOT days</div>
+        <div class="stat"><b>${excessSpan(record.computed_oa_excess_days)}</b>O/A Excess</div>
+        <div class="stat"><b>${excessSpan(record.computed_excess_from_target_start)}</b>Excess vs start</div>
+        <div class="stat"><b>${excessSpan(record.computed_excess_from_target_sent)}</b>Excess vs sent</div>
+        <div class="stat"><b>${excessSpan(record.computed_excess_received_approval)}</b>Excess approval</div>
+        <div class="stat"><b>${(record.computed_actual_hrs ?? 0).toFixed(2)} hrs</b>Actual hrs (from time logs)</div>
+        <div class="stat"><b>${record.computed_remainder_hrs !== null && record.computed_remainder_hrs !== undefined ? record.computed_remainder_hrs.toFixed(2) : '—'} hrs</b>Remainder hrs</div>
+        <div class="stat"><b>${fmtDate(record.target_start_date)}</b>Target start (auto: +1 day)</div>
+        <div class="stat"><b>${fmtDate(record.target_release_date)}</b>Target release (auto: +10 days)</div>
+      </div>
+      <div class="section-label">Editable fields</div>`;
+  } else {
+    computedHtml = `<div class="section-label">New item</div>`;
+  }
+
+  const formHtml = `<div class="grid2">` + FIELDS.map(f => {
+    const val = record ? record[f.key] : (f.key === 'group_name' ? (presetGroup||'') : (f.key === 'std_product' ? true : ''));
+    if(f.type === 'checkbox'){
+      return `<div class="field checkbox-field">
+        <label style="display:flex;align-items:center;margin:0;">
+          <input type="checkbox" id="f_${f.key}" ${val ? 'checked':''}> ${f.label}
+        </label>
+      </div>`;
+    }
+    if(f.type === 'select'){
+      const opts = f.options.map(opt => `<option value="${escapeAttr(opt)}" ${val===opt?'selected':''}>${escapeHtml(opt)}</option>`).join('');
+      return `<div class="field">
+        <label>${f.label}</label>
+        <select id="f_${f.key}">${opts}</select>
+      </div>`;
+    }
+    return `<div class="field">
+      <label>${f.label}</label>
+      <input type="${f.type}" id="f_${f.key}" value="${val!==null && val!==undefined ? escapeAttr(String(val)) : ''}">
+    </div>`;
+  }).join('') + `</div>`;
+
+  modalBody.innerHTML = computedHtml + formHtml;
+  backdrop.classList.remove('hidden');
+}
+
+function closeModal(){ backdrop.classList.add('hidden'); editingId = null; }
+document.getElementById('modalCloseBtn').onclick = closeModal;
+document.getElementById('cancelBtn').onclick = closeModal;
+backdrop.addEventListener('click', e => { if(e.target === backdrop) closeModal(); });
+
+document.getElementById('newGroupItemBtn').onclick = () => openModal(null, GROUP_ORDER[0]);
+
+document.getElementById('saveBtn').onclick = async () => {
+  const payload = {};
+  FIELDS.forEach(f => {
+    const el = document.getElementById('f_'+f.key);
+    if(f.type === 'checkbox'){ payload[f.key] = el.checked; }
+    else if(f.type === 'number'){ payload[f.key] = el.value === '' ? null : Number(el.value); }
+    else if(f.type === 'date'){ payload[f.key] = el.value === '' ? null : el.value; }
+    else { payload[f.key] = el.value === '' ? null : el.value; }
+  });
+  if(!payload.item_name){ alert("Item name is required."); return; }
+
+  const saveBtn = document.getElementById('saveBtn');
+  saveBtn.disabled = true; saveBtn.textContent = "Saving…";
+  try{
+    let error;
+    if(editingId){
+      ({ error } = await sb.from('so_schedule').update(payload).eq('id', editingId));
+    } else {
+      ({ error } = await sb.from('so_schedule').insert(payload));
+    }
+    if(error){ alert("Couldn't save: " + error.message); return; }
+    closeModal();
+    await loadData();
+  } finally {
+    saveBtn.disabled = false; saveBtn.textContent = "Save";
+  }
+};
+
+deleteBtn.onclick = async () => {
+  if(!editingId) return;
+  if(!confirm("Delete this item? This can't be undone.")) return;
+  const { error } = await sb.from('so_schedule').delete().eq('id', editingId);
+  if(error){ alert("Couldn't delete: " + error.message); return; }
+  closeModal();
+  await loadData();
+};
+
+checkSession();
+</script>
+</body>
+</html>
