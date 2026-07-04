@@ -280,8 +280,7 @@
     </div>
     <button class="btn" id="authSubmit">Sign in</button>
     <div class="auth-toggle">
-      <span id="authToggleText">Don't have an account?</span>
-      <button class="btn-ghost" id="authToggleBtn">Sign up</button>
+      <span id="authToggleText">Need access? Ask your admin to send you an invite email.</span>
     </div>
   </div>
 </div>
@@ -367,48 +366,54 @@ let editingId = null; // null = new item
 let tickerStarted = false;
 
 /* ---------------- AUTH ---------------- */
-let mode = "signin";
 const authTitle = document.getElementById('authTitle');
 const authSub = document.getElementById('authSub');
 const authSubmit = document.getElementById('authSubmit');
-const authToggleText = document.getElementById('authToggleText');
-const authToggleBtn = document.getElementById('authToggleBtn');
 const authMsg = document.getElementById('authMsg');
-
-authToggleBtn.onclick = () => {
-  mode = mode === "signin" ? "signup" : "signin";
-  authTitle.textContent = mode === "signin" ? "Sign in" : "Create account";
-  authSubmit.textContent = mode === "signin" ? "Sign in" : "Create account";
-  authToggleText.textContent = mode === "signin" ? "Don't have an account?" : "Already have an account?";
-  authToggleBtn.textContent = mode === "signin" ? "Sign up" : "Sign in";
-  authMsg.innerHTML = "";
-};
+const authEmailField = document.getElementById('authEmail').parentElement;
+const authPasswordField = document.getElementById('authPassword').parentElement;
 
 authSubmit.onclick = async () => {
+  if(authSubmit.dataset.mode === 'setpw'){
+    const password = document.getElementById('authPassword').value;
+    if(!password || password.length < 6){ showAuthMsg("Password must be at least 6 characters.", true); return; }
+    authSubmit.disabled = true; authSubmit.textContent = "Saving…";
+    try{
+      const res = await sb.auth.updateUser({ password });
+      if(res.error){ showAuthMsg(res.error.message, true); return; }
+      const { data } = await sb.auth.getSession();
+      session = data.session;
+      enterApp();
+    } finally {
+      authSubmit.disabled = false; authSubmit.textContent = "Set password";
+    }
+    return;
+  }
   const email = document.getElementById('authEmail').value.trim();
   const password = document.getElementById('authPassword').value;
   if(!email || !password){ showAuthMsg("Enter an email and password.", true); return; }
   authSubmit.disabled = true;
   authSubmit.textContent = "Please wait…";
   try{
-    let res;
-    if(mode === "signin"){
-      res = await sb.auth.signInWithPassword({ email, password });
-    } else {
-      res = await sb.auth.signUp({ email, password });
-    }
+    const res = await sb.auth.signInWithPassword({ email, password });
     if(res.error){ showAuthMsg(res.error.message, true); }
-    else if(mode === "signup" && !res.data.session){
-      showAuthMsg("Account created — check your inbox to confirm, then sign in.", false);
-    } else {
+    else {
       session = res.data.session;
       enterApp();
     }
   } finally {
     authSubmit.disabled = false;
-    authSubmit.textContent = mode === "signin" ? "Sign in" : "Create account";
+    authSubmit.textContent = "Sign in";
   }
 };
+
+function showSetPasswordForm(){
+  authTitle.textContent = "Set your password";
+  authSub.textContent = "Welcome — choose a password to finish setting up your account.";
+  authEmailField.classList.add('hidden');
+  authSubmit.textContent = "Set password";
+  authSubmit.dataset.mode = 'setpw';
+}
 
 function showAuthMsg(text, isError){
   authMsg.innerHTML = `<div class="auth-msg ${isError?'error':'ok'}">${text}</div>`;
@@ -420,7 +425,13 @@ document.getElementById('signOutBtn').onclick = async () => {
 };
 
 async function checkSession(){
+  const isInviteOrRecovery = window.location.hash.includes('type=invite') || window.location.hash.includes('type=recovery');
   const { data } = await sb.auth.getSession();
+  if(data.session && isInviteOrRecovery){
+    session = data.session;
+    showSetPasswordForm();
+    return;
+  }
   if(data.session){ session = data.session; enterApp(); }
 }
 
