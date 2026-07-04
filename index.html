@@ -286,6 +286,27 @@
   .log-live{color:var(--green);font-weight:700;}
   .log-entry-dur{font-family:'JetBrains Mono',monospace;color:var(--text-dim);white-space:nowrap;}
   .log-tooltip-empty{font-size:12px;color:var(--text-dim);}
+  .remarks-wrap{position:relative;display:inline-block;}
+  .remarks-btn{
+    border:1.5px solid var(--border);background:white;border-radius:6px;
+    padding:4px 8px;font-size:13px;cursor:pointer;line-height:1;
+  }
+  .remarks-btn.has-remarks{border-color:var(--primary);background:#eef1ff;}
+  .remarks-btn:hover{border-color:var(--primary);}
+  .remarks-popover{
+    display:block;position:absolute;top:calc(100% + 8px);right:0;z-index:60;
+    background:var(--surface);border:1px solid var(--border);border-radius:10px;
+    box-shadow:0 10px 30px rgba(20,22,40,.15);padding:12px;width:320px;
+  }
+  .remarks-popover.hidden{display:none;}
+  .remarks-popover-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-dim);margin-bottom:8px;}
+  .remarks-textarea{
+    width:100%;min-height:90px;resize:vertical;font-family:inherit;font-size:13px;
+    border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);
+  }
+  .remarks-textarea:focus{outline:none;border-color:var(--primary);}
+  .remarks-wordcount{font-size:11px;color:var(--text-dim);margin-top:6px;text-align:right;}
+  .remarks-wordcount.over-limit{color:var(--red);font-weight:700;}
 
   .empty-state{padding:60px 20px;text-align:center;color:var(--text-dim);}
   .empty-state .big{font-size:34px;margin-bottom:6px;}
@@ -909,6 +930,15 @@ function subRowHtml(s){
           <span class="sub-timer" data-timer-for="${s.id}">${fmtDuration(elapsed)}</span>
           ${logTooltipHtml(s.id)}
         </span>
+        <span class="remarks-wrap">
+          <button class="remarks-btn ${s.remarks ? 'has-remarks' : ''}" onclick="event.stopPropagation(); toggleRemarksPopover(this)" title="Remarks">📝${s.remarks ? '•' : ''}</button>
+          <div class="remarks-popover hidden">
+            <div class="remarks-popover-title">Remarks — ${escapeHtml(s.subitem_type)}</div>
+            <textarea class="remarks-textarea" placeholder="Add remarks (max 250 words)…" maxlength="1800"
+              onclick="event.stopPropagation()" onblur="event.stopPropagation(); saveSubRemarks(this, '${s.id}')">${escapeHtml(s.remarks||'')}</textarea>
+            <div class="remarks-wordcount"></div>
+          </div>
+        </span>
       </div>
     </td>
   </tr>`;
@@ -991,6 +1021,48 @@ async function updateSubDraftee(subitemId, draftee){
 async function updateSubSchedule(subitemId, column, value){
   await sb.from('so_subitems').update({ [column]: value || null }).eq('id', subitemId);
 }
+
+function toggleRemarksPopover(btnEl){
+  document.querySelectorAll('.remarks-popover').forEach(p => {
+    if(p !== btnEl.nextElementSibling) p.classList.add('hidden');
+  });
+  const popover = btnEl.nextElementSibling;
+  popover.classList.toggle('hidden');
+  if(!popover.classList.contains('hidden')){
+    const textarea = popover.querySelector('.remarks-textarea');
+    const counter = popover.querySelector('.remarks-wordcount');
+    updateWordCount(textarea, counter);
+    textarea.oninput = () => updateWordCount(textarea, counter);
+    textarea.focus();
+  }
+}
+
+function updateWordCount(textarea, counter){
+  const words = textarea.value.trim().split(/\s+/).filter(Boolean);
+  counter.textContent = words.length + ' / 250 words';
+  counter.classList.toggle('over-limit', words.length > 250);
+}
+
+async function saveSubRemarks(textareaEl, subitemId){
+  const text = textareaEl.value;
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if(words.length > 250){
+    alert('Remarks must be 250 words or fewer. Currently ' + words.length + ' words — please shorten it before it saves.');
+    return;
+  }
+  await sb.from('so_subitems').update({ remarks: text || null }).eq('id', subitemId);
+  const btn = textareaEl.closest('.remarks-wrap').querySelector('.remarks-btn');
+  if(btn){
+    btn.classList.toggle('has-remarks', !!text);
+    btn.innerHTML = '📝' + (text ? '•' : '');
+  }
+}
+
+document.addEventListener('click', (e) => {
+  if(!e.target.closest('.remarks-wrap')){
+    document.querySelectorAll('.remarks-popover').forEach(p => p.classList.add('hidden'));
+  }
+});
 
 function lookupOptionsHtml(category, selected){
   const opts = category === 'sales_person' ? salesPersonOptions : drafteeOptions;
@@ -1164,19 +1236,14 @@ const FIELDS = [
   {key:'difot_status', label:'DIFOT status (manual note)', type:'text'},
   {key:'product_class', label:'Class', type:'select', options:['Container','Standard','Lubestation','Custom']},
   {key:'drafting_transfer_date', label:'Drafting transfer date', type:'date'},
-  {key:'schedule_start_date', label:'Schedule start date', type:'date'},
   {key:'target_sent_for_approval', label:'Target sent for approval', type:'date'},
   {key:'actual_sent_for_approval', label:'Actual sent for approval', type:'date'},
   {key:'target_approval_received_date', label:'Target approval received', type:'date'},
   {key:'actual_approval_received_date', label:'Actual approval received', type:'date'},
   {key:'actual_release_to_prodn_date', label:'Actual release to Prodn', type:'date'},
   {key:'released_to_prodn', label:'Released to production', type:'checkbox'},
-  {key:'budget_hrs', label:'Budget hrs', type:'number'},
   {key:'project_sales', label:'Project sales', type:'number'},
   {key:'multiple_draftees_project_sales', label:'Multi-draftee project sales', type:'number'},
-  {key:'target_release_remarks', label:'Target release remarks', type:'text'},
-  {key:'late_start_remarks', label:'Late start remarks', type:'text'},
-  {key:'late_sent_remarks', label:'Late sent remarks', type:'text'},
 ];
 
 function openModal(id, presetGroup){
@@ -1196,8 +1263,10 @@ function openModal(id, presetGroup){
         <div class="stat"><b>${excessSpan(record.computed_excess_from_target_start)}</b>Excess vs start</div>
         <div class="stat"><b>${excessSpan(record.computed_excess_from_target_sent)}</b>Excess vs sent</div>
         <div class="stat"><b>${excessSpan(record.computed_excess_received_approval)}</b>Excess approval</div>
+        <div class="stat"><b>${(record.computed_budget_hrs ?? 0).toFixed(2)} hrs</b>Budget hrs (auto: from sub-process schedules)</div>
         <div class="stat"><b>${(record.computed_actual_hrs ?? 0).toFixed(2)} hrs</b>Actual hrs (from time logs)</div>
         <div class="stat"><b>${record.computed_remainder_hrs !== null && record.computed_remainder_hrs !== undefined ? record.computed_remainder_hrs.toFixed(2) : '—'} hrs</b>Remainder hrs</div>
+        <div class="stat"><b>${fmtDate(record.schedule_start_date)} → ${fmtDate(record.schedule_end_date)}</b>Schedule (auto: GA start → Release end)</div>
         <div class="stat"><b>${fmtDate(record.target_start_date)}</b>Target start (auto: +1 day)</div>
         <div class="stat"><b>${fmtDate(record.target_release_date)}</b>Target release (auto: +10 days)</div>
       </div>
