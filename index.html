@@ -340,9 +340,22 @@
   .section-label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-dim);font-weight:700;margin:18px 0 10px;}
   .section-label:first-child{margin-top:0;}
 
-  .computed-strip{display:flex;gap:10px;flex-wrap:wrap;background:#fafbff;border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:4px;}
-  .stat{font-size:12px;color:var(--text-dim);}
-  .stat b{color:var(--text);font-size:13px;display:block;}
+  .insights-card{
+    background:linear-gradient(180deg,#fafbff,#f5f6fc);border:1px solid var(--border);
+    border-radius:12px;padding:16px 18px;margin-bottom:4px;
+  }
+  .insights-header{display:flex;align-items:center;gap:20px;padding-bottom:14px;margin-bottom:14px;border-bottom:1.5px solid var(--border);}
+  .insights-kpis{display:flex;gap:22px;flex:1;}
+  .kpi{display:flex;flex-direction:column;gap:2px;}
+  .kpi-value{font-size:19px;font-weight:800;color:var(--text);line-height:1.1;}
+  .kpi-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-dim);}
+  .insights-section{margin-bottom:12px;}
+  .insights-section:last-child{margin-bottom:0;}
+  .insights-section-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-dim);margin-bottom:8px;}
+  .insights-row{display:flex;gap:20px;flex-wrap:wrap;}
+  .mini-stat{font-size:11.5px;color:var(--text-dim);min-width:80px;}
+  .mini-stat b{color:var(--text);font-size:13.5px;font-weight:700;display:block;margin-bottom:2px;}
+  .mini-stat-wide{min-width:200px;}
 
   ::-webkit-scrollbar{width:9px;height:9px;}
   ::-webkit-scrollbar-thumb{background:#d6d9e6;border-radius:10px;}
@@ -1255,20 +1268,42 @@ function openModal(id, presetGroup){
   let computedHtml = '';
   if(record){
     computedHtml = `
-      <div class="computed-strip">
-        <div class="stat"><b>${difotPill(record.computed_difot_status)}</b>Status</div>
-        <div class="stat"><b>${record.computed_aging_days ?? '—'}</b>Aging days</div>
-        <div class="stat"><b>${record.computed_difot_10days ?? '—'}</b>DIFOT days</div>
-        <div class="stat"><b>${excessSpan(record.computed_oa_excess_days)}</b>O/A Excess</div>
-        <div class="stat"><b>${excessSpan(record.computed_excess_from_target_start)}</b>Excess vs start</div>
-        <div class="stat"><b>${excessSpan(record.computed_excess_from_target_sent)}</b>Excess vs sent</div>
-        <div class="stat"><b>${excessSpan(record.computed_excess_received_approval)}</b>Excess approval</div>
-        <div class="stat"><b>${(record.computed_budget_hrs ?? 0).toFixed(2)} hrs</b>Budget hrs (auto: from sub-process schedules)</div>
-        <div class="stat"><b>${(record.computed_actual_hrs ?? 0).toFixed(2)} hrs</b>Actual hrs (from time logs)</div>
-        <div class="stat"><b>${record.computed_remainder_hrs !== null && record.computed_remainder_hrs !== undefined ? record.computed_remainder_hrs.toFixed(2) : '—'} hrs</b>Remainder hrs</div>
-        <div class="stat"><b>${fmtDate(record.schedule_start_date)} → ${fmtDate(record.schedule_end_date)}</b>Schedule (auto: GA start → Release end)</div>
-        <div class="stat"><b>${fmtDate(record.target_start_date)}</b>Target start (auto: +1 day)</div>
-        <div class="stat"><b>${fmtDate(record.target_release_date)}</b>Target release (auto: +10 days)</div>
+      <div class="insights-card">
+        <div class="insights-header">
+          <div class="insights-status">${difotPill(record.computed_difot_status)}</div>
+          <div class="insights-kpis">
+            <div class="kpi"><span class="kpi-value">${record.computed_aging_days ?? '—'}</span><span class="kpi-label">Aging Days</span></div>
+            <div class="kpi"><span class="kpi-value">${record.computed_difot_10days ?? '—'}</span><span class="kpi-label">DIFOT Days</span></div>
+            <div class="kpi"><span class="kpi-value">${excessSpan(record.computed_oa_excess_days)}</span><span class="kpi-label">O/A Excess</span></div>
+          </div>
+        </div>
+
+        <div class="insights-section">
+          <div class="insights-section-label">Delay Breakdown</div>
+          <div class="insights-row">
+            <div class="mini-stat"><b>${excessSpan(record.computed_excess_from_target_start)}</b>vs Start</div>
+            <div class="mini-stat"><b>${excessSpan(record.computed_excess_from_target_sent)}</b>vs Sent</div>
+            <div class="mini-stat"><b>${excessSpan(record.computed_excess_received_approval)}</b>Approval</div>
+          </div>
+        </div>
+
+        <div class="insights-section">
+          <div class="insights-section-label">Hours</div>
+          <div class="insights-row">
+            <div class="mini-stat"><b>${(record.computed_budget_hrs ?? 0).toFixed(2)}</b>Budget</div>
+            <div class="mini-stat"><b>${(record.computed_actual_hrs ?? 0).toFixed(2)}</b>Actual</div>
+            <div class="mini-stat"><b>${record.computed_remainder_hrs !== null && record.computed_remainder_hrs !== undefined ? record.computed_remainder_hrs.toFixed(2) : '—'}</b>Remainder</div>
+          </div>
+        </div>
+
+        <div class="insights-section">
+          <div class="insights-section-label">Auto-Computed Dates</div>
+          <div class="insights-row">
+            <div class="mini-stat mini-stat-wide"><b>${fmtDate(record.schedule_start_date)} → ${fmtDate(record.schedule_end_date)}</b>Schedule (GA start → Release end)</div>
+            <div class="mini-stat"><b>${fmtDate(record.target_start_date)}</b>Target Start</div>
+            <div class="mini-stat"><b>${fmtDate(record.target_release_date)}</b>Target Release</div>
+          </div>
+        </div>
       </div>
       <div class="section-label">Editable fields</div>`;
   } else {
