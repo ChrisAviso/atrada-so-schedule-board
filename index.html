@@ -202,6 +202,12 @@
   }
   .sub-sched-date:focus{outline:none;border-color:var(--primary);}
   .sub-sched-arrow{color:var(--text-dim);font-size:11px;}
+  .sub-sched-label{font-size:11px;color:var(--text-dim);font-weight:600;}
+  .sub-draftee-readonly{
+    font-size:12px;color:var(--text-dim);background:var(--gray-pill);border-radius:6px;
+    padding:5px 10px;min-width:150px;display:inline-block;font-style:italic;
+  }
+  .multiselect{width:100%;font-size:13.5px;border:1.5px solid var(--border);border-radius:8px;padding:6px;font-family:inherit;}
   .sub-status{
     font-size:12px;border:1.5px solid var(--border);border-radius:6px;
     padding:4px 8px;font-family:inherit;background:white;color:var(--text-dim);
@@ -368,6 +374,7 @@ const GROUP_ORDER = [
   "Done Sales Order - Finalised"
 ];
 const GROUP_COLORS = ["#3a5ceb","#12b886","#f5a623","#e64c66","#7c5cf0","#0aa3a3","#d6534f","#2c9c4a","#9c6b2c","#5c6bc0","#546e7a"];
+const NEW_ITEM_GROUP = "Sales Order Drafting & Drawings Prep";
 
 let session = null;
 let rows = [];
@@ -581,7 +588,6 @@ function renderBoard(){
           </tfoot>
         </table>
         </div>
-        <div class="add-row" onclick="openModal(null, '${escapeAttr(g)}')">+ Add item to this group</div>
       </div>
     </div>`;
   }).join('');
@@ -636,13 +642,18 @@ function subRowHtml(s){
   const statusOptions = ['Not Started','In Progress','Done'].map(opt =>
     `<option value="${opt}" ${s.status===opt?'selected':''}>${opt}</option>`
   ).join('');
+  const isAutoDraftee = (s.subitem_type === 'GA For Approval Prep' || s.subitem_type === 'Detailing/PDF/DXF Prep');
+  const drafteeCell = isAutoDraftee
+    ? `<span class="sub-draftee-readonly" title="Auto-set from line item draftee">${escapeHtml(s.draftee || '—')}</span>`
+    : `<select class="sub-draftee" onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleSubDrafteeChange(this, '${s.id}')">${lookupOptionsHtml('draftee', s.draftee)}</select>`;
   return `<tr class="subrow" onclick="event.stopPropagation()">
     <td colspan="16">
       <div class="sub-content">
         <span class="sub-indent-icon">↳</span>
         <span class="sub-label">${escapeHtml(s.subitem_type)}</span>
-        <select class="sub-draftee" onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleSubDrafteeChange(this, '${s.id}')">${lookupOptionsHtml('draftee', s.draftee)}</select>
+        ${drafteeCell}
         <span class="sub-schedule">
+          <span class="sub-sched-label">Schedule:</span>
           <input type="date" class="sub-sched-date" value="${s.schedule_start_date||''}" title="Schedule start"
             onclick="event.stopPropagation()" onchange="event.stopPropagation(); updateSubSchedule('${s.id}', 'schedule_start_date', this.value)">
           <span class="sub-sched-arrow">→</span>
@@ -772,6 +783,24 @@ async function handleSubDrafteeChange(selectEl, subitemId){
   await updateSubDraftee(subitemId, selectEl.value || null);
 }
 
+async function addDrafteeOption(btnEl){
+  const name = prompt('Add new draftee name:');
+  if(!name || !name.trim()) return;
+  const trimmed = name.trim();
+  const { error } = await sb.from('so_lookup_names').insert({ category:'draftee', name: trimmed });
+  if(error && !error.message.toLowerCase().includes('duplicate')){
+    alert("Couldn't add name: " + error.message);
+    return;
+  }
+  if(!drafteeOptions.includes(trimmed)){ drafteeOptions.push(trimmed); drafteeOptions.sort(); }
+  const select = btnEl.previousElementSibling;
+  if(select && select.tagName === 'SELECT'){
+    const opt = document.createElement('option');
+    opt.value = trimmed; opt.textContent = trimmed; opt.selected = true;
+    select.appendChild(opt);
+  }
+}
+
 function startTicker(){
   if(tickerStarted) return;
   tickerStarted = true;
@@ -833,7 +862,7 @@ const FIELDS = [
   {key:'item_name', label:'Item name', type:'text', required:true},
   {key:'so_number', label:'SO number', type:'text'},
   {key:'group_name', label:'Group', type:'select', options: GROUP_ORDER},
-  {key:'draftee', label:'Draftee', type:'lookup', category:'draftee'},
+  {key:'draftee', label:'Draftee (select one or more)', type:'multiselect', category:'draftee'},
   {key:'sales_person', label:'Sales person', type:'lookup', category:'sales_person'},
   {key:'difot_status', label:'DIFOT status (manual note)', type:'text'},
   {key:'product_class', label:'Class', type:'select', options:['Container','Standard','Lubestation','Custom']},
@@ -881,6 +910,7 @@ function openModal(id, presetGroup){
   }
 
   const formHtml = `<div class="grid2">` + FIELDS.map(f => {
+    if(f.key === 'group_name' && !record) return '';
     const val = record ? record[f.key] : (f.key === 'group_name' ? (presetGroup||'') : (f.key === 'product_class' ? 'Standard' : ''));
     if(f.type === 'checkbox'){
       return `<div class="field checkbox-field">
@@ -902,6 +932,15 @@ function openModal(id, presetGroup){
         <select id="f_${f.key}" onchange="handleLookupChange(this, '${f.category}')">${lookupOptionsHtml(f.category, val)}</select>
       </div>`;
     }
+    if(f.type === 'multiselect'){
+      const selectedNames = (val||'').split(',').map(s=>s.trim()).filter(Boolean);
+      const opts = drafteeOptions.map(n => `<option value="${escapeAttr(n)}" ${selectedNames.includes(n)?'selected':''}>${escapeHtml(n)}</option>`).join('');
+      return `<div class="field" style="grid-column:1 / -1;">
+        <label>${f.label}</label>
+        <select id="f_${f.key}" multiple size="6" class="multiselect">${opts}</select>
+        <button type="button" class="btn-ghost" onclick="addDrafteeOption(this)" style="padding:6px 0;">+ Add new name…</button>
+      </div>`;
+    }
     return `<div class="field">
       <label>${f.label}</label>
       <input type="${f.type}" id="f_${f.key}" value="${val!==null && val!==undefined ? escapeAttr(String(val)) : ''}">
@@ -917,17 +956,23 @@ document.getElementById('modalCloseBtn').onclick = closeModal;
 document.getElementById('cancelBtn').onclick = closeModal;
 backdrop.addEventListener('click', e => { if(e.target === backdrop) closeModal(); });
 
-document.getElementById('newGroupItemBtn').onclick = () => openModal(null, GROUP_ORDER[0]);
+document.getElementById('newGroupItemBtn').onclick = () => openModal(null, NEW_ITEM_GROUP);
 
 document.getElementById('saveBtn').onclick = async () => {
   const payload = {};
   FIELDS.forEach(f => {
     const el = document.getElementById('f_'+f.key);
+    if(!el) return;
     if(f.type === 'checkbox'){ payload[f.key] = el.checked; }
     else if(f.type === 'number'){ payload[f.key] = el.value === '' ? null : Number(el.value); }
     else if(f.type === 'date'){ payload[f.key] = el.value === '' ? null : el.value; }
+    else if(f.type === 'multiselect'){
+      const selected = Array.from(el.selectedOptions).map(o => o.value);
+      payload[f.key] = selected.length ? selected.join(', ') : null;
+    }
     else { payload[f.key] = el.value === '' ? null : el.value; }
   });
+  if(!editingId){ payload.group_name = NEW_ITEM_GROUP; }
   if(!payload.item_name){ alert("Item name is required."); return; }
 
   const saveBtn = document.getElementById('saveBtn');
