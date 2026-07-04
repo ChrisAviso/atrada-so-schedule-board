@@ -89,7 +89,7 @@
     position:sticky;top:0;z-index:20;
   }
   .brand{display:flex;align-items:center;gap:10px;}
-  .brand .mark{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--primary),#7c5cf0);}
+  .brand .mark{width:30px;height:30px;border-radius:8px;object-fit:contain;}
   .brand h1{font-size:16px;margin:0;letter-spacing:-0.01em;}
   .brand .sub{font-size:12px;color:var(--text-dim);}
   .topbar-right{display:flex;align-items:center;gap:14px;}
@@ -141,6 +141,7 @@
   }
   tfoot .group-foot:first-child td{color:var(--text-dim);}
   tfoot .group-foot:first-child td:nth-child(2){color:var(--green);}
+  tfoot .group-foot-final td{background:#eef1ff;color:var(--primary-dark);border-top:2px solid var(--primary);}
   table{width:100%;border-collapse:collapse;font-size:13px;}
   thead th{
     text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;
@@ -174,6 +175,10 @@
   .pill-late{background:var(--red);}
   .pill-yes{background:var(--green);}
   .pill-no{background:var(--gray-pill);color:var(--text-dim);}
+  .pill-class-container{background:#0aa3a3;}
+  .pill-class-standard{background:var(--green);}
+  .pill-class-lubestation{background:#7c5cf0;}
+  .pill-class-custom{background:var(--amber);}
   .pill-blank{background:var(--gray-pill);color:var(--text-dim);}
   .excess-pos{color:var(--red);font-weight:700;}
   .excess-neg{color:var(--green);font-weight:700;}
@@ -190,6 +195,13 @@
     padding:4px 8px;font-family:inherit;background:white;width:150px;
   }
   .sub-draftee:focus{outline:none;border-color:var(--primary);}
+  .sub-schedule{display:flex;align-items:center;gap:5px;}
+  .sub-sched-date{
+    font-size:11.5px;border:1.5px solid var(--border);border-radius:6px;
+    padding:4px 6px;font-family:inherit;background:white;color:var(--text-dim);width:120px;
+  }
+  .sub-sched-date:focus{outline:none;border-color:var(--primary);}
+  .sub-sched-arrow{color:var(--text-dim);font-size:11px;}
   .sub-status{
     font-size:12px;border:1.5px solid var(--border);border-radius:6px;
     padding:4px 8px;font-family:inherit;background:white;color:var(--text-dim);
@@ -289,10 +301,10 @@
 <div id="appScreen" class="hidden">
   <header class="topbar">
     <div class="brand">
-      <div class="mark"></div>
+      <img class="mark" src="Atrada_%20Symbol_%20Blue%20%5BRGB%5D.png" alt="Atrada">
       <div>
         <h1>SO Schedule</h1>
-        <div class="sub">2026Jul – 2027Jun · STD Products</div>
+        <div class="sub">2026Jul – 2027Jun</div>
       </div>
     </div>
     <div class="topbar-right">
@@ -510,6 +522,10 @@ function renderBoard(){
     return;
   }
 
+  const globalTotalSales = filtered.reduce((sum,r) => sum + (Number(r.project_sales)||0), 0);
+  const globalDifotVals = filtered.map(r => r.computed_difot_10days).filter(v => v !== null && v !== undefined);
+  const globalAvgDifot = globalDifotVals.length ? (globalDifotVals.reduce((a,b)=>a+b,0)/globalDifotVals.length) : null;
+
   root.innerHTML = groupNames.map((g, idx) => {
     const color = GROUP_COLORS[GROUP_ORDER.indexOf(g) >= 0 ? GROUP_ORDER.indexOf(g) % GROUP_COLORS.length : idx % GROUP_COLORS.length];
     const items = groups[g];
@@ -534,7 +550,7 @@ function renderBoard(){
         <div class="table-scroll" id="${scrollId}">
         <table>
           <thead><tr>
-            <th>SO Number</th><th>Item</th><th>Draftee</th><th>Sales Person</th><th>DIFOT</th><th>DIFOT Days</th><th>Std Product</th>
+            <th>SO Number</th><th>Item</th><th>Draftee</th><th>Sales Person</th><th>DIFOT</th><th>DIFOT Days</th><th>Class</th>
             <th>Drafting Transfer</th><th>Target Start</th><th>Target Release</th><th>Actual Release to Prodn</th><th>Project Sales</th><th>Aging</th><th>Actual Hrs</th><th>O/A Excess</th><th>Move to Group</th>
           </tr></thead>
           <tbody>
@@ -551,6 +567,17 @@ function renderBoard(){
               <td>${avgDifot !== null ? avgDifot.toFixed(1) : '—'}</td>
               <td colspan="10"></td>
             </tr>
+            ${g === 'Done Sales Order - Finalised' ? `
+            <tr class="group-foot group-foot-final">
+              <td colspan="11">Final Group totals (all projects)</td>
+              <td>${fmtMoney(globalTotalSales)}</td>
+              <td colspan="4"></td>
+            </tr>
+            <tr class="group-foot group-foot-final">
+              <td colspan="5">Final Average DIFOT Days (all projects)</td>
+              <td>${globalAvgDifot !== null ? globalAvgDifot.toFixed(1) : '—'}</td>
+              <td colspan="10"></td>
+            </tr>` : ''}
           </tfoot>
         </table>
         </div>
@@ -567,9 +594,10 @@ function scrollTable(id, deltaX){
 
 function rowHtml(r){
   const difot = difotPill(r.computed_difot_status);
-  const std = r.std_product
-    ? `<span class="pill pill-yes">Yes</span>`
-    : `<span class="pill pill-no">No</span>`;
+  const classColors = {Container:'pill-class-container', Standard:'pill-class-standard', Lubestation:'pill-class-lubestation', Custom:'pill-class-custom'};
+  const std = r.product_class
+    ? `<span class="pill ${classColors[r.product_class]||'pill-blank'}">${escapeHtml(r.product_class)}</span>`
+    : `<span class="pill pill-blank">—</span>`;
   const excess = excessSpan(r.computed_oa_excess_days);
   const hasSubs = (subitemsByParent[r.id] || []).length > 0;
   const isCollapsed = collapsedSubitems.has(r.id);
@@ -614,6 +642,13 @@ function subRowHtml(s){
         <span class="sub-indent-icon">↳</span>
         <span class="sub-label">${escapeHtml(s.subitem_type)}</span>
         <select class="sub-draftee" onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleSubDrafteeChange(this, '${s.id}')">${lookupOptionsHtml('draftee', s.draftee)}</select>
+        <span class="sub-schedule">
+          <input type="date" class="sub-sched-date" value="${s.schedule_start_date||''}" title="Schedule start"
+            onclick="event.stopPropagation()" onchange="event.stopPropagation(); updateSubSchedule('${s.id}', 'schedule_start_date', this.value)">
+          <span class="sub-sched-arrow">→</span>
+          <input type="date" class="sub-sched-date" value="${s.schedule_end_date||''}" title="Schedule end"
+            onclick="event.stopPropagation()" onchange="event.stopPropagation(); updateSubSchedule('${s.id}', 'schedule_end_date', this.value)">
+        </span>
         <select class="sub-status" onchange="updateSubStatus('${s.id}', this.value)" onclick="event.stopPropagation()">${statusOptions}</select>
         <button class="clock-btn ${s.clock_running?'running':''}" onclick="event.stopPropagation(); toggleClock('${s.id}')">
           <span class="dot"></span>${s.clock_running ? 'Stop' : 'Start'}
@@ -699,6 +734,10 @@ async function updateSubStatus(subitemId, status){
 
 async function updateSubDraftee(subitemId, draftee){
   await sb.from('so_subitems').update({ draftee: draftee || null }).eq('id', subitemId);
+}
+
+async function updateSubSchedule(subitemId, column, value){
+  await sb.from('so_subitems').update({ [column]: value || null }).eq('id', subitemId);
 }
 
 function lookupOptionsHtml(category, selected){
@@ -797,7 +836,7 @@ const FIELDS = [
   {key:'draftee', label:'Draftee', type:'lookup', category:'draftee'},
   {key:'sales_person', label:'Sales person', type:'lookup', category:'sales_person'},
   {key:'difot_status', label:'DIFOT status (manual note)', type:'text'},
-  {key:'std_product', label:'Standard product', type:'checkbox'},
+  {key:'product_class', label:'Class', type:'select', options:['Container','Standard','Lubestation','Custom']},
   {key:'drafting_transfer_date', label:'Drafting transfer date', type:'date'},
   {key:'schedule_start_date', label:'Schedule start date', type:'date'},
   {key:'target_sent_for_approval', label:'Target sent for approval', type:'date'},
@@ -842,7 +881,7 @@ function openModal(id, presetGroup){
   }
 
   const formHtml = `<div class="grid2">` + FIELDS.map(f => {
-    const val = record ? record[f.key] : (f.key === 'group_name' ? (presetGroup||'') : (f.key === 'std_product' ? true : ''));
+    const val = record ? record[f.key] : (f.key === 'group_name' ? (presetGroup||'') : (f.key === 'product_class' ? 'Standard' : ''));
     if(f.type === 'checkbox'){
       return `<div class="field checkbox-field">
         <label style="display:flex;align-items:center;margin:0;">
