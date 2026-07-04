@@ -174,7 +174,22 @@
   }
   tfoot .group-foot:first-child td{color:var(--text-dim);}
   tfoot .group-foot:first-child td:nth-child(2){color:var(--green);}
-  tfoot .group-foot-final td{background:#eef1ff;color:var(--primary-dark);border-top:2px solid var(--primary);}
+  .final-summary-card{
+    margin-top:8px;background:linear-gradient(135deg,#eef1ff,#f5f0ff);
+    border:1.5px solid var(--primary);border-radius:var(--radius);
+    padding:18px 22px;box-shadow:var(--shadow);
+  }
+  .final-summary-title{
+    font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--primary-dark);margin-bottom:12px;
+  }
+  .final-summary-row{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:8px 0;border-top:1px solid rgba(58,92,235,.15);
+  }
+  .final-summary-row:first-of-type{border-top:none;}
+  .final-summary-label{font-size:14px;font-weight:600;color:var(--text);}
+  .final-summary-value{font-size:18px;font-weight:800;color:var(--primary-dark);}
   table{width:100%;border-collapse:collapse;font-size:13px;}
   thead th{
     text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;
@@ -773,23 +788,26 @@ function renderBoard(){
               <td>${avgDifot !== null ? avgDifot.toFixed(1) : '—'}</td>
               <td colspan="10"></td>
             </tr>
-            ${g === 'Done Sales Order - Finalised' ? `
-            <tr class="group-foot group-foot-final">
-              <td colspan="11">Final Group totals (all projects)</td>
-              <td>${fmtMoney(globalTotalSales)}</td>
-              <td colspan="4"></td>
-            </tr>
-            <tr class="group-foot group-foot-final">
-              <td colspan="5">Final Average DIFOT Days (all projects)</td>
-              <td>${globalAvgDifot !== null ? globalAvgDifot.toFixed(1) : '—'}</td>
-              <td colspan="10"></td>
-            </tr>` : ''}
           </tfoot>
         </table>
         </div>
       </div>
     </div>`;
-  }).join('');
+  }).join('') + finalSummaryHtml(globalTotalSales, globalAvgDifot);
+}
+
+function finalSummaryHtml(totalSales, avgDifot){
+  return `<div class="final-summary-card">
+    <div class="final-summary-title">Final Totals — All Projects</div>
+    <div class="final-summary-row">
+      <span class="final-summary-label">Final Group Totals (Project Sales)</span>
+      <span class="final-summary-value">${fmtMoney(totalSales)}</span>
+    </div>
+    <div class="final-summary-row">
+      <span class="final-summary-label">Final Average DIFOT Days</span>
+      <span class="final-summary-value">${avgDifot !== null ? avgDifot.toFixed(1) : '—'}</span>
+    </div>
+  </div>`;
 }
 
 function activePanelHtml(){
