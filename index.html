@@ -103,7 +103,18 @@
 
   main{max-width:1900px;margin:0 auto;padding:22px 26px 80px;}
 
-  .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap;}
+  .toolbar-top{display:flex;gap:10px;align-items:center;margin-bottom:12px;}
+  .toolbar-top .search-box{flex:1;}
+  .toolbar-actions{display:flex;gap:8px;flex-shrink:0;}
+  .filters-bar{
+    display:flex;gap:22px;flex-wrap:wrap;align-items:flex-end;
+    background:#fafbff;border:1px solid var(--border);border-radius:12px;
+    padding:14px 18px;margin-bottom:20px;
+  }
+  .filter-group{display:flex;flex-direction:column;gap:7px;}
+  .filter-group-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);}
+  .filter-group-controls{display:flex;gap:8px;flex-wrap:wrap;}
+  .filters-bar-clear{margin-left:auto;align-self:center;}
   .search-box{
     flex:1;min-width:200px;padding:9px 14px;border:1.5px solid var(--border);
     border-radius:8px;font-size:13.5px;background:white;font-family:inherit;
@@ -343,53 +354,94 @@
   </header>
 
   <main>
-    <div class="toolbar">
+    <div class="toolbar-top">
       <input class="search-box" id="searchBox" placeholder="Search item name or SO number…">
-      <select class="filter-select" id="filterDraftee"><option value="">All Draftees</option></select>
-      <select class="filter-select" id="filterSalesPerson"><option value="">All Sales People</option></select>
-      <select class="filter-select" id="filterClass">
-        <option value="">All Classes</option>
-        <option value="Container">Container</option>
-        <option value="Standard">Standard</option>
-        <option value="Lubestation">Lubestation</option>
-        <option value="Custom">Custom</option>
-      </select>
-      <select class="filter-select" id="filterDifot">
-        <option value="">All DIFOT Statuses</option>
-        <option value="On-Going">On-Going</option>
-        <option value="DIFOT_ON_TIME">DIFOT On Time</option>
-        <option value="DIFOT_LATE">DIFOT Late</option>
-      </select>
-      <select class="filter-select" id="filterStage">
-        <option value="">Any Stage</option>
-        <option value="GA For Approval Prep">GA For Approval Prep</option>
-        <option value="Detailing/PDF/DXF Prep">Detailing/PDF/DXF Prep</option>
-        <option value="Checking">Checking</option>
-        <option value="Release">Release</option>
-      </select>
-      <select class="filter-select" id="filterStageStatus">
-        <option value="">Any Status</option>
-        <option value="Not Started">Not Started</option>
-        <option value="In Progress">In Progress</option>
-        <option value="Done">Done</option>
-      </select>
-      <select class="filter-select" id="filterDue">
-        <option value="">Any Due Date</option>
-        <option value="overdue">Overdue</option>
-        <option value="week">Due This Week</option>
-      </select>
-      <label class="toggle-check"><input type="checkbox" id="filterBehindSchedule"> Behind Schedule</label>
-      <label class="toggle-check"><input type="checkbox" id="filterOverBudget"> Over Budget</label>
-      <label class="toggle-check"><input type="checkbox" id="filterClockedIn"> Clocked In Now</label>
-      <select class="filter-select" id="sortBy">
-        <option value="">Sort: Default</option>
-        <option value="aging_desc">Aging (High→Low)</option>
-        <option value="difot_desc">DIFOT Days (High→Low)</option>
-        <option value="sales_desc">Project Sales (High→Low)</option>
-      </select>
-      <button class="icon-btn" id="clearFiltersBtn">Clear filters</button>
-      <button class="icon-btn" id="exportCsvBtn">⬇ Export CSV</button>
-      <button class="btn-primary-sm" id="newGroupItemBtn">+ New item</button>
+      <div class="toolbar-actions">
+        <button class="icon-btn" id="exportCsvBtn">⬇ Export CSV</button>
+        <button class="btn-primary-sm" id="newGroupItemBtn">+ New item</button>
+      </div>
+    </div>
+
+    <div class="filters-bar">
+      <div class="filter-group">
+        <span class="filter-group-label">Assigned To</span>
+        <div class="filter-group-controls">
+          <select class="filter-select" id="filterDraftee"><option value="">All Draftees</option></select>
+          <select class="filter-select" id="filterSalesPerson"><option value="">All Sales People</option></select>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <span class="filter-group-label">Project</span>
+        <div class="filter-group-controls">
+          <select class="filter-select" id="filterClass">
+            <option value="">All Classes</option>
+            <option value="Container">Container</option>
+            <option value="Standard">Standard</option>
+            <option value="Lubestation">Lubestation</option>
+            <option value="Custom">Custom</option>
+          </select>
+          <select class="filter-select" id="filterDifot">
+            <option value="">All DIFOT Statuses</option>
+            <option value="On-Going">On-Going</option>
+            <option value="DIFOT_ON_TIME">DIFOT On Time</option>
+            <option value="DIFOT_LATE">DIFOT Late</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <span class="filter-group-label">Sub-Process</span>
+        <div class="filter-group-controls">
+          <select class="filter-select" id="filterStage">
+            <option value="">Any Stage</option>
+            <option value="GA For Approval Prep">GA For Approval Prep</option>
+            <option value="Detailing/PDF/DXF Prep">Detailing/PDF/DXF Prep</option>
+            <option value="Checking">Checking</option>
+            <option value="Release">Release</option>
+          </select>
+          <select class="filter-select" id="filterStageStatus">
+            <option value="">Any Status</option>
+            <option value="Not Started">Not Started</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Done">Done</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <span class="filter-group-label">Timing</span>
+        <div class="filter-group-controls">
+          <select class="filter-select" id="filterDue">
+            <option value="">Any Due Date</option>
+            <option value="overdue">Overdue</option>
+            <option value="week">Due This Week</option>
+          </select>
+          <label class="toggle-check"><input type="checkbox" id="filterBehindSchedule"> Behind Schedule</label>
+          <label class="toggle-check"><input type="checkbox" id="filterOverBudget"> Over Budget</label>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <span class="filter-group-label">Live</span>
+        <div class="filter-group-controls">
+          <label class="toggle-check"><input type="checkbox" id="filterClockedIn"> Clocked In Now</label>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <span class="filter-group-label">Sort</span>
+        <div class="filter-group-controls">
+          <select class="filter-select" id="sortBy">
+            <option value="">Default</option>
+            <option value="aging_desc">Aging (High→Low)</option>
+            <option value="difot_desc">DIFOT Days (High→Low)</option>
+            <option value="sales_desc">Project Sales (High→Low)</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="icon-btn filters-bar-clear" id="clearFiltersBtn">Clear filters</button>
     </div>
     <div id="activePanelRoot"></div>
     <div id="boardRoot"></div>
