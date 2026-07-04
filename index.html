@@ -114,6 +114,23 @@
     font-size:13.5px;background:white;font-family:inherit;color:var(--text);cursor:pointer;
   }
   .filter-select:focus{outline:none;border-color:var(--primary);}
+  .toggle-check{
+    display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-dim);
+    padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;background:white;cursor:pointer;
+  }
+  .toggle-check input{cursor:pointer;}
+  .toggle-check:has(input:checked){border-color:var(--primary);color:var(--primary);font-weight:600;background:#eef1ff;}
+  .active-panel{
+    background:#eafaf3;border:1px solid var(--green);border-radius:10px;padding:12px 16px;margin-bottom:18px;
+  }
+  .active-panel-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--green);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+  .active-panel-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.2s infinite;}
+  .active-panel-row{display:flex;gap:14px;align-items:center;padding:6px 0;font-size:13px;border-bottom:1px solid rgba(18,184,134,.15);}
+  .active-panel-row:last-child{border-bottom:none;}
+  .active-panel-item{font-weight:600;color:var(--text);flex:1;}
+  .active-panel-stage{color:var(--text-dim);}
+  .active-panel-who{color:var(--text-dim);}
+  .active-panel-time{font-family:'JetBrains Mono',monospace;color:var(--green);font-weight:700;}
   .btn-primary-sm{
     background:var(--primary);color:white;border:none;border-radius:8px;
     padding:9px 16px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;
@@ -337,9 +354,44 @@
         <option value="Lubestation">Lubestation</option>
         <option value="Custom">Custom</option>
       </select>
+      <select class="filter-select" id="filterDifot">
+        <option value="">All DIFOT Statuses</option>
+        <option value="On-Going">On-Going</option>
+        <option value="DIFOT_ON_TIME">DIFOT On Time</option>
+        <option value="DIFOT_LATE">DIFOT Late</option>
+      </select>
+      <select class="filter-select" id="filterStage">
+        <option value="">Any Stage</option>
+        <option value="GA For Approval Prep">GA For Approval Prep</option>
+        <option value="Detailing/PDF/DXF Prep">Detailing/PDF/DXF Prep</option>
+        <option value="Checking">Checking</option>
+        <option value="Release">Release</option>
+      </select>
+      <select class="filter-select" id="filterStageStatus">
+        <option value="">Any Status</option>
+        <option value="Not Started">Not Started</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Done">Done</option>
+      </select>
+      <select class="filter-select" id="filterDue">
+        <option value="">Any Due Date</option>
+        <option value="overdue">Overdue</option>
+        <option value="week">Due This Week</option>
+      </select>
+      <label class="toggle-check"><input type="checkbox" id="filterBehindSchedule"> Behind Schedule</label>
+      <label class="toggle-check"><input type="checkbox" id="filterOverBudget"> Over Budget</label>
+      <label class="toggle-check"><input type="checkbox" id="filterClockedIn"> Clocked In Now</label>
+      <select class="filter-select" id="sortBy">
+        <option value="">Sort: Default</option>
+        <option value="aging_desc">Aging (High→Low)</option>
+        <option value="difot_desc">DIFOT Days (High→Low)</option>
+        <option value="sales_desc">Project Sales (High→Low)</option>
+      </select>
       <button class="icon-btn" id="clearFiltersBtn">Clear filters</button>
+      <button class="icon-btn" id="exportCsvBtn">⬇ Export CSV</button>
       <button class="btn-primary-sm" id="newGroupItemBtn">+ New item</button>
     </div>
+    <div id="activePanelRoot"></div>
     <div id="boardRoot"></div>
   </main>
 </div>
@@ -400,6 +452,14 @@ let drafteeOptions = [];
 let filterDraftee = '';
 let filterSalesPerson = '';
 let filterClass = '';
+let filterDifot = '';
+let filterStage = '';
+let filterStageStatus = '';
+let filterDue = '';
+let filterBehindSchedule = false;
+let filterOverBudget = false;
+let filterClockedIn = false;
+let sortBy = '';
 let collapsedSubitems = new Set();
 let editingId = null; // null = new item
 let tickerStarted = false;
@@ -533,23 +593,64 @@ document.getElementById('searchBox').addEventListener('input', renderBoard);
 document.getElementById('filterDraftee').addEventListener('change', e => { filterDraftee = e.target.value; renderBoard(); });
 document.getElementById('filterSalesPerson').addEventListener('change', e => { filterSalesPerson = e.target.value; renderBoard(); });
 document.getElementById('filterClass').addEventListener('change', e => { filterClass = e.target.value; renderBoard(); });
+document.getElementById('filterDifot').addEventListener('change', e => { filterDifot = e.target.value; renderBoard(); });
+document.getElementById('filterStage').addEventListener('change', e => { filterStage = e.target.value; renderBoard(); });
+document.getElementById('filterStageStatus').addEventListener('change', e => { filterStageStatus = e.target.value; renderBoard(); });
+document.getElementById('filterDue').addEventListener('change', e => { filterDue = e.target.value; renderBoard(); });
+document.getElementById('filterBehindSchedule').addEventListener('change', e => { filterBehindSchedule = e.target.checked; renderBoard(); });
+document.getElementById('filterOverBudget').addEventListener('change', e => { filterOverBudget = e.target.checked; renderBoard(); });
+document.getElementById('filterClockedIn').addEventListener('change', e => { filterClockedIn = e.target.checked; renderBoard(); });
+document.getElementById('sortBy').addEventListener('change', e => { sortBy = e.target.value; renderBoard(); });
+document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
 document.getElementById('clearFiltersBtn').addEventListener('click', () => {
-  filterDraftee = ''; filterSalesPerson = ''; filterClass = '';
+  filterDraftee = ''; filterSalesPerson = ''; filterClass = ''; filterDifot = ''; filterStage = '';
+  filterStageStatus = ''; filterDue = ''; filterBehindSchedule = false; filterOverBudget = false; filterClockedIn = false; sortBy = '';
   document.getElementById('filterDraftee').value = '';
   document.getElementById('filterSalesPerson').value = '';
   document.getElementById('filterClass').value = '';
+  document.getElementById('filterDifot').value = '';
+  document.getElementById('filterStage').value = '';
+  document.getElementById('filterStageStatus').value = '';
+  document.getElementById('filterDue').value = '';
+  document.getElementById('filterBehindSchedule').checked = false;
+  document.getElementById('filterOverBudget').checked = false;
+  document.getElementById('filterClockedIn').checked = false;
+  document.getElementById('sortBy').value = '';
   renderBoard();
 });
 
 function renderBoard(){
   const q = document.getElementById('searchBox').value.trim().toLowerCase();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const weekFromNow = new Date(today); weekFromNow.setDate(weekFromNow.getDate() + 7);
+
   const filtered = rows.filter(r => {
     const matchesSearch = !q || (r.item_name||'').toLowerCase().includes(q) || (r.so_number||'').toLowerCase().includes(q);
     const matchesDraftee = !filterDraftee || (r.draftee||'').split(',').map(s=>s.trim()).includes(filterDraftee);
     const matchesSalesPerson = !filterSalesPerson || r.sales_person === filterSalesPerson;
     const matchesClass = !filterClass || r.product_class === filterClass;
-    return matchesSearch && matchesDraftee && matchesSalesPerson && matchesClass;
+    const matchesDifot = !filterDifot || r.computed_difot_status === filterDifot;
+    const matchesBehindSchedule = !filterBehindSchedule || (Number(r.computed_oa_excess_days) > 0);
+    const matchesOverBudget = !filterOverBudget || (r.computed_remainder_hrs !== null && r.computed_remainder_hrs !== undefined && Number(r.computed_remainder_hrs) < 0);
+
+    const subs = subitemsByParent[r.id] || [];
+    const matchesStage = (!filterStage && !filterStageStatus) || subs.some(s =>
+      (!filterStage || s.subitem_type === filterStage) && (!filterStageStatus || s.status === filterStageStatus)
+    );
+    const matchesClockedIn = !filterClockedIn || subs.some(s => s.clock_running);
+
+    let matchesDue = true;
+    if(filterDue === 'overdue'){
+      matchesDue = !!(r.target_release_date && !r.actual_release_to_prodn_date && new Date(r.target_release_date+'T00:00:00') < today);
+    } else if(filterDue === 'week'){
+      matchesDue = !!(r.target_release_date && !r.actual_release_to_prodn_date && new Date(r.target_release_date+'T00:00:00') >= today && new Date(r.target_release_date+'T00:00:00') <= weekFromNow);
+    }
+
+    return matchesSearch && matchesDraftee && matchesSalesPerson && matchesClass && matchesDifot &&
+      matchesBehindSchedule && matchesOverBudget && matchesStage && matchesClockedIn && matchesDue;
   });
+
+  document.getElementById('activePanelRoot').innerHTML = activePanelHtml();
 
   const groups = {};
   filtered.forEach(r => {
@@ -579,6 +680,9 @@ function renderBoard(){
   root.innerHTML = groupNames.map((g, idx) => {
     const color = GROUP_COLORS[GROUP_ORDER.indexOf(g) >= 0 ? GROUP_ORDER.indexOf(g) % GROUP_COLORS.length : idx % GROUP_COLORS.length];
     const items = groups[g];
+    if(sortBy === 'aging_desc') items.sort((a,b) => (b.computed_aging_days??-Infinity) - (a.computed_aging_days??-Infinity));
+    else if(sortBy === 'difot_desc') items.sort((a,b) => (b.computed_difot_10days??-Infinity) - (a.computed_difot_10days??-Infinity));
+    else if(sortBy === 'sales_desc') items.sort((a,b) => (Number(b.project_sales)||0) - (Number(a.project_sales)||0));
     const scrollId = 'scroll_' + idx;
     const totalSales = items.reduce((sum,r) => sum + (Number(r.project_sales)||0), 0);
     const difotVals = items.map(r => r.computed_difot_10days).filter(v => v !== null && v !== undefined);
@@ -634,6 +738,30 @@ function renderBoard(){
       </div>
     </div>`;
   }).join('');
+}
+
+function activePanelHtml(){
+  const activeEntries = [];
+  Object.keys(subitemsByParent).forEach(parentId => {
+    (subitemsByParent[parentId] || []).forEach(s => {
+      if(s.clock_running){
+        const parent = rows.find(r => r.id === parentId);
+        activeEntries.push({ sub: s, parent });
+      }
+    });
+  });
+  if(activeEntries.length === 0) return '';
+  const rowsHtml = activeEntries.map(({sub,parent}) => `
+    <div class="active-panel-row">
+      <span class="active-panel-item">${escapeHtml(parent ? (parent.so_number||parent.item_name) : 'Unknown item')}</span>
+      <span class="active-panel-stage">${escapeHtml(sub.subitem_type)}</span>
+      <span class="active-panel-who">${escapeHtml(sub.draftee||'—')}</span>
+      <span class="active-panel-time" data-active-panel-timer="${sub.id}">${fmtDuration(liveElapsed(sub))}</span>
+    </div>`).join('');
+  return `<div class="active-panel">
+    <div class="active-panel-title"><span class="active-panel-dot"></span>Clocked in now (${activeEntries.length})</div>
+    ${rowsHtml}
+  </div>`;
 }
 
 function scrollTable(id, deltaX){
@@ -853,8 +981,64 @@ function startTicker(){
       if(!s.clock_running) return;
       const el = document.querySelector(`[data-timer-for="${s.id}"]`);
       if(el) el.textContent = fmtDuration(liveElapsed(s));
+      const panelEl = document.querySelector(`[data-active-panel-timer="${s.id}"]`);
+      if(panelEl) panelEl.textContent = fmtDuration(liveElapsed(s));
     });
   }, 1000);
+}
+
+function exportCsv(){
+  const q = document.getElementById('searchBox').value.trim().toLowerCase();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const weekFromNow = new Date(today); weekFromNow.setDate(weekFromNow.getDate() + 7);
+  const filtered = rows.filter(r => {
+    const matchesSearch = !q || (r.item_name||'').toLowerCase().includes(q) || (r.so_number||'').toLowerCase().includes(q);
+    const matchesDraftee = !filterDraftee || (r.draftee||'').split(',').map(s=>s.trim()).includes(filterDraftee);
+    const matchesSalesPerson = !filterSalesPerson || r.sales_person === filterSalesPerson;
+    const matchesClass = !filterClass || r.product_class === filterClass;
+    const matchesDifot = !filterDifot || r.computed_difot_status === filterDifot;
+    const matchesBehindSchedule = !filterBehindSchedule || (Number(r.computed_oa_excess_days) > 0);
+    const matchesOverBudget = !filterOverBudget || (r.computed_remainder_hrs !== null && r.computed_remainder_hrs !== undefined && Number(r.computed_remainder_hrs) < 0);
+    const subs = subitemsByParent[r.id] || [];
+    const matchesStage = (!filterStage && !filterStageStatus) || subs.some(s =>
+      (!filterStage || s.subitem_type === filterStage) && (!filterStageStatus || s.status === filterStageStatus)
+    );
+    const matchesClockedIn = !filterClockedIn || subs.some(s => s.clock_running);
+    let matchesDue = true;
+    if(filterDue === 'overdue'){
+      matchesDue = !!(r.target_release_date && !r.actual_release_to_prodn_date && new Date(r.target_release_date+'T00:00:00') < today);
+    } else if(filterDue === 'week'){
+      matchesDue = !!(r.target_release_date && !r.actual_release_to_prodn_date && new Date(r.target_release_date+'T00:00:00') >= today && new Date(r.target_release_date+'T00:00:00') <= weekFromNow);
+    }
+    return matchesSearch && matchesDraftee && matchesSalesPerson && matchesClass && matchesDifot &&
+      matchesBehindSchedule && matchesOverBudget && matchesStage && matchesClockedIn && matchesDue;
+  });
+
+  const headers = ['SO Number','Item','Group','Draftee','Sales Person','Class','DIFOT Status','DIFOT Days','Drafting Transfer','Target Start','Target Release','Actual Release to Prodn','Project Sales','Aging Days','Actual Hrs','O/A Excess Days'];
+  const csvRows = [headers.join(',')];
+  filtered.forEach(r => {
+    const row = [
+      r.so_number, r.item_name, r.group_name, r.draftee, r.sales_person, r.product_class,
+      r.computed_difot_status, r.computed_difot_10days, r.drafting_transfer_date, r.target_start_date,
+      r.target_release_date, r.actual_release_to_prodn_date, r.project_sales, r.computed_aging_days,
+      r.computed_actual_hrs, r.computed_oa_excess_days
+    ].map(v => {
+      const s = (v===null||v===undefined) ? '' : String(v);
+      return s.includes(',') || s.includes('"') ? '"' + s.replace(/"/g,'""') + '"' : s;
+    });
+    csvRows.push(row.join(','));
+  });
+
+  const csvContent = csvRows.join('\n');
+  const blob = new Blob([csvContent], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `so_schedule_export_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 function difotPill(status){
