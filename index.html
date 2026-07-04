@@ -109,6 +109,11 @@
     border-radius:8px;font-size:13.5px;background:white;font-family:inherit;
   }
   .search-box:focus{outline:none;border-color:var(--primary);}
+  .filter-select{
+    padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;
+    font-size:13.5px;background:white;font-family:inherit;color:var(--text);cursor:pointer;
+  }
+  .filter-select:focus{outline:none;border-color:var(--primary);}
   .btn-primary-sm{
     background:var(--primary);color:white;border:none;border-radius:8px;
     padding:9px 16px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;
@@ -323,6 +328,16 @@
   <main>
     <div class="toolbar">
       <input class="search-box" id="searchBox" placeholder="Search item name or SO number…">
+      <select class="filter-select" id="filterDraftee"><option value="">All Draftees</option></select>
+      <select class="filter-select" id="filterSalesPerson"><option value="">All Sales People</option></select>
+      <select class="filter-select" id="filterClass">
+        <option value="">All Classes</option>
+        <option value="Container">Container</option>
+        <option value="Standard">Standard</option>
+        <option value="Lubestation">Lubestation</option>
+        <option value="Custom">Custom</option>
+      </select>
+      <button class="icon-btn" id="clearFiltersBtn">Clear filters</button>
       <button class="btn-primary-sm" id="newGroupItemBtn">+ New item</button>
     </div>
     <div id="boardRoot"></div>
@@ -382,6 +397,9 @@ let subitemsByParent = {};
 let logsBySubitem = {};
 let salesPersonOptions = [];
 let drafteeOptions = [];
+let filterDraftee = '';
+let filterSalesPerson = '';
+let filterClass = '';
 let collapsedSubitems = new Set();
 let editingId = null; // null = new item
 let tickerStarted = false;
@@ -494,19 +512,44 @@ async function loadData(){
     salesPersonOptions = lookupData.filter(l => l.category === 'sales_person').map(l => l.name);
     drafteeOptions = lookupData.filter(l => l.category === 'draftee').map(l => l.name);
   }
+  populateFilterDropdowns();
 
   renderBoard();
   startTicker();
+}
+
+function populateFilterDropdowns(){
+  const drafteeSel = document.getElementById('filterDraftee');
+  const spSel = document.getElementById('filterSalesPerson');
+  drafteeSel.innerHTML = '<option value="">All Draftees</option>' +
+    drafteeOptions.map(n => `<option value="${escapeAttr(n)}" ${n===filterDraftee?'selected':''}>${escapeHtml(n)}</option>`).join('');
+  spSel.innerHTML = '<option value="">All Sales People</option>' +
+    salesPersonOptions.map(n => `<option value="${escapeAttr(n)}" ${n===filterSalesPerson?'selected':''}>${escapeHtml(n)}</option>`).join('');
 }
 document.getElementById('refreshBtn').onclick = loadData;
 
 document.getElementById('searchBox').addEventListener('input', renderBoard);
 
+document.getElementById('filterDraftee').addEventListener('change', e => { filterDraftee = e.target.value; renderBoard(); });
+document.getElementById('filterSalesPerson').addEventListener('change', e => { filterSalesPerson = e.target.value; renderBoard(); });
+document.getElementById('filterClass').addEventListener('change', e => { filterClass = e.target.value; renderBoard(); });
+document.getElementById('clearFiltersBtn').addEventListener('click', () => {
+  filterDraftee = ''; filterSalesPerson = ''; filterClass = '';
+  document.getElementById('filterDraftee').value = '';
+  document.getElementById('filterSalesPerson').value = '';
+  document.getElementById('filterClass').value = '';
+  renderBoard();
+});
+
 function renderBoard(){
   const q = document.getElementById('searchBox').value.trim().toLowerCase();
-  const filtered = rows.filter(r =>
-    !q || (r.item_name||'').toLowerCase().includes(q) || (r.so_number||'').toLowerCase().includes(q)
-  );
+  const filtered = rows.filter(r => {
+    const matchesSearch = !q || (r.item_name||'').toLowerCase().includes(q) || (r.so_number||'').toLowerCase().includes(q);
+    const matchesDraftee = !filterDraftee || (r.draftee||'').split(',').map(s=>s.trim()).includes(filterDraftee);
+    const matchesSalesPerson = !filterSalesPerson || r.sales_person === filterSalesPerson;
+    const matchesClass = !filterClass || r.product_class === filterClass;
+    return matchesSearch && matchesDraftee && matchesSalesPerson && matchesClass;
+  });
 
   const groups = {};
   filtered.forEach(r => {
