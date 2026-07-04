@@ -187,7 +187,7 @@
   .sub-label{font-size:12.5px;font-weight:600;color:var(--text);min-width:190px;}
   .sub-draftee{
     font-size:12px;border:1.5px solid var(--border);border-radius:6px;
-    padding:4px 8px;font-family:inherit;background:white;width:120px;
+    padding:4px 8px;font-family:inherit;background:white;width:150px;
   }
   .sub-draftee:focus{outline:none;border-color:var(--primary);}
   .sub-status{
@@ -361,6 +361,8 @@ let session = null;
 let rows = [];
 let subitemsByParent = {};
 let logsBySubitem = {};
+let salesPersonOptions = [];
+let drafteeOptions = [];
 let collapsedSubitems = new Set();
 let editingId = null; // null = new item
 let tickerStarted = false;
@@ -466,6 +468,12 @@ async function loadData(){
     logData.forEach(l => {
       (logsBySubitem[l.subitem_id] = logsBySubitem[l.subitem_id] || []).push(l);
     });
+  }
+
+  const { data: lookupData } = await sb.from('so_lookup_names').select('*').order('name', {ascending:true});
+  if(lookupData){
+    salesPersonOptions = lookupData.filter(l => l.category === 'sales_person').map(l => l.name);
+    drafteeOptions = lookupData.filter(l => l.category === 'draftee').map(l => l.name);
   }
 
   renderBoard();
@@ -605,9 +613,7 @@ function subRowHtml(s){
       <div class="sub-content">
         <span class="sub-indent-icon">↳</span>
         <span class="sub-label">${escapeHtml(s.subitem_type)}</span>
-        <input type="text" class="sub-draftee" placeholder="Draftee" value="${escapeAttr(s.draftee||'')}"
-          onclick="event.stopPropagation()"
-          onchange="updateSubDraftee('${s.id}', this.value)">
+        <select class="sub-draftee" onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleSubDrafteeChange(this, '${s.id}')">${lookupOptionsHtml('draftee', s.draftee)}</select>
         <select class="sub-status" onchange="updateSubStatus('${s.id}', this.value)" onclick="event.stopPropagation()">${statusOptions}</select>
         <button class="clock-btn ${s.clock_running?'running':''}" onclick="event.stopPropagation(); toggleClock('${s.id}')">
           <span class="dot"></span>${s.clock_running ? 'Stop' : 'Start'}
@@ -695,6 +701,38 @@ async function updateSubDraftee(subitemId, draftee){
   await sb.from('so_subitems').update({ draftee: draftee || null }).eq('id', subitemId);
 }
 
+function lookupOptionsHtml(category, selected){
+  const opts = category === 'sales_person' ? salesPersonOptions : drafteeOptions;
+  let html = `<option value="">—</option>`;
+  html += opts.map(n => `<option value="${escapeAttr(n)}" ${n===selected?'selected':''}>${escapeHtml(n)}</option>`).join('');
+  html += `<option value="__ADD_NEW__">+ Add new…</option>`;
+  return html;
+}
+
+async function handleLookupChange(selectEl, category){
+  if(selectEl.value !== '__ADD_NEW__') return true;
+  const label = category === 'sales_person' ? 'sales person' : 'draftee';
+  const name = prompt(`Add new ${label} name:`);
+  if(!name || !name.trim()){ selectEl.value = ''; return false; }
+  const trimmed = name.trim();
+  const { error } = await sb.from('so_lookup_names').insert({ category, name: trimmed });
+  if(error && !error.message.toLowerCase().includes('duplicate')){
+    alert("Couldn't add name: " + error.message);
+    selectEl.value = '';
+    return false;
+  }
+  const list = category === 'sales_person' ? salesPersonOptions : drafteeOptions;
+  if(!list.includes(trimmed)){ list.push(trimmed); list.sort(); }
+  selectEl.innerHTML = lookupOptionsHtml(category, trimmed);
+  return true;
+}
+
+async function handleSubDrafteeChange(selectEl, subitemId){
+  const ok = await handleLookupChange(selectEl, 'draftee');
+  if(!ok) return;
+  await updateSubDraftee(subitemId, selectEl.value || null);
+}
+
 function startTicker(){
   if(tickerStarted) return;
   tickerStarted = true;
@@ -756,8 +794,8 @@ const FIELDS = [
   {key:'item_name', label:'Item name', type:'text', required:true},
   {key:'so_number', label:'SO number', type:'text'},
   {key:'group_name', label:'Group', type:'select', options: GROUP_ORDER},
-  {key:'draftee', label:'Draftee', type:'text'},
-  {key:'sales_person', label:'Sales person', type:'text'},
+  {key:'draftee', label:'Draftee', type:'lookup', category:'draftee'},
+  {key:'sales_person', label:'Sales person', type:'lookup', category:'sales_person'},
   {key:'difot_status', label:'DIFOT status (manual note)', type:'text'},
   {key:'std_product', label:'Standard product', type:'checkbox'},
   {key:'drafting_transfer_date', label:'Drafting transfer date', type:'date'},
@@ -817,6 +855,12 @@ function openModal(id, presetGroup){
       return `<div class="field">
         <label>${f.label}</label>
         <select id="f_${f.key}">${opts}</select>
+      </div>`;
+    }
+    if(f.type === 'lookup'){
+      return `<div class="field">
+        <label>${f.label}</label>
+        <select id="f_${f.key}" onchange="handleLookupChange(this, '${f.category}')">${lookupOptionsHtml(f.category, val)}</select>
       </div>`;
     }
     return `<div class="field">
