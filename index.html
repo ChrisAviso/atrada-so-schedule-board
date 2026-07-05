@@ -165,11 +165,22 @@
     border:2px solid var(--red);font-weight:800;font-size:13px;
     padding:6px 14px;border-radius:20px;box-shadow:0 2px 8px rgba(230,76,102,.45);
     animation:chip-blink 1s steps(1,end) infinite;
+    display:inline-flex;align-items:center;gap:8px;
   }
   @keyframes chip-blink{
     0%,49%{background:var(--red);color:white;}
     50%,100%{background:white;color:var(--red);}
   }
+  .not-clocked-chip-muted{
+    border:2px solid var(--border);background:var(--gray-pill);color:var(--text-dim);
+    font-weight:600;box-shadow:none;animation:none;
+  }
+  .not-clocked-chip-muted em{font-style:normal;font-weight:500;}
+  .absence-toggle-btn{
+    border:none;background:rgba(255,255,255,.35);color:inherit;font-size:11px;font-weight:700;
+    padding:3px 8px;border-radius:12px;cursor:pointer;
+  }
+  .not-clocked-chip-muted .absence-toggle-btn{background:white;border:1px solid var(--border);color:var(--text);}
 
   .open-so-panel{
     background:#fafbff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:16px;
@@ -391,6 +402,8 @@
   .field input[type=checkbox]{width:auto;margin-right:8px;}
   .checkbox-field{display:flex;align-items:center;font-size:13.5px;margin-top:26px;}
   .modal-foot{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;gap:10px;}
+  .break-modal-sub{font-size:13px;color:var(--text-dim);}
+  #breakCountdown{font-weight:700;color:var(--amber);font-family:'JetBrains Mono',monospace;}
   .btn-danger{background:none;border:1.5px solid var(--red);color:var(--red);border-radius:8px;padding:9px 16px;font-weight:600;font-size:13.5px;cursor:pointer;font-family:inherit;}
   .btn-danger:hover{background:var(--red);color:white;}
   .foot-right{display:flex;gap:10px;}
@@ -574,6 +587,24 @@
   </div>
 </div>
 
+<div class="modal-backdrop hidden" id="breakModalBackdrop">
+  <div class="modal break-modal">
+    <div class="modal-head">
+      <h2>Time for a break?</h2>
+    </div>
+    <div class="modal-body">
+      <p>It's <b id="breakTimeLabel"></b> — would you like to take a break?</p>
+      <p class="break-modal-sub">If there's no response within <span id="breakCountdown">5:00</span>, your timer will stop automatically.</p>
+    </div>
+    <div class="modal-foot">
+      <div class="foot-right" style="margin-left:auto;">
+        <button class="btn-secondary" id="breakNoBtn">No, keep working</button>
+        <button class="btn-primary-sm" id="breakYesBtn">Yes, take a break</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 /* =======================================================================
    CONFIG — paste your Supabase project values below.
@@ -601,6 +632,30 @@ const GROUP_ORDER = [
 const GROUP_COLORS = ["#3a5ceb","#12b886","#f5a623","#e64c66","#7c5cf0","#0aa3a3","#d6534f","#2c9c4a","#9c6b2c","#5c6bc0","#546e7a"];
 const NEW_ITEM_GROUP = "Sales Order Drafting & Drawings Prep";
 
+const AUTHORIZED_DRAFTEES = {
+  'arcangel@atrada.com.au': 'Arcangel SanMiguel',
+  'chris.aviso@atrada.com.au': 'Chris Aviso',
+  'estimating@atrada.com.au': 'Jessica Visca',
+  'estimating02@atrada.com.au': 'Jochelle Paet',
+  'johncarlo@atrada.com.au': 'John Bangayan',
+  'hennsy@atrada.com.au': 'John Gamboa',
+  'marvin.salac@atrada.com.au': 'Marvin Salac',
+  'rebecca.daza@atrada.com.au': 'Rebecca Daza',
+  'shiela.baytic@atrada.com.au': 'Shiela Baytic',
+  'elliott.broadhurst@atrada.com.au': 'Elliott Broadhurst',
+};
+const ABSENCE_ADMIN_EMAILS = ['chris.aviso@atrada.com.au', 'johncarlo@atrada.com.au', 'rebecca.daza@atrada.com.au'];
+
+function getMyDrafteeName(){
+  if(!session || !session.user || !session.user.email) return null;
+  return AUTHORIZED_DRAFTEES[session.user.email.toLowerCase()] || null;
+}
+
+function isAbsenceAdmin(){
+  if(!session || !session.user || !session.user.email) return false;
+  return ABSENCE_ADMIN_EMAILS.includes(session.user.email.toLowerCase());
+}
+
 let session = null;
 let rows = [];
 let subitemsByParent = {};
@@ -615,6 +670,7 @@ let filterStage = '';
 let filterStageStatus = '';
 let filterDue = '';
 let filterOverBudget = false;
+let absentToday = new Set();
 let filterClockedIn = false;
 let sortBy = '';
 let collapsedSubitems = new Set();
@@ -730,6 +786,10 @@ async function loadData(){
     drafteeOptions = lookupData.filter(l => l.category === 'draftee').map(l => l.name);
   }
   populateFilterDropdowns();
+
+  const todayStr = new Date().toISOString().slice(0,10);
+  const { data: absenteeData } = await sb.from('so_absentees').select('draftee_name').eq('absent_date', todayStr);
+  absentToday = new Set((absenteeData||[]).map(a => a.draftee_name));
 
   renderBoard();
   startTicker();
@@ -946,12 +1006,35 @@ function notClockedInHtml(){
   const notClockedIn = Array.from(assignedNames).filter(n => !clockedInNames.has(n)).sort();
   if(notClockedIn.length === 0) return '';
 
+  const canManageAbsence = isAbsenceAdmin();
+  const chipsHtml = notClockedIn.map(n => {
+    const isAbsent = absentToday.has(n);
+    const adminBtn = canManageAbsence
+      ? `<button class="absence-toggle-btn" onclick="event.stopPropagation(); toggleAbsentToday('${escapeAttr(n)}')">${isAbsent ? 'Unmark' : 'Mark absent'}</button>`
+      : '';
+    if(isAbsent){
+      return `<span class="not-clocked-chip not-clocked-chip-muted">${escapeHtml(n)} <em>(On leave)</em>${adminBtn}</span>`;
+    }
+    return `<span class="not-clocked-chip">${escapeHtml(n)}${adminBtn}</span>`;
+  }).join('');
+
   return `<div class="not-clocked-panel">
     <div class="not-clocked-title"><span class="bell">🔔</span> Not Clocked In — Please Start Your Timer!</div>
     <div class="not-clocked-names">
-      ${notClockedIn.map(n => `<span class="not-clocked-chip">${escapeHtml(n)}</span>`).join('')}
+      ${chipsHtml}
     </div>
   </div>`;
+}
+
+async function toggleAbsentToday(name){
+  if(!isAbsenceAdmin()){ alert("Only authorized admins can mark someone as absent."); return; }
+  const todayStr = new Date().toISOString().slice(0,10);
+  if(absentToday.has(name)){
+    await sb.from('so_absentees').delete().eq('draftee_name', name).eq('absent_date', todayStr);
+  } else {
+    await sb.from('so_absentees').insert({ draftee_name: name, absent_date: todayStr });
+  }
+  await loadData();
 }
 
 function activePanelHtml(){
@@ -1132,6 +1215,13 @@ async function toggleClock(subitemId){
   const allSubs = Object.values(subitemsByParent).flat();
   const sub = allSubs.find(s => s.id === subitemId);
   if(!sub) return;
+  const myName = getMyDrafteeName();
+  if(!myName){ alert("Only assigned draftees can start or stop their own timer."); return; }
+  const subDraftees = (sub.draftee||'').split(',').map(x=>x.trim()).filter(Boolean);
+  if(!subDraftees.includes(myName)){
+    alert(`This sub-process is assigned to ${sub.draftee || 'someone else'}. You can only clock in/out on your own assignments.`);
+    return;
+  }
   const nowIso = new Date().toISOString();
   if(sub.clock_running){
     const { data: openLogs } = await sb.from('so_time_logs').select('*').eq('subitem_id', subitemId).is('ended_at', null).order('started_at', {ascending:false}).limit(1);
@@ -1148,6 +1238,70 @@ async function toggleClock(subitemId){
     await sb.from('so_subitems').update({ clock_running:true, clock_started_at: nowIso }).eq('id', subitemId);
   }
   await loadData();
+}
+
+let breakPromptActive = false;
+let breakAutoOffTimer = null;
+
+function startBreakScheduler(){
+  setInterval(checkBreakTime, 20000);
+}
+
+function checkBreakTime(){
+  if(breakPromptActive) return;
+  const myName = getMyDrafteeName();
+  if(!myName) return;
+  const now = new Date();
+  const hh = now.getHours(), mm = now.getMinutes();
+  const isNoon = (hh === 12 && mm === 0);
+  const isFivePm = (hh === 17 && mm === 0);
+  if(!isNoon && !isFivePm) return;
+
+  const dateKey = now.toISOString().slice(0,10);
+  const slot = isNoon ? 'noon' : 'five';
+  const storageKey = `breakAsked_${dateKey}_${slot}`;
+  if(localStorage.getItem(storageKey)) return;
+
+  const allSubs = Object.values(subitemsByParent).flat();
+  const myRunning = allSubs.filter(s => s.clock_running && (s.draftee||'').split(',').map(x=>x.trim()).includes(myName));
+  localStorage.setItem(storageKey, '1');
+  if(myRunning.length === 0) return;
+
+  showBreakPrompt(myRunning, isNoon ? '12:00 PM' : '5:00 PM');
+}
+
+function showBreakPrompt(runningSubs, timeLabel){
+  breakPromptActive = true;
+  document.getElementById('breakTimeLabel').textContent = timeLabel;
+  document.getElementById('breakModalBackdrop').classList.remove('hidden');
+  let secondsLeft = 300;
+  const countdownEl = document.getElementById('breakCountdown');
+  const updateCountdown = () => {
+    const m = Math.floor(secondsLeft/60), s = secondsLeft%60;
+    countdownEl.textContent = `${m}:${String(s).padStart(2,'0')}`;
+  };
+  updateCountdown();
+  breakAutoOffTimer = setInterval(() => {
+    secondsLeft--;
+    updateCountdown();
+    if(secondsLeft <= 0){
+      clearInterval(breakAutoOffTimer);
+      resolveBreakPrompt(true, runningSubs);
+    }
+  }, 1000);
+  document.getElementById('breakYesBtn').onclick = () => resolveBreakPrompt(true, runningSubs);
+  document.getElementById('breakNoBtn').onclick = () => resolveBreakPrompt(false, runningSubs);
+}
+
+async function resolveBreakPrompt(stopClock, runningSubs){
+  clearInterval(breakAutoOffTimer);
+  document.getElementById('breakModalBackdrop').classList.add('hidden');
+  breakPromptActive = false;
+  if(stopClock){
+    for(const sub of runningSubs){
+      await toggleClock(sub.id);
+    }
+  }
 }
 
 async function updateSubStatus(subitemId, status){
@@ -1529,6 +1683,7 @@ deleteBtn.onclick = async () => {
 };
 
 checkSession();
+startBreakScheduler();
 </script>
   <!-- redeploy trigger -->
 </body>
