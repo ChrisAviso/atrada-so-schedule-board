@@ -210,6 +210,8 @@
     padding:9px 16px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;
   }
   .btn-primary-sm:hover{background:var(--primary-dark);}
+  .btn-oppts{background:#7c5cf0;}
+  .btn-oppts:hover{background:#6644d6;}
 
   .group{margin-bottom:26px;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
   .group-header{
@@ -296,6 +298,8 @@
   .pill-class-standard{background:var(--green);}
   .pill-class-lubestation{background:#7c5cf0;}
   .pill-class-custom{background:var(--amber);}
+  .pill-rcd{background:#0aa3a3;}
+  .pill-rc{background:#546e7a;}
   .pill-blank{background:var(--gray-pill);color:var(--text-dim);}
   .excess-pos{color:var(--red);font-weight:700;}
   .excess-neg{color:var(--green);font-weight:700;}
@@ -490,7 +494,8 @@
       <input class="search-box" id="searchBox" placeholder="Search item name or SO number…">
       <div class="toolbar-actions">
         <button class="icon-btn" id="exportCsvBtn">⬇ Export CSV</button>
-        <button class="btn-primary-sm" id="newGroupItemBtn">+ New item</button>
+        <button class="btn-primary-sm" id="newGroupItemBtn">+ New SO Item</button>
+        <button class="btn-primary-sm btn-oppts" id="newOpptsItemBtn">+ New OPPTS/PROJTS Job</button>
       </div>
     </div>
 
@@ -506,6 +511,11 @@
       <div class="filter-group">
         <span class="filter-group-label">Project</span>
         <div class="filter-group-controls">
+          <select class="filter-select" id="filterJobType">
+            <option value="">All Job Types</option>
+            <option value="SO">SO</option>
+            <option value="OPPTS">OPPTS/PROJTS</option>
+          </select>
           <select class="filter-select" id="filterClass">
             <option value="">All Classes</option>
             <option value="Container">Container</option>
@@ -531,6 +541,9 @@
             <option value="Detailing/PDF/DXF Prep">Detailing/PDF/DXF Prep</option>
             <option value="Checking">Checking</option>
             <option value="Release">Release</option>
+            <option value="Drawing/BOM Prep">Drawing/BOM Prep</option>
+            <option value="Costing Prep">Costing Prep</option>
+            <option value="Review/Release">Review/Release</option>
           </select>
           <select class="filter-select" id="filterStageStatus">
             <option value="">Any Status</option>
@@ -658,10 +671,14 @@ const GROUP_ORDER = [
   "Done Sales Order - Awaiting Client Approval",
   "Done Sales Order - For Cost Analysis",
   "Done Cost Analysis",
-  "Done Sales Order - Finalised"
+  "Done Sales Order - Finalised",
+  "OPPTS/PROJTS Cost Sheet Prep",
+  "Done OPPTS/PROJTS - Cost Sheet Prep",
+  "Done OPPTS/PROJTS - Reviewed/Release"
 ];
 const GROUP_COLORS = ["#3a5ceb","#12b886","#f5a623","#e64c66","#7c5cf0","#0aa3a3","#d6534f","#2c9c4a","#9c6b2c","#5c6bc0","#546e7a"];
 const NEW_ITEM_GROUP = "Sales Order Drafting & Drawings Prep";
+const NEW_OPPTS_GROUP = "OPPTS/PROJTS Cost Sheet Prep";
 
 const AUTHORIZED_DRAFTEES = {
   'arcangel@atrada.com.au': 'Arcangel SanMiguel',
@@ -696,6 +713,7 @@ let drafteeOptions = [];
 let filterDraftee = '';
 let filterSalesPerson = '';
 let filterClass = '';
+let filterJobType = '';
 let filterDifot = '';
 let filterStage = '';
 let filterStageStatus = '';
@@ -706,6 +724,7 @@ let filterClockedIn = false;
 let sortBy = '';
 let collapsedSubitems = new Set();
 let editingId = null; // null = new item
+let currentPresetJobType = 'SO';
 let tickerStarted = false;
 
 /* ---------------- AUTH ---------------- */
@@ -842,6 +861,7 @@ document.getElementById('searchBox').addEventListener('input', renderBoard);
 document.getElementById('filterDraftee').addEventListener('change', e => { filterDraftee = e.target.value; renderBoard(); });
 document.getElementById('filterSalesPerson').addEventListener('change', e => { filterSalesPerson = e.target.value; renderBoard(); });
 document.getElementById('filterClass').addEventListener('change', e => { filterClass = e.target.value; renderBoard(); });
+document.getElementById('filterJobType').addEventListener('change', e => { filterJobType = e.target.value; renderBoard(); });
 document.getElementById('filterDifot').addEventListener('change', e => { filterDifot = e.target.value; renderBoard(); });
 document.getElementById('filterStage').addEventListener('change', e => { filterStage = e.target.value; renderBoard(); });
 document.getElementById('filterStageStatus').addEventListener('change', e => { filterStageStatus = e.target.value; renderBoard(); });
@@ -851,11 +871,12 @@ document.getElementById('filterClockedIn').addEventListener('change', e => { fil
 document.getElementById('sortBy').addEventListener('change', e => { sortBy = e.target.value; renderBoard(); });
 document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
 document.getElementById('clearFiltersBtn').addEventListener('click', () => {
-  filterDraftee = ''; filterSalesPerson = ''; filterClass = ''; filterDifot = ''; filterStage = '';
+  filterDraftee = ''; filterSalesPerson = ''; filterClass = ''; filterJobType = ''; filterDifot = ''; filterStage = '';
   filterStageStatus = ''; filterDue = ''; filterOverBudget = false; filterClockedIn = false; sortBy = '';
   document.getElementById('filterDraftee').value = '';
   document.getElementById('filterSalesPerson').value = '';
   document.getElementById('filterClass').value = '';
+  document.getElementById('filterJobType').value = '';
   document.getElementById('filterDifot').value = '';
   document.getElementById('filterStage').value = '';
   document.getElementById('filterStageStatus').value = '';
@@ -876,6 +897,7 @@ function renderBoard(){
     const matchesDraftee = !filterDraftee || (r.draftee||'').split(',').map(s=>s.trim()).includes(filterDraftee);
     const matchesSalesPerson = !filterSalesPerson || r.sales_person === filterSalesPerson;
     const matchesClass = !filterClass || r.product_class === filterClass;
+    const matchesJobType = !filterJobType || r.job_type === filterJobType;
     const matchesDifot = !filterDifot || r.computed_difot_status === filterDifot;
     const matchesOverBudget = !filterOverBudget || (r.computed_remainder_hrs !== null && r.computed_remainder_hrs !== undefined && Number(r.computed_remainder_hrs) < 0);
 
@@ -892,7 +914,7 @@ function renderBoard(){
       matchesDue = !!(r.target_release_date && !r.actual_release_to_prodn_date && new Date(r.target_release_date+'T00:00:00') >= today && new Date(r.target_release_date+'T00:00:00') <= weekFromNow);
     }
 
-    return matchesSearch && matchesDraftee && matchesSalesPerson && matchesClass && matchesDifot &&
+    return matchesSearch && matchesDraftee && matchesSalesPerson && matchesClass && matchesJobType && matchesDifot &&
       matchesOverBudget && matchesStage && matchesClockedIn && matchesDue;
   });
 
@@ -950,7 +972,7 @@ function renderBoard(){
         <div class="table-scroll" id="${scrollId}">
         <table>
           <thead><tr>
-            <th>SO Number</th><th>Item</th><th>Draftee</th><th>Sales Person</th><th>DIFOT</th><th>DIFOT Days</th><th>Class</th>
+            <th>SO Number</th><th>Item</th><th>Draftee</th><th>Sales Person</th><th>DIFOT</th><th>DIFOT Days</th><th>Class</th><th>RCD/RC</th>
             <th>Drafting Transfer</th><th>Target Start</th><th>Target Release</th><th>Actual Release to Prodn</th><th>Project Sales</th><th>Aging</th><th>Actual Hrs</th><th>O/A Excess</th><th>Move to Group</th>
           </tr></thead>
           <tbody>
@@ -958,14 +980,14 @@ function renderBoard(){
           </tbody>
           <tfoot>
             <tr class="group-foot">
-              <td colspan="11">Group totals</td>
+              <td colspan="12">Group totals</td>
               <td>${fmtMoney(totalSales)}</td>
               <td colspan="4"></td>
             </tr>
             <tr class="group-foot">
               <td colspan="5">Average DIFOT days</td>
               <td>${avgDifot !== null ? avgDifot.toFixed(1) : '—'}</td>
-              <td colspan="10"></td>
+              <td colspan="11"></td>
             </tr>
           </tfoot>
         </table>
@@ -1129,6 +1151,9 @@ function rowHtml(r){
   const std = r.product_class
     ? `<span class="pill ${classColors[r.product_class]||'pill-blank'}">${escapeHtml(r.product_class)}</span>`
     : `<span class="pill pill-blank">—</span>`;
+  const rcdRc = r.rcd_or_rc
+    ? `<span class="pill ${r.rcd_or_rc === 'RCD' ? 'pill-rcd' : 'pill-rc'}">${escapeHtml(r.rcd_or_rc)}</span>`
+    : `<span class="pill pill-blank">—</span>`;
   const excess = excessSpan(r.computed_oa_excess_days);
   const hasSubs = (subitemsByParent[r.id] || []).length > 0;
   const isCollapsed = collapsedSubitems.has(r.id);
@@ -1148,6 +1173,7 @@ function rowHtml(r){
     <td>${difot}</td>
     <td class="dim">${r.computed_difot_10days ?? '—'}</td>
     <td>${std}</td>
+    <td>${rcdRc}</td>
     <td class="dim">${fmtDate(r.drafting_transfer_date)}</td>
     <td class="dim">${fmtDate(r.target_start_date)}</td>
     <td class="dim">${fmtDate(r.target_release_date)}</td>
@@ -1160,21 +1186,21 @@ function rowHtml(r){
       <select class="move-group-select" onchange="moveToGroup('${r.id}', this.value)">${groupOptions}</select>
     </td>
   </tr>`;
-  const subs = isCollapsed ? '' : (subitemsByParent[r.id] || []).map(subRowHtml).join('');
+  const subs = isCollapsed ? '' : (subitemsByParent[r.id] || []).map(s => subRowHtml(s, r.job_type)).join('');
   return mainRow + subs;
 }
 
-function subRowHtml(s){
+function subRowHtml(s, jobType){
   const elapsed = liveElapsed(s);
   const statusOptions = ['Not Started','In Progress','On-Hold','Done'].map(opt =>
     `<option value="${opt}" ${s.status===opt?'selected':''}>${opt}</option>`
   ).join('');
-  const isAutoDraftee = (s.subitem_type === 'GA For Approval Prep' || s.subitem_type === 'Detailing/PDF/DXF Prep');
+  const isAutoDraftee = jobType === 'OPPTS' ? true : (s.subitem_type === 'GA For Approval Prep' || s.subitem_type === 'Detailing/PDF/DXF Prep');
   const drafteeCell = isAutoDraftee
     ? `<span class="sub-draftee-readonly" title="Auto-set from line item draftee">${escapeHtml(s.draftee || '—')}</span>`
     : `<select class="sub-draftee" onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleSubDrafteeChange(this, '${s.id}')">${lookupOptionsHtml('draftee', s.draftee)}</select>`;
   return `<tr class="subrow" onclick="event.stopPropagation()">
-    <td colspan="16">
+    <td colspan="17">
       <div class="sub-content">
         <span class="sub-indent-icon">↳</span>
         <span class="sub-label">${escapeHtml(s.subitem_type)}</span>
@@ -1586,6 +1612,7 @@ function exportCsv(){
     const matchesDraftee = !filterDraftee || (r.draftee||'').split(',').map(s=>s.trim()).includes(filterDraftee);
     const matchesSalesPerson = !filterSalesPerson || r.sales_person === filterSalesPerson;
     const matchesClass = !filterClass || r.product_class === filterClass;
+    const matchesJobType = !filterJobType || r.job_type === filterJobType;
     const matchesDifot = !filterDifot || r.computed_difot_status === filterDifot;
     const matchesOverBudget = !filterOverBudget || (r.computed_remainder_hrs !== null && r.computed_remainder_hrs !== undefined && Number(r.computed_remainder_hrs) < 0);
     const subs = subitemsByParent[r.id] || [];
@@ -1599,15 +1626,15 @@ function exportCsv(){
     } else if(filterDue === 'week'){
       matchesDue = !!(r.target_release_date && !r.actual_release_to_prodn_date && new Date(r.target_release_date+'T00:00:00') >= today && new Date(r.target_release_date+'T00:00:00') <= weekFromNow);
     }
-    return matchesSearch && matchesDraftee && matchesSalesPerson && matchesClass && matchesDifot &&
+    return matchesSearch && matchesDraftee && matchesSalesPerson && matchesClass && matchesJobType && matchesDifot &&
       matchesOverBudget && matchesStage && matchesClockedIn && matchesDue;
   });
 
-  const headers = ['SO Number','Item','Group','Draftee','Sales Person','Class','DIFOT Status','DIFOT Days','Drafting Transfer','Target Start','Target Release','Actual Release to Prodn','Project Sales','Aging Days','Actual Hrs','O/A Excess Days'];
+  const headers = ['SO Number','Item','Job Type','Group','Draftee','Sales Person','Class','RCD/RC','DIFOT Status','DIFOT Days','Drafting Transfer','Target Start','Target Release','Actual Release to Prodn','Project Sales','Aging Days','Actual Hrs','O/A Excess Days'];
   const csvRows = [headers.join(',')];
   filtered.forEach(r => {
     const row = [
-      r.so_number, r.item_name, r.group_name, r.draftee, r.sales_person, r.product_class,
+      r.so_number, r.item_name, r.job_type, r.group_name, r.draftee, r.sales_person, r.product_class, r.rcd_or_rc,
       r.computed_difot_status, r.computed_difot_10days, r.drafting_transfer_date, r.target_start_date,
       r.target_release_date, r.actual_release_to_prodn_date, r.project_sales, r.computed_aging_days,
       r.computed_actual_hrs, r.computed_oa_excess_days
@@ -1682,6 +1709,7 @@ const FIELDS = [
   {key:'sales_person', label:'Sales person', type:'lookup', category:'sales_person'},
   {key:'difot_status', label:'DIFOT status (manual note)', type:'text'},
   {key:'product_class', label:'Class', type:'select', options:['Container','Standard','Lubestation','Custom']},
+  {key:'rcd_or_rc', label:'RCD / RC', type:'select', options:['RCD','RC']},
   {key:'drafting_transfer_date', label:'Drafting transfer date', type:'date'},
   {key:'target_sent_for_approval', label:'Target sent for approval', type:'date'},
   {key:'actual_sent_for_approval', label:'Actual sent for approval', type:'date'},
@@ -1693,8 +1721,9 @@ const FIELDS = [
   {key:'multiple_draftees_project_sales', label:'Multi-draftee project sales', type:'number'},
 ];
 
-function openModal(id, presetGroup){
+function openModal(id, presetGroup, presetJobType){
   editingId = id;
+  currentPresetJobType = id ? (rows.find(r => r.id === id)?.job_type || 'SO') : (presetJobType || 'SO');
   const record = id ? rows.find(r => r.id === id) : null;
   modalTitle.textContent = id ? "Edit item" : "New item";
   deleteBtn.classList.toggle('hidden', !id);
@@ -1746,6 +1775,7 @@ function openModal(id, presetGroup){
 
   const formHtml = `<div class="grid2">` + FIELDS.map(f => {
     if(f.key === 'group_name' && !record) return '';
+    if(f.key === 'rcd_or_rc' && currentPresetJobType !== 'OPPTS') return '';
     const val = record ? record[f.key] : (f.key === 'group_name' ? (presetGroup||'') : (f.key === 'product_class' ? 'Standard' : ''));
     if(f.type === 'checkbox'){
       return `<div class="field checkbox-field">
@@ -1791,7 +1821,8 @@ document.getElementById('modalCloseBtn').onclick = closeModal;
 document.getElementById('cancelBtn').onclick = closeModal;
 backdrop.addEventListener('click', e => { if(e.target === backdrop) closeModal(); });
 
-document.getElementById('newGroupItemBtn').onclick = () => openModal(null, NEW_ITEM_GROUP);
+document.getElementById('newGroupItemBtn').onclick = () => openModal(null, NEW_ITEM_GROUP, 'SO');
+document.getElementById('newOpptsItemBtn').onclick = () => openModal(null, NEW_OPPTS_GROUP, 'OPPTS');
 
 document.getElementById('saveBtn').onclick = async () => {
   const payload = {};
@@ -1807,7 +1838,10 @@ document.getElementById('saveBtn').onclick = async () => {
     }
     else { payload[f.key] = el.value === '' ? null : el.value; }
   });
-  if(!editingId){ payload.group_name = NEW_ITEM_GROUP; }
+  if(!editingId){
+    payload.job_type = currentPresetJobType;
+    payload.group_name = currentPresetJobType === 'OPPTS' ? NEW_OPPTS_GROUP : NEW_ITEM_GROUP;
+  }
   if(!payload.item_name){ alert("Item name is required."); return; }
 
   const saveBtn = document.getElementById('saveBtn');
