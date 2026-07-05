@@ -142,6 +142,15 @@
   .active-panel-stage{color:var(--text-dim);}
   .active-panel-who{color:var(--text-dim);}
   .active-panel-time{font-family:'JetBrains Mono',monospace;color:var(--green);font-weight:700;}
+  .behind-summary-panel{
+    background:#fdedef;border:1px solid var(--red);border-radius:10px;padding:12px 16px;margin-bottom:14px;
+  }
+  .behind-summary-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--red);margin-bottom:8px;}
+  .behind-summary-row{display:flex;gap:14px;align-items:center;padding:6px 0;font-size:13px;border-bottom:1px solid rgba(230,76,102,.15);}
+  .behind-summary-row:last-child{border-bottom:none;}
+  .behind-summary-so{font-weight:700;color:var(--text);min-width:100px;}
+  .behind-summary-item{color:var(--text-dim);flex:1;}
+  .behind-summary-days{font-weight:700;color:var(--red);white-space:nowrap;}
   .btn-primary-sm{
     background:var(--primary);color:white;border:none;border-radius:8px;
     padding:9px 16px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;
@@ -198,6 +207,12 @@
   }
   tbody tr{border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;}
   tbody tr:hover{background:#f7f8fc;}
+  tr.row-ontrack{background:#eefaf1;}
+  tr.row-ontrack:hover{background:#e2f5e7;}
+  tr.row-approaching{background:#fef8e7;}
+  tr.row-approaching:hover{background:#fcf1d0;}
+  tr.row-behind{background:#fdedef;}
+  tr.row-behind:hover{background:#fbdfe3;}
   tbody td{padding:11px 14px;white-space:nowrap;}
   td.item-name{font-weight:600;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .subtoggle{
@@ -731,7 +746,7 @@ function renderBoard(){
     const matchesSalesPerson = !filterSalesPerson || r.sales_person === filterSalesPerson;
     const matchesClass = !filterClass || r.product_class === filterClass;
     const matchesDifot = !filterDifot || r.computed_difot_status === filterDifot;
-    const matchesBehindSchedule = !filterBehindSchedule || (Number(r.computed_oa_excess_days) > 0);
+    const matchesBehindSchedule = !filterBehindSchedule || getScheduleStatus(r) === 'behind';
     const matchesOverBudget = !filterOverBudget || (r.computed_remainder_hrs !== null && r.computed_remainder_hrs !== undefined && Number(r.computed_remainder_hrs) < 0);
 
     const subs = subitemsByParent[r.id] || [];
@@ -751,7 +766,7 @@ function renderBoard(){
       matchesBehindSchedule && matchesOverBudget && matchesStage && matchesClockedIn && matchesDue;
   });
 
-  document.getElementById('activePanelRoot').innerHTML = activePanelHtml();
+  document.getElementById('activePanelRoot').innerHTML = behindScheduleSummaryHtml() + activePanelHtml();
 
   const groups = {};
   filtered.forEach(r => {
@@ -844,6 +859,24 @@ function finalSummaryHtml(totalSales, avgDifot){
   </div>`;
 }
 
+function behindScheduleSummaryHtml(){
+  const behindItems = rows
+    .filter(r => getScheduleStatus(r) === 'behind')
+    .map(r => ({ r, days: daysBehindTarget(r) }))
+    .sort((a,b) => b.days - a.days);
+  if(behindItems.length === 0) return '';
+  const rowsHtml = behindItems.map(({r, days}) => `
+    <div class="behind-summary-row">
+      <span class="behind-summary-so">${escapeHtml(r.so_number || '—')}</span>
+      <span class="behind-summary-item">${escapeHtml(r.item_name||'(untitled)')}</span>
+      <span class="behind-summary-days">${days} day${days===1?'':'s'} behind target release</span>
+    </div>`).join('');
+  return `<div class="behind-summary-panel">
+    <div class="behind-summary-title">⚠ Behind Schedule — ${behindItems.length} SO${behindItems.length===1?'':'s'} past target release</div>
+    ${rowsHtml}
+  </div>`;
+}
+
 function activePanelHtml(){
   const activeEntries = [];
   Object.keys(subitemsByParent).forEach(parentId => {
@@ -873,6 +906,22 @@ function scrollTable(id, deltaX){
   if(el) el.scrollBy({left: deltaX, behavior:'smooth'});
 }
 
+function getScheduleStatus(r){
+  if(!r.target_release_date || r.actual_release_to_prodn_date) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const target = new Date(r.target_release_date + 'T00:00:00');
+  const diffDays = Math.round((target - today) / 86400000);
+  if(diffDays < 0) return 'behind';
+  if(diffDays <= 2) return 'approaching';
+  return 'ontrack';
+}
+
+function daysBehindTarget(r){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const target = new Date(r.target_release_date + 'T00:00:00');
+  return Math.round((today - target) / 86400000);
+}
+
 function rowHtml(r){
   const difot = difotPill(r.computed_difot_status);
   const classColors = {Container:'pill-class-container', Standard:'pill-class-standard', Lubestation:'pill-class-lubestation', Custom:'pill-class-custom'};
@@ -888,7 +937,9 @@ function rowHtml(r){
   const groupOptions = GROUP_ORDER.map(g =>
     `<option value="${escapeAttr(g)}" ${g===r.group_name?'selected':''}>${escapeHtml(g)}</option>`
   ).join('') + (!GROUP_ORDER.includes(r.group_name) ? `<option value="${escapeAttr(r.group_name||'')}" selected>${escapeHtml(r.group_name||'(none)')}</option>` : '');
-  const mainRow = `<tr onclick="openModal('${r.id}')">
+  const scheduleStatus = getScheduleStatus(r);
+  const scheduleClass = scheduleStatus ? `row-${scheduleStatus}` : '';
+  const mainRow = `<tr class="${scheduleClass}" onclick="openModal('${r.id}')">
     <td class="item-name">${escapeHtml(r.so_number||'—')}</td>
     <td class="item-name">${subToggle}${escapeHtml(r.item_name||'(untitled)')}</td>
     <td>${escapeHtml(r.draftee||'—')}</td>
@@ -1152,7 +1203,7 @@ function exportCsv(){
     const matchesSalesPerson = !filterSalesPerson || r.sales_person === filterSalesPerson;
     const matchesClass = !filterClass || r.product_class === filterClass;
     const matchesDifot = !filterDifot || r.computed_difot_status === filterDifot;
-    const matchesBehindSchedule = !filterBehindSchedule || (Number(r.computed_oa_excess_days) > 0);
+    const matchesBehindSchedule = !filterBehindSchedule || getScheduleStatus(r) === 'behind';
     const matchesOverBudget = !filterOverBudget || (r.computed_remainder_hrs !== null && r.computed_remainder_hrs !== undefined && Number(r.computed_remainder_hrs) < 0);
     const subs = subitemsByParent[r.id] || [];
     const matchesStage = (!filterStage && !filterStageStatus) || subs.some(s =>
