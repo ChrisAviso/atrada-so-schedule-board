@@ -142,15 +142,53 @@
   .active-panel-stage{color:var(--text-dim);}
   .active-panel-who{color:var(--text-dim);}
   .active-panel-time{font-family:'JetBrains Mono',monospace;color:var(--green);font-weight:700;}
-  .behind-summary-panel{
-    background:#fdedef;border:1px solid var(--red);border-radius:10px;padding:12px 16px;margin-bottom:14px;
+
+  .not-clocked-panel{
+    background:linear-gradient(135deg,#fff4e5,#ffe9d6);border:2px solid var(--amber);
+    border-radius:12px;padding:14px 18px;margin-bottom:16px;box-shadow:0 4px 16px rgba(245,166,35,.28);
   }
-  .behind-summary-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--red);margin-bottom:8px;}
-  .behind-summary-row{display:flex;gap:14px;align-items:center;padding:6px 0;font-size:13px;border-bottom:1px solid rgba(230,76,102,.15);}
-  .behind-summary-row:last-child{border-bottom:none;}
-  .behind-summary-so{font-weight:700;color:var(--text);min-width:100px;}
-  .behind-summary-item{color:var(--text-dim);flex:1;}
-  .behind-summary-days{font-weight:700;color:var(--red);white-space:nowrap;}
+  .not-clocked-title{
+    font-size:14px;font-weight:800;color:#94540a;margin-bottom:10px;
+    display:flex;align-items:center;gap:8px;letter-spacing:.01em;
+  }
+  .not-clocked-title .bell{display:inline-block;font-size:17px;animation:bell-ring 1.3s ease-in-out infinite;}
+  @keyframes bell-ring{
+    0%,100%{transform:rotate(0deg);}
+    10%{transform:rotate(14deg);}
+    20%{transform:rotate(-11deg);}
+    30%{transform:rotate(8deg);}
+    40%{transform:rotate(-4deg);}
+    50%{transform:rotate(0deg);}
+  }
+  .not-clocked-names{display:flex;gap:10px;flex-wrap:wrap;}
+  .not-clocked-chip{
+    background:white;border:2px solid var(--amber);color:#94540a;font-weight:700;font-size:13px;
+    padding:6px 14px;border-radius:20px;box-shadow:0 2px 6px rgba(0,0,0,.08);
+  }
+
+  .open-so-panel{
+    background:#fafbff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:16px;
+  }
+  .open-so-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-dim);margin-bottom:10px;}
+  .open-so-counts{display:flex;gap:10px;margin-bottom:12px;}
+  .count-chip{font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;}
+  .count-chip.count-behind{background:#fdedef;color:var(--red);}
+  .count-chip.count-approaching{background:#fef8e7;color:#a1750a;}
+  .count-chip.count-ontrack{background:#eefaf1;color:var(--green);}
+  .open-so-list{max-height:220px;overflow-y:auto;}
+  .open-so-row{display:flex;gap:12px;align-items:center;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border);}
+  .open-so-row:last-child{border-bottom:none;}
+  .open-so-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .open-so-dot.dot-behind{background:var(--red);}
+  .open-so-dot.dot-approaching{background:var(--amber);}
+  .open-so-dot.dot-ontrack{background:var(--green);}
+  .open-so-so{font-weight:700;color:var(--text);min-width:100px;}
+  .open-so-item{color:var(--text-dim);flex:1;}
+  .open-so-days{font-weight:700;white-space:nowrap;}
+  .open-so-days.text-behind{color:var(--red);}
+  .open-so-days.text-approaching{color:#a1750a;}
+  .open-so-days.text-ontrack{color:var(--green);}
+
   .btn-primary-sm{
     background:var(--primary);color:white;border:none;border-radius:8px;
     padding:9px 16px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;
@@ -766,7 +804,7 @@ function renderBoard(){
       matchesBehindSchedule && matchesOverBudget && matchesStage && matchesClockedIn && matchesDue;
   });
 
-  document.getElementById('activePanelRoot').innerHTML = behindScheduleSummaryHtml() + activePanelHtml();
+  document.getElementById('activePanelRoot').innerHTML = notClockedInHtml() + openSoSummaryHtml() + activePanelHtml();
 
   const groups = {};
   filtered.forEach(r => {
@@ -859,21 +897,60 @@ function finalSummaryHtml(totalSales, avgDifot){
   </div>`;
 }
 
-function behindScheduleSummaryHtml(){
-  const behindItems = rows
-    .filter(r => getScheduleStatus(r) === 'behind')
-    .map(r => ({ r, days: daysBehindTarget(r) }))
-    .sort((a,b) => b.days - a.days);
-  if(behindItems.length === 0) return '';
-  const rowsHtml = behindItems.map(({r, days}) => `
-    <div class="behind-summary-row">
-      <span class="behind-summary-so">${escapeHtml(r.so_number || '—')}</span>
-      <span class="behind-summary-item">${escapeHtml(r.item_name||'(untitled)')}</span>
-      <span class="behind-summary-days">${days} day${days===1?'':'s'} behind target release</span>
-    </div>`).join('');
-  return `<div class="behind-summary-panel">
-    <div class="behind-summary-title">⚠ Behind Schedule — ${behindItems.length} SO${behindItems.length===1?'':'s'} past target release</div>
-    ${rowsHtml}
+function openSoSummaryHtml(){
+  const openItems = rows.filter(r => !r.actual_release_to_prodn_date && r.target_release_date);
+  if(openItems.length === 0) return '';
+  const categorized = openItems.map(r => ({ r, status: getScheduleStatus(r), diff: scheduleDiffDays(r) }));
+  const counts = { behind: 0, approaching: 0, ontrack: 0 };
+  categorized.forEach(c => { if(c.status) counts[c.status]++; });
+  const sorted = categorized.slice().sort((a,b) => a.diff - b.diff);
+
+  const rowsHtml = sorted.map(({r, status, diff}) => {
+    const label = diff < 0 ? `${-diff} day${-diff===1?'':'s'} behind`
+      : diff === 0 ? 'Due today'
+      : `${diff} day${diff===1?'':'s'} left`;
+    return `<div class="open-so-row">
+      <span class="open-so-dot dot-${status}"></span>
+      <span class="open-so-so">${escapeHtml(r.so_number || '—')}</span>
+      <span class="open-so-item">${escapeHtml(r.item_name||'(untitled)')}</span>
+      <span class="open-so-days text-${status}">${label}</span>
+    </div>`;
+  }).join('');
+
+  return `<div class="open-so-panel">
+    <div class="open-so-title">Open SOs — ${openItems.length} Not Yet Released</div>
+    <div class="open-so-counts">
+      <span class="count-chip count-behind">${counts.behind} Behind</span>
+      <span class="count-chip count-approaching">${counts.approaching} Approaching</span>
+      <span class="count-chip count-ontrack">${counts.ontrack} On Track</span>
+    </div>
+    <div class="open-so-list">${rowsHtml}</div>
+  </div>`;
+}
+
+function notClockedInHtml(){
+  const openItems = rows.filter(r => !r.actual_release_to_prodn_date);
+  const assignedNames = new Set();
+  openItems.forEach(r => {
+    (r.draftee||'').split(',').map(s=>s.trim()).filter(Boolean).forEach(n => assignedNames.add(n));
+  });
+  if(assignedNames.size === 0) return '';
+
+  const clockedInNames = new Set();
+  Object.values(subitemsByParent).flat().forEach(s => {
+    if(s.clock_running && s.draftee){
+      s.draftee.split(',').map(x=>x.trim()).filter(Boolean).forEach(n => clockedInNames.add(n));
+    }
+  });
+
+  const notClockedIn = Array.from(assignedNames).filter(n => !clockedInNames.has(n)).sort();
+  if(notClockedIn.length === 0) return '';
+
+  return `<div class="not-clocked-panel">
+    <div class="not-clocked-title"><span class="bell">🔔</span> Not Clocked In — Please Start Your Timer!</div>
+    <div class="not-clocked-names">
+      ${notClockedIn.map(n => `<span class="not-clocked-chip">${escapeHtml(n)}</span>`).join('')}
+    </div>
   </div>`;
 }
 
@@ -906,20 +983,19 @@ function scrollTable(id, deltaX){
   if(el) el.scrollBy({left: deltaX, behavior:'smooth'});
 }
 
-function getScheduleStatus(r){
-  if(!r.target_release_date || r.actual_release_to_prodn_date) return null;
+function scheduleDiffDays(r){
+  if(!r.target_release_date) return null;
   const today = new Date(); today.setHours(0,0,0,0);
   const target = new Date(r.target_release_date + 'T00:00:00');
-  const diffDays = Math.round((target - today) / 86400000);
-  if(diffDays < 0) return 'behind';
-  if(diffDays <= 2) return 'approaching';
-  return 'ontrack';
+  return Math.round((target - today) / 86400000);
 }
 
-function daysBehindTarget(r){
-  const today = new Date(); today.setHours(0,0,0,0);
-  const target = new Date(r.target_release_date + 'T00:00:00');
-  return Math.round((today - target) / 86400000);
+function getScheduleStatus(r){
+  if(!r.target_release_date || r.actual_release_to_prodn_date) return null;
+  const diff = scheduleDiffDays(r);
+  if(diff < 0) return 'behind';
+  if(diff <= 2) return 'approaching';
+  return 'ontrack';
 }
 
 function rowHtml(r){
