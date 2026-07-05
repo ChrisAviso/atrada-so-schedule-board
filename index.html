@@ -1389,6 +1389,18 @@ function toLocalInputValue(iso){
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function syncLogEditorRowsFromDom(){
+  document.querySelectorAll('#logEditRows tr').forEach(rowEl => {
+    const idx = Number(rowEl.dataset.idx);
+    const entry = logEditEntries[idx];
+    if(!entry) return;
+    const startVal = rowEl.querySelector('.log-edit-start').value;
+    const endVal = rowEl.querySelector('.log-edit-end').value;
+    entry.started_at = startVal ? new Date(startVal).toISOString() : null;
+    entry.ended_at = endVal ? new Date(endVal).toISOString() : null;
+  });
+}
+
 function renderLogEditorRows(){
   const tbody = document.getElementById('logEditRows');
   tbody.innerHTML = logEditEntries.map((entry, idx) => entry.deleted ? '' : `
@@ -1400,11 +1412,13 @@ function renderLogEditorRows(){
 }
 
 function removeLogEditorRow(idx){
+  syncLogEditorRowsFromDom();
   logEditEntries[idx].deleted = true;
   renderLogEditorRows();
 }
 
 function addLogEditorRow(){
+  syncLogEditorRowsFromDom();
   logEditEntries.push({ id:null, started_at:null, ended_at:null, deleted:false });
   renderLogEditorRows();
 }
