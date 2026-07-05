@@ -162,8 +162,13 @@
   }
   .not-clocked-names{display:flex;gap:10px;flex-wrap:wrap;}
   .not-clocked-chip{
-    background:white;border:2px solid var(--amber);color:#94540a;font-weight:700;font-size:13px;
-    padding:6px 14px;border-radius:20px;box-shadow:0 2px 6px rgba(0,0,0,.08);
+    border:2px solid var(--red);font-weight:800;font-size:13px;
+    padding:6px 14px;border-radius:20px;box-shadow:0 2px 8px rgba(230,76,102,.45);
+    animation:chip-blink 1s steps(1,end) infinite;
+  }
+  @keyframes chip-blink{
+    0%,49%{background:var(--red);color:white;}
+    50%,100%{background:white;color:var(--red);}
   }
 
   .open-so-panel{
@@ -519,7 +524,6 @@
             <option value="overdue">Overdue</option>
             <option value="week">Due This Week</option>
           </select>
-          <label class="toggle-check"><input type="checkbox" id="filterBehindSchedule"> Behind Schedule</label>
           <label class="toggle-check"><input type="checkbox" id="filterOverBudget"> Over Budget</label>
         </div>
       </div>
@@ -610,7 +614,6 @@ let filterDifot = '';
 let filterStage = '';
 let filterStageStatus = '';
 let filterDue = '';
-let filterBehindSchedule = false;
 let filterOverBudget = false;
 let filterClockedIn = false;
 let sortBy = '';
@@ -751,14 +754,13 @@ document.getElementById('filterDifot').addEventListener('change', e => { filterD
 document.getElementById('filterStage').addEventListener('change', e => { filterStage = e.target.value; renderBoard(); });
 document.getElementById('filterStageStatus').addEventListener('change', e => { filterStageStatus = e.target.value; renderBoard(); });
 document.getElementById('filterDue').addEventListener('change', e => { filterDue = e.target.value; renderBoard(); });
-document.getElementById('filterBehindSchedule').addEventListener('change', e => { filterBehindSchedule = e.target.checked; renderBoard(); });
 document.getElementById('filterOverBudget').addEventListener('change', e => { filterOverBudget = e.target.checked; renderBoard(); });
 document.getElementById('filterClockedIn').addEventListener('change', e => { filterClockedIn = e.target.checked; renderBoard(); });
 document.getElementById('sortBy').addEventListener('change', e => { sortBy = e.target.value; renderBoard(); });
 document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
 document.getElementById('clearFiltersBtn').addEventListener('click', () => {
   filterDraftee = ''; filterSalesPerson = ''; filterClass = ''; filterDifot = ''; filterStage = '';
-  filterStageStatus = ''; filterDue = ''; filterBehindSchedule = false; filterOverBudget = false; filterClockedIn = false; sortBy = '';
+  filterStageStatus = ''; filterDue = ''; filterOverBudget = false; filterClockedIn = false; sortBy = '';
   document.getElementById('filterDraftee').value = '';
   document.getElementById('filterSalesPerson').value = '';
   document.getElementById('filterClass').value = '';
@@ -766,7 +768,6 @@ document.getElementById('clearFiltersBtn').addEventListener('click', () => {
   document.getElementById('filterStage').value = '';
   document.getElementById('filterStageStatus').value = '';
   document.getElementById('filterDue').value = '';
-  document.getElementById('filterBehindSchedule').checked = false;
   document.getElementById('filterOverBudget').checked = false;
   document.getElementById('filterClockedIn').checked = false;
   document.getElementById('sortBy').value = '';
@@ -784,7 +785,6 @@ function renderBoard(){
     const matchesSalesPerson = !filterSalesPerson || r.sales_person === filterSalesPerson;
     const matchesClass = !filterClass || r.product_class === filterClass;
     const matchesDifot = !filterDifot || r.computed_difot_status === filterDifot;
-    const matchesBehindSchedule = !filterBehindSchedule || getScheduleStatus(r) === 'behind';
     const matchesOverBudget = !filterOverBudget || (r.computed_remainder_hrs !== null && r.computed_remainder_hrs !== undefined && Number(r.computed_remainder_hrs) < 0);
 
     const subs = subitemsByParent[r.id] || [];
@@ -801,7 +801,7 @@ function renderBoard(){
     }
 
     return matchesSearch && matchesDraftee && matchesSalesPerson && matchesClass && matchesDifot &&
-      matchesBehindSchedule && matchesOverBudget && matchesStage && matchesClockedIn && matchesDue;
+      matchesOverBudget && matchesStage && matchesClockedIn && matchesDue;
   });
 
   document.getElementById('activePanelRoot').innerHTML = notClockedInHtml() + openSoSummaryHtml() + activePanelHtml();
@@ -1279,7 +1279,6 @@ function exportCsv(){
     const matchesSalesPerson = !filterSalesPerson || r.sales_person === filterSalesPerson;
     const matchesClass = !filterClass || r.product_class === filterClass;
     const matchesDifot = !filterDifot || r.computed_difot_status === filterDifot;
-    const matchesBehindSchedule = !filterBehindSchedule || getScheduleStatus(r) === 'behind';
     const matchesOverBudget = !filterOverBudget || (r.computed_remainder_hrs !== null && r.computed_remainder_hrs !== undefined && Number(r.computed_remainder_hrs) < 0);
     const subs = subitemsByParent[r.id] || [];
     const matchesStage = (!filterStage && !filterStageStatus) || subs.some(s =>
@@ -1293,7 +1292,7 @@ function exportCsv(){
       matchesDue = !!(r.target_release_date && !r.actual_release_to_prodn_date && new Date(r.target_release_date+'T00:00:00') >= today && new Date(r.target_release_date+'T00:00:00') <= weekFromNow);
     }
     return matchesSearch && matchesDraftee && matchesSalesPerson && matchesClass && matchesDifot &&
-      matchesBehindSchedule && matchesOverBudget && matchesStage && matchesClockedIn && matchesDue;
+      matchesOverBudget && matchesStage && matchesClockedIn && matchesDue;
   });
 
   const headers = ['SO Number','Item','Group','Draftee','Sales Person','Class','DIFOT Status','DIFOT Days','Drafting Transfer','Target Start','Target Release','Actual Release to Prodn','Project Sales','Aging Days','Actual Hrs','O/A Excess Days'];
