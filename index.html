@@ -404,6 +404,18 @@
   .modal-foot{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;gap:10px;}
   .break-modal-sub{font-size:13px;color:var(--text-dim);}
   #breakCountdown{font-weight:700;color:var(--amber);font-family:'JetBrains Mono',monospace;}
+  .log-edit-btn{
+    border:1.5px solid var(--border);background:white;border-radius:6px;
+    padding:4px 8px;font-size:13px;cursor:pointer;line-height:1;
+  }
+  .log-edit-btn:hover{border-color:var(--primary);}
+  .log-edit-table{width:100%;border-collapse:collapse;margin-bottom:14px;}
+  .log-edit-table th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-dim);padding:6px 8px;border-bottom:1px solid var(--border);}
+  .log-edit-table td{padding:6px 8px;border-bottom:1px solid var(--border);}
+  .log-edit-start, .log-edit-end{
+    font-size:13px;border:1.5px solid var(--border);border-radius:6px;padding:6px 8px;font-family:inherit;width:100%;
+  }
+  .btn-danger-mini{border:none;background:none;color:var(--red);font-size:14px;cursor:pointer;padding:4px;}
   .btn-danger{background:none;border:1.5px solid var(--red);color:var(--red);border-radius:8px;padding:9px 16px;font-weight:600;font-size:13.5px;cursor:pointer;font-family:inherit;}
   .btn-danger:hover{background:var(--red);color:white;}
   .foot-right{display:flex;gap:10px;}
@@ -524,6 +536,7 @@
             <option value="">Any Status</option>
             <option value="Not Started">Not Started</option>
             <option value="In Progress">In Progress</option>
+            <option value="On-Hold">On-Hold</option>
             <option value="Done">Done</option>
           </select>
         </div>
@@ -605,6 +618,28 @@
   </div>
 </div>
 
+<div class="modal-backdrop hidden" id="logEditModalBackdrop">
+  <div class="modal log-edit-modal">
+    <div class="modal-head">
+      <h2 id="logEditTitle">Edit Time Logs</h2>
+      <button class="modal-close" id="logEditCloseBtn">✕</button>
+    </div>
+    <div class="modal-body">
+      <table class="log-edit-table">
+        <thead><tr><th>Start</th><th>End</th><th></th></tr></thead>
+        <tbody id="logEditRows"></tbody>
+      </table>
+      <button type="button" class="btn-ghost" id="logEditAddBtn">+ Add manual entry</button>
+    </div>
+    <div class="modal-foot">
+      <div class="foot-right" style="margin-left:auto;">
+        <button class="btn-secondary" id="logEditCancelBtn">Cancel</button>
+        <button class="btn-primary-sm" id="logEditSaveBtn">Save changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 /* =======================================================================
    CONFIG — paste your Supabase project values below.
@@ -644,16 +679,16 @@ const AUTHORIZED_DRAFTEES = {
   'shiela.baytic@atrada.com.au': 'Shiela Baytic',
   'elliott.broadhurst@atrada.com.au': 'Elliott Broadhurst',
 };
-const ABSENCE_ADMIN_EMAILS = ['chris.aviso@atrada.com.au', 'johncarlo@atrada.com.au', 'rebecca.daza@atrada.com.au'];
+const SUPERVISOR_EMAILS = ['chris.aviso@atrada.com.au', 'johncarlo@atrada.com.au', 'rebecca.daza@atrada.com.au'];
 
 function getMyDrafteeName(){
   if(!session || !session.user || !session.user.email) return null;
   return AUTHORIZED_DRAFTEES[session.user.email.toLowerCase()] || null;
 }
 
-function isAbsenceAdmin(){
+function isSupervisor(){
   if(!session || !session.user || !session.user.email) return false;
-  return ABSENCE_ADMIN_EMAILS.includes(session.user.email.toLowerCase());
+  return SUPERVISOR_EMAILS.includes(session.user.email.toLowerCase());
 }
 
 let session = null;
@@ -789,7 +824,8 @@ async function loadData(){
 
   const todayStr = new Date().toISOString().slice(0,10);
   const { data: absenteeData } = await sb.from('so_absentees').select('draftee_name').eq('absent_date', todayStr);
-  absentToday = new Set((absenteeData||[]).map(a => a.draftee_name));
+  const nowHour = new Date().getHours();
+  absentToday = nowHour < 17 ? new Set((absenteeData||[]).map(a => a.draftee_name)) : new Set();
 
   renderBoard();
   startTicker();
@@ -864,7 +900,7 @@ function renderBoard(){
       matchesOverBudget && matchesStage && matchesClockedIn && matchesDue;
   });
 
-  document.getElementById('activePanelRoot').innerHTML = notClockedInHtml() + openSoSummaryHtml() + activePanelHtml();
+  refreshTopPanels();
 
   const groups = {};
   filtered.forEach(r => {
@@ -988,7 +1024,17 @@ function openSoSummaryHtml(){
   </div>`;
 }
 
+function isWithinNagWindow(){
+  const now = new Date();
+  const day = now.getDay();
+  if(day === 0 || day === 6) return false;
+  const minutes = now.getHours()*60 + now.getMinutes();
+  const morningStart = 8*60, lunchStart = 12*60, lunchEnd = 13*60, eveningEnd = 17*60;
+  return (minutes >= morningStart && minutes < lunchStart) || (minutes >= lunchEnd && minutes < eveningEnd);
+}
+
 function notClockedInHtml(){
+  if(!isWithinNagWindow()) return '';
   const openItems = rows.filter(r => !r.actual_release_to_prodn_date);
   const assignedNames = new Set();
   openItems.forEach(r => {
@@ -1006,7 +1052,7 @@ function notClockedInHtml(){
   const notClockedIn = Array.from(assignedNames).filter(n => !clockedInNames.has(n)).sort();
   if(notClockedIn.length === 0) return '';
 
-  const canManageAbsence = isAbsenceAdmin();
+  const canManageAbsence = isSupervisor();
   const chipsHtml = notClockedIn.map(n => {
     const isAbsent = absentToday.has(n);
     const adminBtn = canManageAbsence
@@ -1027,7 +1073,7 @@ function notClockedInHtml(){
 }
 
 async function toggleAbsentToday(name){
-  if(!isAbsenceAdmin()){ alert("Only authorized admins can mark someone as absent."); return; }
+  if(!isSupervisor()){ alert("Only authorized admins can mark someone as absent."); return; }
   const todayStr = new Date().toISOString().slice(0,10);
   if(absentToday.has(name)){
     await sb.from('so_absentees').delete().eq('draftee_name', name).eq('absent_date', todayStr);
@@ -1124,7 +1170,7 @@ function rowHtml(r){
 
 function subRowHtml(s){
   const elapsed = liveElapsed(s);
-  const statusOptions = ['Not Started','In Progress','Done'].map(opt =>
+  const statusOptions = ['Not Started','In Progress','On-Hold','Done'].map(opt =>
     `<option value="${opt}" ${s.status===opt?'selected':''}>${opt}</option>`
   ).join('');
   const isAutoDraftee = (s.subitem_type === 'GA For Approval Prep' || s.subitem_type === 'Detailing/PDF/DXF Prep');
@@ -1162,6 +1208,7 @@ function subRowHtml(s){
             <div class="remarks-wordcount"></div>
           </div>
         </span>
+        ${isSupervisor() ? `<button class="log-edit-btn" onclick="event.stopPropagation(); openLogEditor('${s.id}')" title="Edit time logs">🛠</button>` : ''}
       </div>
     </td>
   </tr>`;
@@ -1222,6 +1269,18 @@ async function toggleClock(subitemId){
     alert(`This sub-process is assigned to ${sub.draftee || 'someone else'}. You can only clock in/out on your own assignments.`);
     return;
   }
+  if(!sub.clock_running){
+    if(sub.status === 'Done' || sub.status === 'On-Hold'){
+      alert(`This sub-process is marked "${sub.status}" — clocking is disabled. Change its status to Not Started or In Progress first.`);
+      return;
+    }
+    const conflict = allSubs.find(s => s.id !== subitemId && s.clock_running &&
+      (s.draftee||'').split(',').map(x=>x.trim()).includes(myName));
+    if(conflict){
+      alert(`You're already clocked into "${conflict.subitem_type}". Stop that timer before starting another — only one job can be clocked at a time.`);
+      return;
+    }
+  }
   const nowIso = new Date().toISOString();
   if(sub.clock_running){
     const { data: openLogs } = await sb.from('so_time_logs').select('*').eq('subitem_id', subitemId).is('ended_at', null).order('started_at', {ascending:false}).limit(1);
@@ -1235,7 +1294,9 @@ async function toggleClock(subitemId){
     await sb.from('so_subitems').update({ clock_running:false, clock_started_at:null, total_seconds: totalSeconds }).eq('id', subitemId);
   } else {
     await sb.from('so_time_logs').insert({ subitem_id: subitemId, started_at: nowIso });
-    await sb.from('so_subitems').update({ clock_running:true, clock_started_at: nowIso }).eq('id', subitemId);
+    const updatePayload = { clock_running:true, clock_started_at: nowIso };
+    if(sub.status === 'Not Started') updatePayload.status = 'In Progress';
+    await sb.from('so_subitems').update(updatePayload).eq('id', subitemId);
   }
   await loadData();
 }
@@ -1243,8 +1304,13 @@ async function toggleClock(subitemId){
 let breakPromptActive = false;
 let breakAutoOffTimer = null;
 
+function refreshTopPanels(){
+  document.getElementById('activePanelRoot').innerHTML = notClockedInHtml() + openSoSummaryHtml() + activePanelHtml();
+}
+
 function startBreakScheduler(){
   setInterval(checkBreakTime, 20000);
+  setInterval(refreshTopPanels, 20000);
 }
 
 function checkBreakTime(){
@@ -1303,6 +1369,84 @@ async function resolveBreakPrompt(stopClock, runningSubs){
     }
   }
 }
+
+let logEditSubitemId = null;
+let logEditEntries = [];
+
+async function openLogEditor(subitemId){
+  if(!isSupervisor()){ alert("Only supervisors can edit time logs."); return; }
+  logEditSubitemId = subitemId;
+  const { data } = await sb.from('so_time_logs').select('*').eq('subitem_id', subitemId).order('started_at', {ascending:true});
+  logEditEntries = (data||[]).map(l => ({ id: l.id, started_at: l.started_at, ended_at: l.ended_at, deleted:false }));
+  renderLogEditorRows();
+  document.getElementById('logEditModalBackdrop').classList.remove('hidden');
+}
+
+function toLocalInputValue(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function renderLogEditorRows(){
+  const tbody = document.getElementById('logEditRows');
+  tbody.innerHTML = logEditEntries.map((entry, idx) => entry.deleted ? '' : `
+    <tr data-idx="${idx}">
+      <td><input type="datetime-local" class="log-edit-start" value="${toLocalInputValue(entry.started_at)}"></td>
+      <td><input type="datetime-local" class="log-edit-end" value="${toLocalInputValue(entry.ended_at)}"></td>
+      <td><button type="button" class="btn-danger-mini" onclick="removeLogEditorRow(${idx})">✕</button></td>
+    </tr>`).join('');
+}
+
+function removeLogEditorRow(idx){
+  logEditEntries[idx].deleted = true;
+  renderLogEditorRows();
+}
+
+function addLogEditorRow(){
+  logEditEntries.push({ id:null, started_at:null, ended_at:null, deleted:false });
+  renderLogEditorRows();
+}
+
+async function saveLogEditorChanges(){
+  const rowEls = Array.from(document.querySelectorAll('#logEditRows tr'));
+  for(const rowEl of rowEls){
+    const idx = Number(rowEl.dataset.idx);
+    const entry = logEditEntries[idx];
+    const startVal = rowEl.querySelector('.log-edit-start').value;
+    const endVal = rowEl.querySelector('.log-edit-end').value;
+    const startIso = startVal ? new Date(startVal).toISOString() : null;
+    const endIso = endVal ? new Date(endVal).toISOString() : null;
+    const durationSeconds = (startIso && endIso) ? Math.max(0, Math.floor((new Date(endIso) - new Date(startIso))/1000)) : null;
+    if(entry.id){
+      await sb.from('so_time_logs').update({ started_at: startIso, ended_at: endIso, duration_seconds: durationSeconds }).eq('id', entry.id);
+    } else if(startIso){
+      await sb.from('so_time_logs').insert({ subitem_id: logEditSubitemId, started_at: startIso, ended_at: endIso, duration_seconds: durationSeconds });
+    }
+  }
+  for(const entry of logEditEntries){
+    if(entry.deleted && entry.id){
+      await sb.from('so_time_logs').delete().eq('id', entry.id);
+    }
+  }
+  const { data: allLogs } = await sb.from('so_time_logs').select('duration_seconds').eq('subitem_id', logEditSubitemId).not('duration_seconds','is',null);
+  const totalSeconds = (allLogs||[]).reduce((sum,l) => sum + (l.duration_seconds||0), 0);
+  await sb.from('so_subitems').update({ total_seconds: totalSeconds }).eq('id', logEditSubitemId);
+  closeLogEditor();
+  await loadData();
+}
+
+function closeLogEditor(){
+  document.getElementById('logEditModalBackdrop').classList.add('hidden');
+  logEditSubitemId = null;
+  logEditEntries = [];
+}
+
+document.getElementById('logEditCloseBtn').onclick = closeLogEditor;
+document.getElementById('logEditCancelBtn').onclick = closeLogEditor;
+document.getElementById('logEditAddBtn').onclick = addLogEditorRow;
+document.getElementById('logEditSaveBtn').onclick = saveLogEditorChanges;
 
 async function updateSubStatus(subitemId, status){
   await sb.from('so_subitems').update({ status }).eq('id', subitemId);
