@@ -261,19 +261,24 @@
   .final-summary-label{font-size:14px;font-weight:600;color:var(--text);}
   .final-summary-value{font-size:18px;font-weight:800;color:var(--primary-dark);}
   .final-summary-breakdown{
-    display:flex;gap:24px;flex-wrap:wrap;margin-top:10px;padding-top:12px;
+    display:flex;gap:28px;flex-wrap:wrap;margin-top:10px;padding-top:12px;
     border-top:1px solid rgba(58,92,235,.15);
   }
-  .final-summary-breakdown-block{flex:1;min-width:220px;}
+  .final-summary-breakdown-block{flex:1;min-width:260px;}
   .final-summary-breakdown-block .final-summary-label{display:block;margin-bottom:8px;}
   .final-summary-breakdown-block .final-summary-label b{color:var(--primary-dark);}
-  .class-breakdown-row{display:flex;gap:8px;flex-wrap:wrap;}
-  .class-breakdown-chip{
-    font-size:12px;font-weight:600;color:var(--text-dim);background:rgba(255,255,255,.7);
-    border:1px solid rgba(58,92,235,.2);border-radius:14px;padding:4px 10px;
+  .class-breakdown-table{width:100%;border-collapse:collapse;background:rgba(255,255,255,.6);border-radius:8px;overflow:hidden;}
+  .class-breakdown-table thead th{
+    background:rgba(58,92,235,.08);color:var(--primary-dark);font-size:10.5px;
+    text-transform:uppercase;letter-spacing:.04em;font-weight:800;
+    padding:6px 10px;text-align:left;border-bottom:1px solid rgba(58,92,235,.15);
   }
-  .class-breakdown-chip b{color:var(--text);font-weight:800;}
-  .class-breakdown-empty{color:var(--text-dim);}
+  .class-breakdown-table thead th:not(:first-child){text-align:right;}
+  .class-breakdown-table td{padding:6px 10px;font-size:12.5px;border-bottom:1px solid rgba(58,92,235,.08);}
+  .class-breakdown-table tbody tr:last-child td{border-bottom:none;}
+  .class-breakdown-table .cb-class{font-weight:600;color:var(--text);}
+  .class-breakdown-table .cb-qty{text-align:right;color:var(--text-dim);font-variant-numeric:tabular-nums;}
+  .class-breakdown-table .cb-sales{text-align:right;font-weight:700;color:var(--primary-dark);font-variant-numeric:tabular-nums;}
   table{width:100%;border-collapse:collapse;font-size:13px;}
   thead th{
     text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;
@@ -1073,20 +1078,23 @@ function renderBoard(){
 }
 
 function classBreakdownHtml(items){
-  const classes = ['Container','Standard','Lubestation','Custom'];
-  const counts = {};
-  classes.forEach(c => counts[c] = 0);
-  let other = 0;
+  const classes = ['Container','Lubestation','Standard','Custom'];
+  const stats = {};
+  classes.forEach(c => stats[c] = { qty: 0, sales: 0 });
+  let otherQty = 0, otherSales = 0;
   items.forEach(r => {
     const c = r.product_class;
-    if(c && counts.hasOwnProperty(c)) counts[c]++;
-    else other++;
+    const sales = Number(r.project_sales) || 0;
+    if(c && stats.hasOwnProperty(c)){ stats[c].qty++; stats[c].sales += sales; }
+    else { otherQty++; otherSales += sales; }
   });
-  const chips = classes.filter(c => counts[c] > 0).map(c =>
-    `<span class="class-breakdown-chip">${c}: <b>${counts[c]}</b></span>`
-  ).join('');
-  const otherChip = other > 0 ? `<span class="class-breakdown-chip">Other: <b>${other}</b></span>` : '';
-  return chips + otherChip || '<span class="class-breakdown-chip class-breakdown-empty">—</span>';
+  const rows = classes.map(c =>
+    `<tr><td class="cb-class">${c}</td><td class="cb-qty">${stats[c].qty}</td><td class="cb-sales">${fmtMoney(stats[c].sales)}</td></tr>`
+  ).join('') + (otherQty > 0 ? `<tr><td class="cb-class">Other</td><td class="cb-qty">${otherQty}</td><td class="cb-sales">${fmtMoney(otherSales)}</td></tr>` : '');
+  return `<table class="class-breakdown-table">
+    <thead><tr><th>Class</th><th>Qty</th><th>Total Project Sales</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
 }
 
 function finalSummaryHtml(totalSales, avgDifot, filtered){
@@ -1105,11 +1113,11 @@ function finalSummaryHtml(totalSales, avgDifot, filtered){
     <div class="final-summary-breakdown">
       <div class="final-summary-breakdown-block">
         <span class="final-summary-label">Total Sales Order <b>(${soItems.length})</b></span>
-        <div class="class-breakdown-row">${classBreakdownHtml(soItems)}</div>
+        ${classBreakdownHtml(soItems)}
       </div>
       <div class="final-summary-breakdown-block">
         <span class="final-summary-label">Total OPPTS/PROJTS <b>(${opptsItems.length})</b></span>
-        <div class="class-breakdown-row">${classBreakdownHtml(opptsItems)}</div>
+        ${classBreakdownHtml(opptsItems)}
       </div>
     </div>
   </div>`;
