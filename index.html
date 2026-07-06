@@ -311,6 +311,9 @@
   .sub-content{display:flex;align-items:center;gap:12px;padding-left:28px;}
   .sub-indent-icon{color:var(--text-dim);font-size:13px;}
   .sub-label{font-size:12.5px;font-weight:600;color:var(--text);min-width:190px;}
+  .subrow-disabled{background:#f7f7f9;}
+  .sub-content-disabled{opacity:.6;}
+  .sub-disabled-badge{font-size:11.5px;font-style:italic;color:var(--text-dim);}
   .sub-draftee{
     font-size:12px;border:1.5px solid var(--border);border-radius:6px;
     padding:4px 8px;font-family:inherit;background:white;width:150px;
@@ -1011,8 +1014,8 @@ function finalSummaryHtml(totalSales, avgDifot){
   </div>`;
 }
 
-function openSoSummaryHtml(){
-  const openItems = rows.filter(r => !r.actual_release_to_prodn_date && r.target_release_date);
+function openJobsSummaryHtml(jobType, title){
+  const openItems = rows.filter(r => !r.actual_release_to_prodn_date && r.target_release_date && (r.job_type||'SO') === jobType);
   if(openItems.length === 0) return '';
   const categorized = openItems.map(r => ({ r, status: getScheduleStatus(r), diff: scheduleDiffDays(r) }));
   const counts = { behind: 0, approaching: 0, ontrack: 0 };
@@ -1032,7 +1035,7 @@ function openSoSummaryHtml(){
   }).join('');
 
   return `<div class="open-so-panel">
-    <div class="open-so-title">Open SOs — ${openItems.length} Not Yet Released</div>
+    <div class="open-so-title">${title} — ${openItems.length} Not Yet Released</div>
     <div class="open-so-counts">
       <span class="count-chip count-behind">${counts.behind} Behind</span>
       <span class="count-chip count-approaching">${counts.approaching} Approaching</span>
@@ -1040,6 +1043,10 @@ function openSoSummaryHtml(){
     </div>
     <div class="open-so-list">${rowsHtml}</div>
   </div>`;
+}
+
+function openSoSummaryHtml(){
+  return openJobsSummaryHtml('SO', 'Open Sales Orders') + openJobsSummaryHtml('OPPTS', 'Open OPPTS/PROJTS');
 }
 
 function isWithinNagWindow(){
@@ -1186,11 +1193,23 @@ function rowHtml(r){
       <select class="move-group-select" onchange="moveToGroup('${r.id}', this.value)">${groupOptions}</select>
     </td>
   </tr>`;
-  const subs = isCollapsed ? '' : (subitemsByParent[r.id] || []).map(s => subRowHtml(s, r.job_type)).join('');
+  const subs = isCollapsed ? '' : (subitemsByParent[r.id] || []).map(s => subRowHtml(s, r.job_type, r.rcd_or_rc)).join('');
   return mainRow + subs;
 }
 
-function subRowHtml(s, jobType){
+function subRowHtml(s, jobType, rcdOrRc){
+  const isDisabledForRC = jobType === 'OPPTS' && rcdOrRc === 'RC' && (s.subitem_type === 'Drawing/BOM Prep' || s.subitem_type === 'Checking');
+  if(isDisabledForRC){
+    return `<tr class="subrow subrow-disabled" onclick="event.stopPropagation()">
+    <td colspan="17">
+      <div class="sub-content sub-content-disabled">
+        <span class="sub-indent-icon">↳</span>
+        <span class="sub-label">${escapeHtml(s.subitem_type)}</span>
+        <span class="sub-disabled-badge">Not required — RC job</span>
+      </div>
+    </td>
+  </tr>`;
+  }
   const elapsed = liveElapsed(s);
   const statusOptions = ['Not Started','In Progress','On-Hold','Done'].map(opt =>
     `<option value="${opt}" ${s.status===opt?'selected':''}>${opt}</option>`
@@ -1284,6 +1303,12 @@ async function toggleClock(subitemId){
   const allSubs = Object.values(subitemsByParent).flat();
   const sub = allSubs.find(s => s.id === subitemId);
   if(!sub) return;
+  const parentRow = rows.find(r => r.id === sub.parent_id);
+  if(parentRow && parentRow.job_type === 'OPPTS' && parentRow.rcd_or_rc === 'RC' &&
+     (sub.subitem_type === 'Drawing/BOM Prep' || sub.subitem_type === 'Checking')){
+    alert("This sub-process isn't required for RC jobs — clocking is disabled.");
+    return;
+  }
   const myName = getMyDrafteeName();
   if(!myName){ alert("Only assigned draftees can start or stop their own timer."); return; }
   const subDraftees = (sub.draftee||'').split(',').map(x=>x.trim()).filter(Boolean);
@@ -1327,7 +1352,7 @@ let breakPromptActive = false;
 let breakAutoOffTimer = null;
 
 function refreshTopPanels(){
-  document.getElementById('activePanelRoot').innerHTML = notClockedInHtml() + openSoSummaryHtml() + activePanelHtml();
+  document.getElementById('activePanelRoot').innerHTML = notClockedInHtml() + activePanelHtml() + openSoSummaryHtml();
 }
 
 function startBreakScheduler(){
@@ -1776,24 +1801,25 @@ function openModal(id, presetGroup, presetJobType){
   const formHtml = `<div class="grid2">` + FIELDS.map(f => {
     if(f.key === 'group_name' && !record) return '';
     if(f.key === 'rcd_or_rc' && currentPresetJobType !== 'OPPTS') return '';
+    const fieldLabel = (f.key === 'so_number' && currentPresetJobType === 'OPPTS') ? 'OPPTS/PROJTS number' : f.label;
     const val = record ? record[f.key] : (f.key === 'group_name' ? (presetGroup||'') : (f.key === 'product_class' ? 'Standard' : ''));
     if(f.type === 'checkbox'){
       return `<div class="field checkbox-field">
         <label style="display:flex;align-items:center;margin:0;">
-          <input type="checkbox" id="f_${f.key}" ${val ? 'checked':''}> ${f.label}
+          <input type="checkbox" id="f_${f.key}" ${val ? 'checked':''}> ${fieldLabel}
         </label>
       </div>`;
     }
     if(f.type === 'select'){
       const opts = f.options.map(opt => `<option value="${escapeAttr(opt)}" ${val===opt?'selected':''}>${escapeHtml(opt)}</option>`).join('');
       return `<div class="field">
-        <label>${f.label}</label>
+        <label>${fieldLabel}</label>
         <select id="f_${f.key}">${opts}</select>
       </div>`;
     }
     if(f.type === 'lookup'){
       return `<div class="field">
-        <label>${f.label}</label>
+        <label>${fieldLabel}</label>
         <select id="f_${f.key}" onchange="handleLookupChange(this, '${f.category}')">${lookupOptionsHtml(f.category, val)}</select>
       </div>`;
     }
@@ -1801,13 +1827,13 @@ function openModal(id, presetGroup, presetJobType){
       const selectedNames = (val||'').split(',').map(s=>s.trim()).filter(Boolean);
       const opts = drafteeOptions.map(n => `<option value="${escapeAttr(n)}" ${selectedNames.includes(n)?'selected':''}>${escapeHtml(n)}</option>`).join('');
       return `<div class="field" style="grid-column:1 / -1;">
-        <label>${f.label}</label>
+        <label>${fieldLabel}</label>
         <select id="f_${f.key}" multiple size="6" class="multiselect">${opts}</select>
         <button type="button" class="btn-ghost" onclick="addDrafteeOption(this)" style="padding:6px 0;">+ Add new name…</button>
       </div>`;
     }
     return `<div class="field">
-      <label>${f.label}</label>
+      <label>${fieldLabel}</label>
       <input type="${f.type}" id="f_${f.key}" value="${val!==null && val!==undefined ? escapeAttr(String(val)) : ''}">
     </div>`;
   }).join('') + `</div>`;
