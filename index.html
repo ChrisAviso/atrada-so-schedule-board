@@ -192,8 +192,11 @@
   .count-chip.count-approaching{background:#fef8e7;color:#a1750a;}
   .count-chip.count-ontrack{background:#eefaf1;color:var(--green);}
   .open-so-list{max-height:220px;overflow-y:auto;}
-  .open-so-row{display:flex;gap:12px;align-items:center;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border);}
+  .open-so-row{display:flex;gap:12px;align-items:center;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border);cursor:pointer;border-radius:6px;transition:background .1s;}
+  .open-so-row:hover{background:#eef1ff;}
   .open-so-row:last-child{border-bottom:none;}
+  @keyframes row-flash-anim{0%,100%{background:transparent;}30%,70%{background:#fff2b8;}}
+  tr.row-flash{animation:row-flash-anim 1.6s ease;}
   .open-so-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
   .open-so-dot.dot-behind{background:var(--red);}
   .open-so-dot.dot-approaching{background:var(--amber);}
@@ -481,7 +484,7 @@
     <div class="brand">
       <img class="mark" src="Atrada_%20Symbol_%20Blue%20%5BRGB%5D.png" alt="Atrada">
       <div>
-        <h1>SO Schedule</h1>
+        <h1>Sales Order, OPPTS and PROJTS Schedule</h1>
         <div class="sub">2026Jul – 2027Jun</div>
       </div>
     </div>
@@ -816,6 +819,7 @@ async function loadData(){
     return;
   }
   rows = data || [];
+  collapsedSubitems = new Set(rows.map(r => r.id)); // collapse every item's sub-processes by default on each load
 
   const { data: subData, error: subError } = await sb.from('so_subitems').select('*').order('sort_order', {ascending:true});
   subitemsByParent = {};
@@ -1026,7 +1030,7 @@ function openJobsSummaryHtml(jobType, title){
     const label = diff < 0 ? `${-diff} day${-diff===1?'':'s'} behind`
       : diff === 0 ? 'Due today'
       : `${diff} day${diff===1?'':'s'} left`;
-    return `<div class="open-so-row">
+    return `<div class="open-so-row" onclick="scrollToItem('${r.id}')" title="Jump to this item">
       <span class="open-so-dot dot-${status}"></span>
       <span class="open-so-so">${escapeHtml(r.so_number || '—')}</span>
       <span class="open-so-item">${escapeHtml(r.item_name||'(untitled)')}</span>
@@ -1172,7 +1176,7 @@ function rowHtml(r){
   ).join('') + (!GROUP_ORDER.includes(r.group_name) ? `<option value="${escapeAttr(r.group_name||'')}" selected>${escapeHtml(r.group_name||'(none)')}</option>` : '');
   const scheduleStatus = getScheduleStatus(r);
   const scheduleClass = scheduleStatus ? `row-${scheduleStatus}` : '';
-  const mainRow = `<tr class="${scheduleClass}" onclick="openModal('${r.id}')">
+  const mainRow = `<tr id="row_${r.id}" class="${scheduleClass}" onclick="openModal('${r.id}')">
     <td class="item-name">${escapeHtml(r.so_number||'—')}</td>
     <td class="item-name">${subToggle}${escapeHtml(r.item_name||'(untitled)')}</td>
     <td>${escapeHtml(r.draftee||'—')}</td>
@@ -1713,6 +1717,30 @@ function toggleSubitems(parentId){
   if(collapsedSubitems.has(parentId)) collapsedSubitems.delete(parentId);
   else collapsedSubitems.add(parentId);
   renderBoard();
+}
+
+function scrollToItem(id){
+  collapsedSubitems.delete(id);
+  renderBoard();
+  const attemptScroll = () => {
+    const el = document.getElementById('row_' + id);
+    if(el){
+      const groupDiv = el.closest('.group');
+      if(groupDiv) groupDiv.classList.remove('collapsed');
+      el.scrollIntoView({behavior:'smooth', block:'center'});
+      el.classList.add('row-flash');
+      setTimeout(() => el.classList.remove('row-flash'), 1600);
+      return true;
+    }
+    return false;
+  };
+  requestAnimationFrame(() => {
+    if(!attemptScroll()){
+      // Item is hidden by an active filter — clear filters and try again
+      document.getElementById('clearFiltersBtn').click();
+      requestAnimationFrame(() => setTimeout(attemptScroll, 50));
+    }
+  });
 }
 
 async function moveToGroup(id, newGroup){
