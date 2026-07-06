@@ -507,6 +507,32 @@
   ::-webkit-scrollbar{width:9px;height:9px;}
   ::-webkit-scrollbar-thumb{background:#d6d9e6;border-radius:10px;}
 
+  .greeting-overlay{
+    position:fixed;inset:0;z-index:1000;
+    background:linear-gradient(135deg,#1d2233,#2c3454 55%,#3a5ceb);
+    display:flex;align-items:center;justify-content:center;
+    animation:greeting-fade-in .35s ease;
+  }
+  @keyframes greeting-fade-in{from{opacity:0;}to{opacity:1;}}
+  .greeting-overlay.hidden{display:none;}
+  .greeting-card{
+    background:rgba(255,255,255,.97);border-radius:20px;padding:44px 48px;
+    max-width:460px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35);
+    animation:greeting-rise .4s cubic-bezier(.2,.8,.3,1);
+  }
+  @keyframes greeting-rise{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
+  .greeting-icon{font-size:52px;margin-bottom:8px;}
+  .greeting-title{font-size:24px;font-weight:800;color:var(--text);letter-spacing:-0.01em;}
+  .greeting-name{font-size:15px;color:var(--text-dim);margin-top:4px;font-weight:600;}
+  .greeting-divider{width:40px;height:3px;background:var(--primary);border-radius:2px;margin:18px auto;}
+  .greeting-quote{font-size:14.5px;color:var(--text);line-height:1.6;font-style:italic;min-height:60px;display:flex;align-items:center;justify-content:center;}
+  .greeting-btn{
+    margin-top:24px;padding:11px 26px;border:none;border-radius:10px;
+    background:var(--primary);color:white;font-weight:700;font-size:14px;
+    cursor:pointer;font-family:inherit;transition:background .15s,transform .1s;
+  }
+  .greeting-btn:hover{background:var(--primary-dark);transform:translateY(-1px);}
+
   @media print{
     @page{size:A3 landscape;margin:12mm;}
     body{background:white;}
@@ -514,6 +540,7 @@
     .topbar{box-shadow:none;border-bottom:1px solid var(--border);background:white !important;}
     .brand h1{color:var(--text) !important;}
     .brand .sub{color:var(--text-dim) !important;}
+    .greeting-overlay{display:none !important;}
     td[onclick]{cursor:default;}
     .board-table{box-shadow:none;font-size:11px;}
     tr.row-ontrack,tr.row-approaching,tr.row-behind{background:white !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
@@ -544,6 +571,18 @@
     <div class="auth-toggle">
       <span id="authToggleText">Need access? Ask your admin to send you an invite email.</span>
     </div>
+  </div>
+</div>
+
+<!-- ===================== GREETING OVERLAY ===================== -->
+<div id="greetingOverlay" class="greeting-overlay hidden">
+  <div class="greeting-card">
+    <div class="greeting-icon" id="greetingIcon">☀️</div>
+    <div class="greeting-title" id="greetingTitle">Good morning</div>
+    <div class="greeting-name" id="greetingName"></div>
+    <div class="greeting-divider"></div>
+    <div class="greeting-quote" id="greetingQuote"></div>
+    <button class="greeting-btn" id="greetingDismissBtn">Let's get started →</button>
   </div>
 </div>
 
@@ -878,8 +917,65 @@ function enterApp(){
   document.getElementById('authScreen').classList.add('hidden');
   document.getElementById('appScreen').classList.remove('hidden');
   document.getElementById('userChip').textContent = session.user.email;
+  showGreetingOverlay();
   loadData();
 }
+
+const GREETING_LINES = [
+  "\"The way to get started is to quit talking and begin doing.\" — Walt Disney",
+  "\"Do not wait to strike till the iron is hot, but make it hot by striking.\" — William Butler Yeats",
+  "\"Well done is better than well said.\" — Benjamin Franklin",
+  "\"A goal without a plan is just a wish.\" — Antoine de Saint-Exupéry",
+  "\"Small steps every day add up to big results.\"",
+  "\"Measure twice, cut once — good advice for drafting and for life.\"",
+  "\"The bad news is time flies. The good news is you're the pilot.\" — Michael Altshuler",
+  "Why did the draftee bring a ladder to work? Because they wanted to reach new heights on the schedule!",
+  "Why don't skeletons argue over deadlines? They don't have the guts to miss one.",
+  "What did one wall say to the other? \"I'll meet you at the corner!\"",
+  "Why was the container always calm under pressure? It had great structural integrity.",
+  "I told my team a joke about steel beams — it didn't get much of a reaction, it was pretty stable.",
+  "\"Progress, not perfection.\"",
+  "\"Every accomplishment starts with the decision to try.\"",
+  "\"You don't have to see the whole staircase, just take the first step.\" — Martin Luther King Jr.",
+  "Why did the schedule break up with the calendar? It needed more space.",
+  "\"Discipline is choosing between what you want now and what you want most.\"",
+  "\"The secret of getting ahead is getting started.\" — Mark Twain",
+  "What's an engineer's favorite kind of music? Heavy metal — with a solid foundation.",
+  "\"Great things are done by a series of small things brought together.\" — Vincent Van Gogh",
+  "\"Today is a good day to have a good day.\"",
+  "Why did the drafting table feel appreciated? Everyone kept drawing attention to it.",
+  "\"Slow progress is still progress.\"",
+  "\"A little progress each day adds up to big results.\""
+];
+
+function getTimeGreeting(){
+  const h = new Date().getHours();
+  if(h >= 5 && h < 12) return { icon: '☀️', title: 'Good morning' };
+  if(h >= 12 && h < 17) return { icon: '🌤️', title: 'Good afternoon' };
+  if(h >= 17 && h < 21) return { icon: '🌇', title: 'Good evening' };
+  return { icon: '🌙', title: 'Working late — good on you' };
+}
+
+function getFriendlyName(email){
+  if(!email) return '';
+  const prefix = email.split('@')[0] || '';
+  return prefix.split(/[.\-_]/).filter(Boolean).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+}
+
+function showGreetingOverlay(){
+  const { icon, title } = getTimeGreeting();
+  const name = getFriendlyName(session?.user?.email);
+  const quote = GREETING_LINES[Math.floor(Math.random() * GREETING_LINES.length)];
+  document.getElementById('greetingIcon').textContent = icon;
+  document.getElementById('greetingTitle').textContent = title + (name ? `, ${name}!` : '!');
+  document.getElementById('greetingName').textContent = "Here's what's happening on the board today.";
+  document.getElementById('greetingQuote').textContent = quote;
+  document.getElementById('greetingOverlay').classList.remove('hidden');
+}
+
+document.getElementById('greetingDismissBtn').onclick = () => {
+  document.getElementById('greetingOverlay').classList.add('hidden');
+};
 
 /* ---------------- DATA ---------------- */
 async function loadData(){
