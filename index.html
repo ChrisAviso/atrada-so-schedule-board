@@ -1218,7 +1218,7 @@ function subRowHtml(s, jobType, rcdOrRc){
   const statusOptions = ['Not Started','In Progress','On-Hold','Done'].map(opt =>
     `<option value="${opt}" ${s.status===opt?'selected':''}>${opt}</option>`
   ).join('');
-  const isAutoDraftee = jobType === 'OPPTS' ? true : (s.subitem_type === 'GA For Approval Prep' || s.subitem_type === 'Detailing/PDF/DXF Prep');
+  const isAutoDraftee = jobType === 'OPPTS' ? (s.subitem_type === 'Costing Prep') : (s.subitem_type === 'GA For Approval Prep' || s.subitem_type === 'Detailing/PDF/DXF Prep');
   const drafteeCell = isAutoDraftee
     ? `<span class="sub-draftee-readonly" title="Auto-set from line item draftee">${escapeHtml(s.draftee || '—')}</span>`
     : `<select class="sub-draftee" onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleSubDrafteeChange(this, '${s.id}')">${lookupOptionsHtml('draftee', s.draftee)}</select>`;
