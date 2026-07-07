@@ -1087,7 +1087,7 @@ function renderBoard(){
   const weekFromNow = new Date(today); weekFromNow.setDate(weekFromNow.getDate() + 7);
 
   const filtered = rows.filter(r => {
-    const matchesSearch = !q || (r.item_name||'').toLowerCase().includes(q) || (r.so_number||'').toLowerCase().includes(q);
+    const matchesSearch = !q || (r.item_name||'').toLowerCase().includes(q) || (r.so_number||'').toLowerCase().includes(q) || (r.company_name||'').toLowerCase().includes(q);
     const matchesDraftee = !filterDraftee || (r.draftee||'').split(',').map(s=>s.trim()).includes(filterDraftee);
     const matchesSalesPerson = !filterSalesPerson || r.sales_person === filterSalesPerson;
     const matchesClass = !filterClass || r.product_class === filterClass;
@@ -1166,7 +1166,7 @@ function renderBoard(){
         <div class="table-scroll" id="${scrollId}">
         <table class="board-table">
           <thead><tr>
-            <th>SO Number</th><th>Item</th><th>Draftee</th><th>Sales Person</th><th>DIFOT</th><th>DIFOT Days</th><th>Class</th><th>RCD/RC</th>
+            <th>Company</th><th>SO Number</th><th>Item</th><th>Draftee</th><th>Sales Person</th><th>DIFOT</th><th>DIFOT Days</th><th>Class</th><th>RCD/RC</th>
             <th>Drafting Transfer</th><th>Target Start</th><th>Target Release</th><th>Actual Release to Prodn</th><th>Project Sales</th><th>Aging</th><th>Actual Hrs</th><th>O/A Excess</th><th>Move to Group</th>
           </tr></thead>
           <tbody>
@@ -1174,12 +1174,12 @@ function renderBoard(){
           </tbody>
           <tfoot>
             <tr class="group-foot">
-              <td colspan="12">Group totals</td>
+              <td colspan="13">Group totals</td>
               <td>${fmtMoney(totalSales)}</td>
               <td colspan="4"></td>
             </tr>
             <tr class="group-foot">
-              <td colspan="5">Average DIFOT days</td>
+              <td colspan="6">Average DIFOT days</td>
               <td>${avgDifot !== null ? avgDifot.toFixed(1) : '—'}</td>
               <td colspan="11"></td>
             </tr>
@@ -1397,6 +1397,7 @@ function rowHtml(r){
   const scheduleStatus = getScheduleStatus(r);
   const scheduleClass = scheduleStatus ? `row-${scheduleStatus}` : '';
   const mainRow = `<tr id="row_${r.id}" class="${scheduleClass}" onclick="openModal('${r.id}')">
+    <td class="dim">${escapeHtml(r.company_name||'—')}</td>
     <td class="item-name">${escapeHtml(r.so_number||'—')}</td>
     <td class="item-name">${subToggle}${escapeHtml(r.item_name||'(untitled)')}</td>
     <td>${escapeHtml(r.draftee||'—')}</td>
@@ -1857,7 +1858,7 @@ function exportCsv(){
   const today = new Date(); today.setHours(0,0,0,0);
   const weekFromNow = new Date(today); weekFromNow.setDate(weekFromNow.getDate() + 7);
   const filtered = rows.filter(r => {
-    const matchesSearch = !q || (r.item_name||'').toLowerCase().includes(q) || (r.so_number||'').toLowerCase().includes(q);
+    const matchesSearch = !q || (r.item_name||'').toLowerCase().includes(q) || (r.so_number||'').toLowerCase().includes(q) || (r.company_name||'').toLowerCase().includes(q);
     const matchesDraftee = !filterDraftee || (r.draftee||'').split(',').map(s=>s.trim()).includes(filterDraftee);
     const matchesSalesPerson = !filterSalesPerson || r.sales_person === filterSalesPerson;
     const matchesClass = !filterClass || r.product_class === filterClass;
@@ -1879,11 +1880,11 @@ function exportCsv(){
       matchesOverBudget && matchesStage && matchesClockedIn && matchesDue;
   });
 
-  const headers = ['SO Number','Item','Job Type','Group','Draftee','Sales Person','Class','RCD/RC','DIFOT Status','DIFOT Days','Drafting Transfer','Target Start','Target Release','Actual Release to Prodn','Project Sales','Aging Days','Actual Hrs','O/A Excess Days'];
+  const headers = ['Company','SO Number','Item','Job Type','Group','Draftee','Sales Person','Class','RCD/RC','DIFOT Status','DIFOT Days','Drafting Transfer','Target Start','Target Release','Actual Release to Prodn','Project Sales','Aging Days','Actual Hrs','O/A Excess Days'];
   const csvRows = [headers.join(',')];
   filtered.forEach(r => {
     const row = [
-      r.so_number, r.item_name, r.job_type, r.group_name, r.draftee, r.sales_person, r.product_class, r.rcd_or_rc,
+      r.company_name, r.so_number, r.item_name, r.job_type, r.group_name, r.draftee, r.sales_person, r.product_class, r.rcd_or_rc,
       r.computed_difot_status, r.computed_difot_10days, r.drafting_transfer_date, r.target_start_date,
       r.target_release_date, r.actual_release_to_prodn_date, r.project_sales, r.computed_aging_days,
       r.computed_actual_hrs, r.computed_oa_excess_days
@@ -1976,6 +1977,7 @@ const deleteBtn = document.getElementById('deleteBtn');
 
 const FIELDS = [
   {key:'item_name', label:'Item name', type:'text', required:true},
+  {key:'company_name', label:'Company name', type:'text'},
   {key:'so_number', label:'SO number', type:'text'},
   {key:'group_name', label:'Group', type:'select', options: GROUP_ORDER},
   {key:'draftee', label:'Draftee (select one or more)', type:'multiselect', category:'draftee'},
