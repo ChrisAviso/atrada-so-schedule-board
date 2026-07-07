@@ -203,6 +203,7 @@
   .open-so-dot.dot-approaching{background:var(--amber);}
   .open-so-dot.dot-ontrack{background:var(--green);}
   .open-so-so{font-weight:700;color:var(--text);min-width:100px;}
+  .open-so-company{color:var(--text-dim);min-width:110px;font-weight:600;}
   .open-so-item{color:var(--text-dim);flex:1;}
   .open-so-sales{font-weight:600;color:var(--text-dim);min-width:90px;text-align:right;font-variant-numeric:tabular-nums;}
   .open-so-days{font-weight:700;white-space:nowrap;min-width:90px;text-align:right;}
@@ -695,7 +696,7 @@
         <div class="filter-group-controls">
           <select class="filter-select" id="sortBy">
             <option value="">Default</option>
-            <option value="aging_desc">Aging (High→Low)</option>
+            <option value="aging_desc" selected>Aging (High→Low)</option>
             <option value="difot_desc">DIFOT Days (High→Low)</option>
             <option value="sales_desc">Project Sales (High→Low)</option>
           </select>
@@ -837,7 +838,7 @@ let filterDue = '';
 let filterOverBudget = false;
 let absentToday = new Set();
 let filterClockedIn = false;
-let sortBy = '';
+let sortBy = 'aging_desc';
 let collapsedSubitems = new Set();
 let editingId = null; // null = new item
 let currentPresetJobType = 'SO';
@@ -1066,7 +1067,7 @@ document.getElementById('printViewBtn').addEventListener('click', () => {
 });
 document.getElementById('clearFiltersBtn').addEventListener('click', () => {
   filterDraftee = ''; filterSalesPerson = ''; filterClass = ''; filterJobType = ''; filterDifot = ''; filterStage = '';
-  filterStageStatus = ''; filterDue = ''; filterOverBudget = false; filterClockedIn = false; sortBy = '';
+  filterStageStatus = ''; filterDue = ''; filterOverBudget = false; filterClockedIn = false; sortBy = 'aging_desc';
   document.getElementById('filterDraftee').value = '';
   document.getElementById('filterSalesPerson').value = '';
   document.getElementById('filterClass').value = '';
@@ -1077,7 +1078,7 @@ document.getElementById('clearFiltersBtn').addEventListener('click', () => {
   document.getElementById('filterDue').value = '';
   document.getElementById('filterOverBudget').checked = false;
   document.getElementById('filterClockedIn').checked = false;
-  document.getElementById('sortBy').value = '';
+  document.getElementById('sortBy').value = 'aging_desc';
   renderBoard();
 });
 
@@ -1166,7 +1167,7 @@ function renderBoard(){
         <div class="table-scroll" id="${scrollId}">
         <table class="board-table">
           <thead><tr>
-            <th>Company</th><th>SO Number</th><th>Item</th><th>Draftee</th><th>Sales Person</th><th>DIFOT</th><th>DIFOT Days</th><th>Class</th><th>RCD/RC</th>
+            <th>SO Number</th><th>Company</th><th>Item</th><th>Draftee</th><th>Sales Person</th><th>DIFOT</th><th>DIFOT Days</th><th>Class</th><th>RCD/RC</th>
             <th>Drafting Transfer</th><th>Target Start</th><th>Target Release</th><th>Actual Release to Prodn</th><th>Project Sales</th><th>Aging</th><th>Actual Hrs</th><th>O/A Excess</th><th>Move to Group</th>
           </tr></thead>
           <tbody>
@@ -1252,6 +1253,7 @@ function openJobsSummaryHtml(jobType, title){
     return `<div class="open-so-row" onclick="scrollToItem('${r.id}')" title="Jump to this item">
       <span class="open-so-dot dot-${status}"></span>
       <span class="open-so-so">${escapeHtml(r.so_number || '—')}</span>
+      <span class="open-so-company">${escapeHtml(r.company_name||'—')}</span>
       <span class="open-so-item">${escapeHtml(r.item_name||'(untitled)')}</span>
       <span class="open-so-sales">${fmtMoney(r.project_sales)}</span>
       <span class="open-so-days text-${status}">${label}</span>
@@ -1397,8 +1399,8 @@ function rowHtml(r){
   const scheduleStatus = getScheduleStatus(r);
   const scheduleClass = scheduleStatus ? `row-${scheduleStatus}` : '';
   const mainRow = `<tr id="row_${r.id}" class="${scheduleClass}" onclick="openModal('${r.id}')">
-    <td class="dim">${escapeHtml(r.company_name||'—')}</td>
     <td class="item-name">${escapeHtml(r.so_number||'—')}</td>
+    <td class="dim">${escapeHtml(r.company_name||'—')}</td>
     <td class="item-name">${subToggle}${escapeHtml(r.item_name||'(untitled)')}</td>
     <td>${escapeHtml(r.draftee||'—')}</td>
     <td>${escapeHtml(r.sales_person||'—')}</td>
@@ -1426,7 +1428,7 @@ function subRowHtml(s, jobType, rcdOrRc){
   const isDisabledForRC = jobType === 'OPPTS' && rcdOrRc === 'RC' && (s.subitem_type === 'Drawing/BOM Prep' || s.subitem_type === 'Checking');
   if(isDisabledForRC){
     return `<tr class="subrow subrow-disabled" onclick="event.stopPropagation()">
-    <td colspan="17">
+    <td colspan="18">
       <div class="sub-content sub-content-disabled">
         <span class="sub-indent-icon">↳</span>
         <span class="sub-label">${escapeHtml(s.subitem_type)}</span>
@@ -1444,7 +1446,7 @@ function subRowHtml(s, jobType, rcdOrRc){
     ? `<span class="sub-draftee-readonly" title="Auto-set from line item draftee">${escapeHtml(s.draftee || '—')}</span>`
     : `<select class="sub-draftee" onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleSubDrafteeChange(this, '${s.id}')">${lookupOptionsHtml('draftee', s.draftee)}</select>`;
   return `<tr class="subrow" onclick="event.stopPropagation()">
-    <td colspan="17">
+    <td colspan="18">
       <div class="sub-content">
         <span class="sub-indent-icon">↳</span>
         <span class="sub-label">${escapeHtml(s.subitem_type)}</span>
@@ -1880,11 +1882,11 @@ function exportCsv(){
       matchesOverBudget && matchesStage && matchesClockedIn && matchesDue;
   });
 
-  const headers = ['Company','SO Number','Item','Job Type','Group','Draftee','Sales Person','Class','RCD/RC','DIFOT Status','DIFOT Days','Drafting Transfer','Target Start','Target Release','Actual Release to Prodn','Project Sales','Aging Days','Actual Hrs','O/A Excess Days'];
+  const headers = ['SO Number','Company','Item','Job Type','Group','Draftee','Sales Person','Class','RCD/RC','DIFOT Status','DIFOT Days','Drafting Transfer','Target Start','Target Release','Actual Release to Prodn','Project Sales','Aging Days','Actual Hrs','O/A Excess Days'];
   const csvRows = [headers.join(',')];
   filtered.forEach(r => {
     const row = [
-      r.company_name, r.so_number, r.item_name, r.job_type, r.group_name, r.draftee, r.sales_person, r.product_class, r.rcd_or_rc,
+      r.so_number, r.company_name, r.item_name, r.job_type, r.group_name, r.draftee, r.sales_person, r.product_class, r.rcd_or_rc,
       r.computed_difot_status, r.computed_difot_10days, r.drafting_transfer_date, r.target_start_date,
       r.target_release_date, r.actual_release_to_prodn_date, r.project_sales, r.computed_aging_days,
       r.computed_actual_hrs, r.computed_oa_excess_days
@@ -1977,8 +1979,8 @@ const deleteBtn = document.getElementById('deleteBtn');
 
 const FIELDS = [
   {key:'item_name', label:'Item name', type:'text', required:true},
-  {key:'company_name', label:'Company name', type:'text'},
   {key:'so_number', label:'SO number', type:'text'},
+  {key:'company_name', label:'Company name', type:'text'},
   {key:'group_name', label:'Group', type:'select', options: GROUP_ORDER},
   {key:'draftee', label:'Draftee (select one or more)', type:'multiselect', category:'draftee'},
   {key:'sales_person', label:'Sales person', type:'lookup', category:'sales_person'},
