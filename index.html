@@ -294,27 +294,45 @@
   tr.row-approaching:hover{background:#fef8e7;}
   tr.row-behind{border-left:3px solid var(--red);background:#fffbfb;}
   tr.row-behind:hover{background:#fdedef;}
-  .board-table thead th:nth-child(6),.board-table thead th:nth-child(9),.board-table thead th:nth-child(10),
-  .board-table thead th:nth-child(11),.board-table thead th:nth-child(12),.board-table thead th:nth-child(13),
-  .board-table thead th:nth-child(14),.board-table thead th:nth-child(15),.board-table thead th:nth-child(16){
+  .board-table thead th:nth-child(7),.board-table thead th:nth-child(10),.board-table thead th:nth-child(11),
+  .board-table thead th:nth-child(12),.board-table thead th:nth-child(13),.board-table thead th:nth-child(14),
+  .board-table thead th:nth-child(15),.board-table thead th:nth-child(16),.board-table thead th:nth-child(17){
     text-align:right;
   }
-  .board-table tbody tr:not(.subrow) td:nth-child(6),.board-table tbody tr:not(.subrow) td:nth-child(9),
-  .board-table tbody tr:not(.subrow) td:nth-child(10),.board-table tbody tr:not(.subrow) td:nth-child(11),
-  .board-table tbody tr:not(.subrow) td:nth-child(12),.board-table tbody tr:not(.subrow) td:nth-child(13),
-  .board-table tbody tr:not(.subrow) td:nth-child(14),.board-table tbody tr:not(.subrow) td:nth-child(15),
-  .board-table tbody tr:not(.subrow) td:nth-child(16){
+  .board-table tbody tr:not(.subrow) td:nth-child(7),.board-table tbody tr:not(.subrow) td:nth-child(10),
+  .board-table tbody tr:not(.subrow) td:nth-child(11),.board-table tbody tr:not(.subrow) td:nth-child(12),
+  .board-table tbody tr:not(.subrow) td:nth-child(13),.board-table tbody tr:not(.subrow) td:nth-child(14),
+  .board-table tbody tr:not(.subrow) td:nth-child(15),.board-table tbody tr:not(.subrow) td:nth-child(16),
+  .board-table tbody tr:not(.subrow) td:nth-child(17){
     text-align:right;font-variant-numeric:tabular-nums;
   }
   tbody td{padding:11px 14px;white-space:nowrap;}
   td.item-name{font-weight:600;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  td.subtoggle-col{width:36px;min-width:36px;text-align:center;padding-left:6px;padding-right:6px;}
   .subtoggle{
-    display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;
-    margin-right:6px;cursor:pointer;color:var(--text-dim);font-size:10px;
-    border-radius:4px;
+    display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;
+    cursor:pointer;color:var(--text-dim);font-size:15px;font-weight:700;
+    border-radius:6px;border:1.5px solid var(--border);background:#fff;
   }
-  .subtoggle:hover{background:var(--gray-pill);color:var(--primary);}
-  .subtoggle-empty{cursor:default;visibility:hidden;}
+  .subtoggle:hover{background:var(--gray-pill);color:var(--primary);border-color:var(--primary);}
+  .subtoggle-empty{cursor:default;visibility:hidden;border-color:transparent;}
+  .sched-fill-badge{
+    display:inline-flex;align-items:center;gap:3px;margin-left:8px;padding:2px 7px;
+    border-radius:10px;font-size:10.5px;font-weight:700;font-family:'JetBrains Mono',monospace;
+    vertical-align:middle;white-space:nowrap;
+  }
+  .sched-fill-low{background:#fdecec;color:var(--red);}
+  .sched-fill-mid{background:#fff6e0;color:var(--amber);}
+  .sched-fill-full{background:#e6f7ef;color:var(--green);}
+  .draftee-seq-badge{
+    display:inline-flex;align-items:center;margin-left:6px;padding:1px 6px;
+    border-radius:8px;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;
+    background:var(--gray-pill);color:var(--text-dim);vertical-align:middle;
+  }
+  .sub-sched-hour{
+    font-size:11px;border:1.5px solid var(--border);border-radius:6px;padding:3px 4px;
+    font-family:'JetBrains Mono',monospace;background:#fbfbfd;color:var(--text-dim);margin:0 2px;
+  }
   .move-group-select{
     font-size:11.5px;border:1.5px solid var(--border);border-radius:6px;
     padding:5px 7px;font-family:inherit;background:#fbfbfd;color:var(--text-dim);
@@ -683,6 +701,7 @@
             <option value="Detailing/PDF/DXF Prep">Detailing/PDF/DXF Prep</option>
             <option value="Checking">Checking</option>
             <option value="Release">Release</option>
+            <option value="Production Hand-Over">Production Hand-Over</option>
             <option value="Cost Analysis">Cost Analysis</option>
             <option value="Drawing/BOM Prep">Drawing/BOM Prep</option>
             <option value="Costing Prep">Costing Prep</option>
@@ -975,6 +994,7 @@ function isSupervisor(){
 let session = null;
 let rows = [];
 let subitemsByParent = {};
+let drafteeRowSeq = {}; // { rowId: {seq, total} } — this row's position in its draftee's overall job queue, ordered by schedule/target date
 let logsBySubitem = {};
 let salesPersonOptions = [];
 let drafteeOptions = [];
@@ -1266,6 +1286,25 @@ async function loadData(){
   rows = data || [];
   collapsedSubitems = new Set(rows.map(r => r.id)); // collapse every item's sub-processes by default on each load
 
+  drafteeRowSeq = {};
+  const byDrafteeRows = {};
+  rows.forEach(r => {
+    if(r.actual_release_to_prodn_date) return; // already released — not part of the active queue
+    const orderDate = r.schedule_start_date || r.target_start_date || r.drafting_transfer_date;
+    if(!orderDate) return;
+    (r.draftee || '').split(',').map(x => x.trim()).filter(Boolean).forEach(n => {
+      (byDrafteeRows[n] = byDrafteeRows[n] || []).push(r);
+    });
+  });
+  Object.values(byDrafteeRows).forEach(list => {
+    list.sort((a, b) => {
+      const da = a.schedule_start_date || a.target_start_date || a.drafting_transfer_date;
+      const db = b.schedule_start_date || b.target_start_date || b.drafting_transfer_date;
+      return new Date(da).getTime() - new Date(db).getTime();
+    });
+    list.forEach((r, idx) => { drafteeRowSeq[r.id] = { seq: idx + 1, total: list.length }; });
+  });
+
   const { data: subData, error: subError } = await sb.from('so_subitems').select('*').order('sort_order', {ascending:true});
   subitemsByParent = {};
   if(!subError && subData){
@@ -1437,7 +1476,7 @@ function renderBoard(){
         <div class="table-scroll" id="${scrollId}">
         <table class="board-table">
           <thead><tr>
-            <th>SO Number</th><th>Company</th><th>Item</th><th>Draftee</th><th>Sales Person</th><th>DIFOT</th><th>DIFOT Days</th><th>Class</th><th>RCD/RC</th>
+            <th>SO Number</th><th></th><th>Company</th><th>Item</th><th>Draftee</th><th>Sales Person</th><th>DIFOT</th><th>DIFOT Days</th><th>Class</th><th>RCD/RC</th>
             <th>Drafting Transfer</th><th>Target Start</th><th>Target Release</th><th>Actual Release to Prodn</th><th>Project Sales</th><th>Aging</th><th>Actual Hrs</th><th>O/A Excess</th><th>Move to Group</th>
           </tr></thead>
           <tbody>
@@ -1445,12 +1484,12 @@ function renderBoard(){
           </tbody>
           <tfoot>
             <tr class="group-foot">
-              <td colspan="13">Group totals</td>
+              <td colspan="14">Group totals</td>
               <td>${fmtMoney(totalSales)}</td>
               <td colspan="4"></td>
             </tr>
             <tr class="group-foot">
-              <td colspan="6">Average DIFOT days</td>
+              <td colspan="7">Average DIFOT days</td>
               <td>${avgDifot !== null ? avgDifot.toFixed(1) : '—'}</td>
               <td colspan="11"></td>
             </tr>
@@ -1668,11 +1707,19 @@ function rowHtml(r){
   ).join('') + (!GROUP_ORDER.includes(r.group_name) ? `<option value="${escapeAttr(r.group_name||'')}" selected>${escapeHtml(r.group_name||'(none)')}</option>` : '');
   const scheduleStatus = getScheduleStatus(r);
   const scheduleClass = scheduleStatus ? `row-${scheduleStatus}` : '';
+  const subsForFill = subitemsByParent[r.id] || [];
+  const filledSubs = subsForFill.filter(s => s.schedule_start_date && s.schedule_end_date).length;
+  const schedFillPct = subsForFill.length ? Math.round((filledSubs / subsForFill.length) * 100) : null;
+  const schedFillTier = schedFillPct === null ? '' : (schedFillPct >= 100 ? 'sched-fill-full' : schedFillPct >= 50 ? 'sched-fill-mid' : 'sched-fill-low');
+  const schedFillBadge = schedFillPct === null ? '' : `<span class="sched-fill-badge ${schedFillTier}" title="${filledSubs} of ${subsForFill.length} sub-processes scheduled">📅 ${schedFillPct}%</span>`;
+  const rowSeq = drafteeRowSeq[r.id];
+  const drafteeSeqBadge = rowSeq ? `<span class="draftee-seq-badge" title="${escapeHtml(r.draftee)}'s job queue position, by scheduled date">Job ${rowSeq.seq}/${rowSeq.total}</span>` : '';
   const mainRow = `<tr id="row_${r.id}" class="${scheduleClass}" onclick="openModal('${r.id}')">
     <td class="item-name">${escapeHtml(r.so_number||'—')}</td>
+    <td class="subtoggle-col" onclick="event.stopPropagation()">${subToggle}</td>
     <td class="dim">${escapeHtml(r.company_name||'—')}</td>
-    <td class="item-name">${subToggle}${escapeHtml(r.item_name||'(untitled)')}</td>
-    <td>${escapeHtml(r.draftee||'—')}</td>
+    <td class="item-name">${escapeHtml(r.item_name||'(untitled)')}${schedFillBadge}</td>
+    <td>${escapeHtml(r.draftee||'—')}${drafteeSeqBadge}</td>
     <td>${escapeHtml(r.sales_person||'—')}</td>
     <td>${difot}</td>
     <td class="dim">${r.computed_difot_10days ?? '—'}</td>
@@ -1698,7 +1745,7 @@ function subRowHtml(s, jobType, rcdOrRc){
   const isDisabledForRC = jobType === 'OPPTS' && rcdOrRc === 'RC' && (s.subitem_type === 'Drawing/BOM Prep' || s.subitem_type === 'Checking');
   if(isDisabledForRC){
     return `<tr class="subrow subrow-disabled" onclick="event.stopPropagation()">
-    <td colspan="18">
+    <td colspan="19">
       <div class="sub-content sub-content-disabled">
         <span class="sub-indent-icon">↳</span>
         <span class="sub-label">${escapeHtml(s.subitem_type)}</span>
@@ -1716,18 +1763,22 @@ function subRowHtml(s, jobType, rcdOrRc){
     ? `<span class="sub-draftee-readonly" title="Auto-set from line item draftee">${escapeHtml(s.draftee || '—')}</span>`
     : `<select class="sub-draftee" onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleSubDrafteeChange(this, '${s.id}')">${lookupOptionsHtml('draftee', s.draftee)}</select>`;
   return `<tr class="subrow" onclick="event.stopPropagation()">
-    <td colspan="18">
+    <td colspan="19">
       <div class="sub-content">
         <span class="sub-indent-icon">↳</span>
         <span class="sub-label">${escapeHtml(s.subitem_type)}</span>
         ${drafteeCell}
         <span class="sub-schedule">
           <span class="sub-sched-label">Schedule:</span>
-          <input type="date" class="sub-sched-date" value="${s.schedule_start_date||''}" title="Schedule start"
-            onclick="event.stopPropagation()" onchange="event.stopPropagation(); updateSubSchedule('${s.id}', 'schedule_start_date', this.value)">
+          <input type="date" class="sub-sched-date" value="${s.schedule_start_date||''}" title="Schedule start date"
+            onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleSubScheduleChange(this, '${s.id}', 'schedule_start_date')">
+          <select class="sub-sched-hour" title="Schedule start hour" onclick="event.stopPropagation()"
+            onchange="event.stopPropagation(); handleSubScheduleChange(this, '${s.id}', 'schedule_start_hour')">${hourOptionsHtml(s.schedule_start_hour)}</select>
           <span class="sub-sched-arrow">→</span>
-          <input type="date" class="sub-sched-date" value="${s.schedule_end_date||''}" title="Schedule end"
-            onclick="event.stopPropagation()" onchange="event.stopPropagation(); updateSubSchedule('${s.id}', 'schedule_end_date', this.value)">
+          <input type="date" class="sub-sched-date" value="${s.schedule_end_date||''}" title="Schedule end date"
+            onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleSubScheduleChange(this, '${s.id}', 'schedule_end_date')">
+          <select class="sub-sched-hour" title="Schedule end hour" onclick="event.stopPropagation()"
+            onchange="event.stopPropagation(); handleSubScheduleChange(this, '${s.id}', 'schedule_end_hour')">${hourOptionsHtml(s.schedule_end_hour)}</select>
         </span>
         <select class="sub-status" onchange="updateSubStatus('${s.id}', this.value, this)" onclick="event.stopPropagation()">${statusOptions}</select>
         <button class="clock-btn ${s.clock_running?'running':''}" onclick="event.stopPropagation(); toggleClock('${s.id}')">
@@ -1814,6 +1865,10 @@ async function toggleClock(subitemId){
     return;
   }
   if(!sub.clock_running){
+    if(!sub.schedule_start_date || !sub.schedule_end_date){
+      alert("Set a schedule (start and end date) for this sub-process before starting the timer.");
+      return;
+    }
     if(sub.status === 'Done' || sub.status === 'On-Hold'){
       alert(`This sub-process is marked "${sub.status}" — clocking is disabled. Change its status to Not Started or In Progress first.`);
       return;
@@ -2160,7 +2215,58 @@ async function updateSubDraftee(subitemId, draftee){
 }
 
 async function updateSubSchedule(subitemId, column, value){
-  await sb.from('so_subitems').update({ [column]: value || null }).eq('id', subitemId);
+  const val = (value === '' || value === undefined) ? null : value;
+  await sb.from('so_subitems').update({ [column]: val }).eq('id', subitemId);
+}
+
+function hourOptionsHtml(selected){
+  let opts = '<option value="">--</option>';
+  for(let h = 0; h < 24; h++){
+    const label = String(h).padStart(2,'0') + ':00';
+    opts += `<option value="${h}" ${(selected !== null && selected !== undefined && String(selected) === String(h)) ? 'selected' : ''}>${label}</option>`;
+  }
+  return opts;
+}
+
+// Combines a schedule date + optional hour into a timestamp for overlap comparisons.
+// Missing hour defaults to start-of-day for start fields, end-of-day for end fields.
+function schedDateTime(dateStr, hourVal, isEnd){
+  if(!dateStr) return null;
+  const h = (hourVal === null || hourVal === undefined || hourVal === '') ? (isEnd ? 23 : 0) : Number(hourVal);
+  return new Date(`${dateStr}T${String(h).padStart(2,'0')}:00:00`).getTime();
+}
+
+async function handleSubScheduleChange(inputEl, subitemId, column){
+  const rawValue = inputEl.value;
+  const isHourCol = column.endsWith('_hour');
+  const newValue = rawValue === '' ? null : (isHourCol ? Number(rawValue) : rawValue);
+  const allSubs = Object.values(subitemsByParent).flat();
+  const sub = allSubs.find(s => s.id === subitemId);
+  if(!sub) return;
+  const prevValue = sub[column] ?? '';
+  const candidate = { ...sub, [column]: newValue };
+  const draftees = (sub.draftee || '').split(',').map(x => x.trim()).filter(Boolean);
+
+  if(draftees.length && candidate.schedule_start_date && candidate.schedule_end_date){
+    const aStart = schedDateTime(candidate.schedule_start_date, candidate.schedule_start_hour, false);
+    const aEnd = schedDateTime(candidate.schedule_end_date, candidate.schedule_end_hour, true);
+    const conflicts = allSubs.filter(o => {
+      if(o.id === subitemId || o.status === 'Done') return false;
+      const oDraftees = (o.draftee || '').split(',').map(x => x.trim());
+      if(!draftees.some(d => oDraftees.includes(d))) return false;
+      if(!o.schedule_start_date || !o.schedule_end_date) return false;
+      const bStart = schedDateTime(o.schedule_start_date, o.schedule_start_hour, false);
+      const bEnd = schedDateTime(o.schedule_end_date, o.schedule_end_hour, true);
+      return aStart <= bEnd && aEnd >= bStart;
+    });
+    if(conflicts.length){
+      const list = conflicts.map(c => `• ${c.subitem_type} (${fmtDate(c.schedule_start_date)}${c.schedule_start_hour!=null?' '+String(c.schedule_start_hour).padStart(2,'0')+':00':''} → ${fmtDate(c.schedule_end_date)}${c.schedule_end_hour!=null?' '+String(c.schedule_end_hour).padStart(2,'0')+':00':''})`).join('\n');
+      const proceed = confirm(`Scheduling conflict for ${draftees.join(', ')}:\n${list}\n\nThis overlaps with the schedule you just set. Save anyway?`);
+      if(!proceed){ inputEl.value = prevValue; return; }
+    }
+  }
+  sub[column] = newValue;
+  await updateSubSchedule(subitemId, column, newValue);
 }
 
 function toggleRemarksPopover(btnEl){
