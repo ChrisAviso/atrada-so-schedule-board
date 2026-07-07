@@ -464,6 +464,27 @@
     font-size:13px;border:1.5px solid var(--border);border-radius:6px;padding:6px 8px;font-family:inherit;width:100%;
   }
   .btn-danger-mini{border:none;background:none;color:var(--red);font-size:14px;cursor:pointer;padding:4px;}
+
+  /* ---------- GA CHECKPOINT MODAL ---------- */
+  .ga-checkpoint-modal{max-width:740px;}
+  .gc-group{border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px;}
+  .gc-group:last-child{margin-bottom:0;}
+  .gc-group-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;}
+  .gc-group-title{font-weight:700;font-size:13.5px;color:var(--text);}
+  .gc-group-subtitle{font-size:12px;color:var(--text-dim);margin-top:2px;font-style:italic;}
+  .gc-group-na{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim);white-space:nowrap;cursor:pointer;font-weight:600;}
+  .gc-group-na input{margin:0;}
+  .gc-items{display:flex;flex-direction:column;gap:8px;}
+  .gc-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 8px;border-radius:6px;background:#fbfbfd;}
+  .gc-check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);cursor:pointer;flex:1;}
+  .gc-check input{margin:0;flex-shrink:0;}
+  .gc-na{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--text-dim);white-space:nowrap;cursor:pointer;font-weight:600;flex-shrink:0;}
+  .gc-na input{margin:0;}
+  .gc-item.gc-item-na{opacity:.55;}
+  .gc-modal-foot{align-items:center;}
+  .gc-summary{font-size:12.5px;color:var(--text-dim);flex:1;}
+  .gc-summary-ok{color:var(--green);font-weight:700;}
+  .gc-summary-pending{color:var(--amber);font-weight:600;}
   .btn-danger{background:none;border:1.5px solid var(--red);color:var(--red);border-radius:8px;padding:9px 16px;font-weight:600;font-size:13.5px;cursor:pointer;font-family:inherit;}
   .btn-danger:hover{background:var(--red);color:white;}
   .foot-right{display:flex;gap:10px;}
@@ -775,6 +796,25 @@
   </div>
 </div>
 
+<div class="modal-backdrop hidden" id="gaCheckpointModalBackdrop">
+  <div class="modal ga-checkpoint-modal">
+    <div class="modal-head">
+      <h2>GA Approval Checkpoints</h2>
+      <button class="modal-close" id="gaCheckpointCloseBtn">✕</button>
+    </div>
+    <div class="modal-body" id="gaCheckpointBody">
+      <!-- filled by JS -->
+    </div>
+    <div class="modal-foot gc-modal-foot">
+      <div id="gaCheckpointSummary" class="gc-summary"></div>
+      <div class="foot-right">
+        <button class="btn-secondary" id="gaCheckpointCancelBtn">Cancel</button>
+        <button class="btn-primary-sm" id="gaCheckpointConfirmBtn" disabled>Confirm &amp; mark Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 /* =======================================================================
    CONFIG — paste your Supabase project values below.
@@ -801,6 +841,112 @@ const GROUP_ORDER = [
 const GROUP_COLORS = ["#3a5ceb","#12b886","#f5a623","#e64c66","#7c5cf0","#0aa3a3","#d6534f","#2c9c4a","#9c6b2c","#5c6bc0","#546e7a"];
 const NEW_ITEM_GROUP = "Sales Order Drafting & Drawings Prep";
 const NEW_OPPTS_GROUP = "OPPTS/PROJTS Cost Sheet Prep";
+
+const GA_CHECKPOINT_GROUPS = [
+  {
+    key: 'lower_drawing_block',
+    title: 'Lower Drawing Block Details',
+    subtitle: 'GA Approval — are these correct?',
+    allowNA: false,
+    items: [
+      'SO number',
+      "Client's detail",
+      'Assembly code',
+      'Assembly name',
+      'Revision Number',
+      'Drawn Date',
+      'Checked Date',
+      'Approval Date',
+    ]
+  },
+  {
+    key: 'painting_block',
+    title: 'Painting Block Details',
+    allowNA: true,
+    items: [
+      'Paint Colour internally',
+      'Paint Colour externally',
+      'Paint Type (2 pak, Galv/Pre-Galv, Powder Coat)',
+    ]
+  },
+  {
+    key: 'electrical',
+    title: 'Electrical Details',
+    allowNA: true,
+    items: [
+      'Electrical Incomer 1 Phase',
+      'Electrical Incomer 3 Phase',
+      "Correct type and q'ty of GPO",
+      "Correct type and q'ty of Light Switch",
+      "Correct type and q'ty of Junction Box",
+      "Correct type and q'ty of Distribution Box",
+      "Correct type and q'ty of Caravan Inlet Plug",
+      "Correct type and q'ty of Isolator",
+      "Correct type and q'ty of Exit Lights",
+    ]
+  },
+  {
+    key: 'ga_drawing',
+    title: 'GA Drawing',
+    allowNA: false,
+    items: [
+      'Read and understand the Sales Order description and Cost Sheet',
+      "Verify that items and q'ty listed in the SO and Cost Sheet are in conformity",
+      'O/A dimensions of the container',
+      'Clear internal dimensions',
+      'Clear spacing dimensions',
+      'O/A dimensions of all items inside or outside the container',
+      'Location dimensions of all items inside and outside the container',
+      'Proper distribution and spacing of all dimensions',
+      'Correct section views (where the arrow points)',
+      'Complete and correct Netsuite code for all items inside and outside the container',
+    ]
+  },
+  {
+    key: 'stickers_container',
+    title: 'Stickers & Plaque — For Container',
+    allowNA: true,
+    items: [
+      '2x (ST23415) Container Sticker – Atrada Colored Graphics (1x on each external long side)',
+      '2x (ST23413) Atrada Large Sticker (White Graphics) (1x on the container door external and internal side)',
+    ]
+  },
+  {
+    key: 'stickers_box',
+    title: 'Stickers & Plaque — For Box, Cages, Framed & Stand-Alone Assembly',
+    allowNA: true,
+    items: [
+      '(PL23404-SA) Atrada Plaque - 84 x 30 Sub-Assy',
+      '(PL23405-SA) Atrada Plaque For CRLD Bins Sub-Assy',
+      '(PL23406-SA) Atrada Plaque 125 x 30 Sub-Assy',
+      '(ST23411) Atrada Large Sticker (Blue Graphics)',
+      '(ST23412) Atrada Large Sticker (Blue Graphics)',
+      '(ST23413) Atrada Large Sticker (White Graphics)',
+      '(ST23414) Atrada Large Sticker (White Graphics)',
+      '(ST19702) Empty Lifting Sticker 32mm (White Graphics)',
+      '(ST22848) Empty Lifting Sticker 32mm (Black Graphics)',
+      '(ST029) Tie Down Points Only Sticker',
+      '(ST009) Lifting Lugs Sticker',
+      'Correct WLL sticker',
+    ]
+  },
+  {
+    key: 'stickers_lubestation',
+    title: 'Stickers & Plaque — For Lubestation',
+    allowNA: true,
+    items: [
+      'Correct line number stickers (32mm height) for pumps',
+      'Correct line number stickers (32mm height) for dispensers (inside box)',
+      'Correct line oil/waste/grease/coolant name stickers (32mm height) (inside box)',
+      'Correct line oil/waste/grease/coolant name stickers (32mm height) (on doors)',
+      '(ST19702) Empty Lifting Sticker 32mm (White Graphics)',
+      '(ST22848) Empty Lifting Sticker 32mm (Black Graphics)',
+      '(ST029) Tie Down Points Only Sticker',
+      '(ST009) Lifting Lugs Sticker',
+      'Correct bund capacity sticker',
+    ]
+  },
+];
 
 const AUTHORIZED_DRAFTEES = {
   'arcangel@atrada.com.au': 'Arcangel SanMiguel',
@@ -849,6 +995,9 @@ let editingId = null; // null = new item
 let currentPresetJobType = 'SO';
 let tickerStarted = false;
 let greetingShown = false;
+let gaCheckpointSubitemId = null;
+let gaCheckpointSelectEl = null;
+let gaCheckpointState = {};
 
 /* ---------------- AUTH ---------------- */
 const authTitle = document.getElementById('authTitle');
@@ -1580,7 +1729,7 @@ function subRowHtml(s, jobType, rcdOrRc){
           <input type="date" class="sub-sched-date" value="${s.schedule_end_date||''}" title="Schedule end"
             onclick="event.stopPropagation()" onchange="event.stopPropagation(); updateSubSchedule('${s.id}', 'schedule_end_date', this.value)">
         </span>
-        <select class="sub-status" onchange="updateSubStatus('${s.id}', this.value)" onclick="event.stopPropagation()">${statusOptions}</select>
+        <select class="sub-status" onchange="updateSubStatus('${s.id}', this.value, this)" onclick="event.stopPropagation()">${statusOptions}</select>
         <button class="clock-btn ${s.clock_running?'running':''}" onclick="event.stopPropagation(); toggleClock('${s.id}')">
           <span class="dot"></span>${s.clock_running ? 'Stop' : 'Start'}
         </button>
@@ -1857,9 +2006,154 @@ document.getElementById('logEditCancelBtn').onclick = closeLogEditor;
 document.getElementById('logEditAddBtn').onclick = addLogEditorRow;
 document.getElementById('logEditSaveBtn').onclick = saveLogEditorChanges;
 
-async function updateSubStatus(subitemId, status){
+async function updateSubStatus(subitemId, status, selectEl){
+  if(status === 'Done'){
+    const allSubs = Object.values(subitemsByParent).flat();
+    const sub = allSubs.find(s => s.id === subitemId);
+    if(sub && sub.subitem_type === 'GA For Approval Prep'){
+      openGaCheckpointModal(subitemId, selectEl);
+      return;
+    }
+  }
   await sb.from('so_subitems').update({ status }).eq('id', subitemId);
 }
+
+/* ---------------- GA APPROVAL CHECKPOINTS ---------------- */
+function gaCheckpointKey(groupKey, idx){ return `${groupKey}::${idx}`; }
+
+function groupIsAllNA(group){
+  return group.items.every((_, idx) => gaCheckpointState[gaCheckpointKey(group.key, idx)] === 'na');
+}
+
+function openGaCheckpointModal(subitemId, selectEl){
+  const allSubs = Object.values(subitemsByParent).flat();
+  const sub = allSubs.find(s => s.id === subitemId);
+  if(!sub) return;
+  gaCheckpointSubitemId = subitemId;
+  gaCheckpointSelectEl = selectEl || null;
+  gaCheckpointState = Object.assign({}, sub.ga_checkpoints || {});
+  renderGaCheckpointModal();
+  document.getElementById('gaCheckpointModalBackdrop').classList.remove('hidden');
+}
+
+function renderGaCheckpointModal(){
+  const body = document.getElementById('gaCheckpointBody');
+  body.innerHTML = GA_CHECKPOINT_GROUPS.map(renderGaCheckpointGroup).join('');
+  updateGaCheckpointSummary();
+}
+
+function renderGaCheckpointGroup(group){
+  const allNA = group.allowNA && groupIsAllNA(group);
+  const itemsHtml = group.items.map((item, idx) => {
+    const key = gaCheckpointKey(group.key, idx);
+    const state = gaCheckpointState[key];
+    const isNA = state === 'na';
+    const isChecked = state === 'checked';
+    return `<div class="gc-item ${isNA ? 'gc-item-na' : ''}">
+      <label class="gc-check">
+        <input type="checkbox" ${isChecked ? 'checked' : ''} ${isNA ? 'disabled' : ''}
+          onchange="setGaCheckpointState('${key}', this.checked ? 'checked' : undefined)">
+        <span>${escapeHtml(item)}</span>
+      </label>
+      ${group.allowNA ? `<label class="gc-na">
+        <input type="checkbox" ${isNA ? 'checked' : ''}
+          onchange="setGaCheckpointState('${key}', this.checked ? 'na' : undefined)">
+        N/A
+      </label>` : ''}
+    </div>`;
+  }).join('');
+  return `<div class="gc-group">
+    <div class="gc-group-head">
+      <div>
+        <div class="gc-group-title">${escapeHtml(group.title)}</div>
+        ${group.subtitle ? `<div class="gc-group-subtitle">${escapeHtml(group.subtitle)}</div>` : ''}
+      </div>
+      ${group.allowNA ? `<label class="gc-group-na">
+        <input type="checkbox" ${allNA ? 'checked' : ''} onchange="setGaGroupNA('${group.key}', this.checked)">
+        Mark entire group N/A
+      </label>` : ''}
+    </div>
+    <div class="gc-items">${itemsHtml}</div>
+  </div>`;
+}
+
+function setGaCheckpointState(key, value){
+  if(value === undefined || value === 'undefined') delete gaCheckpointState[key];
+  else gaCheckpointState[key] = value;
+  renderGaCheckpointModal();
+}
+
+function setGaGroupNA(groupKey, checked){
+  const group = GA_CHECKPOINT_GROUPS.find(g => g.key === groupKey);
+  if(!group) return;
+  group.items.forEach((_, idx) => {
+    const key = gaCheckpointKey(groupKey, idx);
+    if(checked) gaCheckpointState[key] = 'na';
+    else delete gaCheckpointState[key];
+  });
+  renderGaCheckpointModal();
+}
+
+function gaCheckpointValidation(){
+  let totalItems = 0, filledItems = 0;
+  const incompleteGroups = [];
+  GA_CHECKPOINT_GROUPS.forEach(group => {
+    let groupIncomplete = 0;
+    group.items.forEach((_, idx) => {
+      totalItems++;
+      const state = gaCheckpointState[gaCheckpointKey(group.key, idx)];
+      if(state === 'checked' || state === 'na') filledItems++;
+      else groupIncomplete++;
+    });
+    if(groupIncomplete > 0) incompleteGroups.push(group.title);
+  });
+  return { totalItems, filledItems, complete: filledItems === totalItems, incompleteGroups };
+}
+
+function updateGaCheckpointSummary(){
+  const v = gaCheckpointValidation();
+  const summaryEl = document.getElementById('gaCheckpointSummary');
+  const confirmBtn = document.getElementById('gaCheckpointConfirmBtn');
+  if(v.complete){
+    summaryEl.innerHTML = `<span class="gc-summary-ok">✓ All ${v.totalItems} checkpoints filled — ready to mark Done.</span>`;
+    confirmBtn.disabled = false;
+  } else {
+    summaryEl.innerHTML = `<span class="gc-summary-pending">${v.filledItems} / ${v.totalItems} checkpoints filled — still needs: ${escapeHtml(v.incompleteGroups.join(', '))}</span>`;
+    confirmBtn.disabled = true;
+  }
+}
+
+function closeGaCheckpointModal(revertSelect){
+  document.getElementById('gaCheckpointModalBackdrop').classList.add('hidden');
+  if(revertSelect && gaCheckpointSelectEl){
+    const allSubs = Object.values(subitemsByParent).flat();
+    const sub = allSubs.find(s => s.id === gaCheckpointSubitemId);
+    gaCheckpointSelectEl.value = sub ? sub.status : 'Not Started';
+  }
+  gaCheckpointSubitemId = null;
+  gaCheckpointSelectEl = null;
+  gaCheckpointState = {};
+}
+
+async function confirmGaCheckpoint(){
+  const v = gaCheckpointValidation();
+  if(!v.complete) return;
+  const subitemId = gaCheckpointSubitemId;
+  await sb.from('so_subitems').update({
+    status: 'Done',
+    ga_checkpoints: gaCheckpointState,
+    ga_checkpoints_verified_at: new Date().toISOString()
+  }).eq('id', subitemId);
+  document.getElementById('gaCheckpointModalBackdrop').classList.add('hidden');
+  gaCheckpointSubitemId = null;
+  gaCheckpointSelectEl = null;
+  gaCheckpointState = {};
+  await loadData();
+}
+
+document.getElementById('gaCheckpointCloseBtn').onclick = () => closeGaCheckpointModal(true);
+document.getElementById('gaCheckpointCancelBtn').onclick = () => closeGaCheckpointModal(true);
+document.getElementById('gaCheckpointConfirmBtn').onclick = confirmGaCheckpoint;
 
 async function updateSubDraftee(subitemId, draftee){
   await sb.from('so_subitems').update({ draftee: draftee || null }).eq('id', subitemId);
