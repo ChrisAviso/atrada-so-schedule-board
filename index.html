@@ -520,17 +520,68 @@
   @keyframes greeting-fade-in{from{opacity:0;}to{opacity:1;}}
   .greeting-overlay.hidden{display:none;}
   .greeting-card{
-    background:rgba(255,255,255,.97);border-radius:20px;padding:44px 48px;
-    max-width:460px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35);
+    background:rgba(255,255,255,.97);border-radius:20px;padding:40px 44px;
+    max-width:600px;width:90%;max-height:88vh;overflow-y:auto;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35);
     animation:greeting-rise .4s cubic-bezier(.2,.8,.3,1);
   }
   @keyframes greeting-rise{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
-  .greeting-icon{font-size:52px;margin-bottom:8px;}
+  .greeting-icon{margin-bottom:4px;display:flex;align-items:center;justify-content:center;}
+  .icon3d-stage{
+    position:relative;display:inline-flex;align-items:center;justify-content:center;
+    width:108px;height:108px;
+  }
+  .icon3d-glow{
+    position:absolute;inset:4px;border-radius:50%;
+    background:
+      radial-gradient(circle at 32% 26%, rgba(255,255,255,.95), rgba(255,255,255,.05) 40%, transparent 65%),
+      radial-gradient(circle at 50% 55%, var(--icon-glow-color,#ffd76a) 0%, transparent 72%);
+    filter:blur(3px);
+    opacity:.65;
+  }
+  .icon3d-shadow{
+    position:absolute;bottom:2px;left:50%;width:56px;height:12px;transform:translateX(-50%);
+    background:radial-gradient(ellipse, rgba(20,22,40,.28), transparent 70%);
+    border-radius:50%;
+    animation:icon3d-shadow-pulse 3.4s ease-in-out infinite;
+  }
+  .icon3d-img{
+    position:relative;z-index:1;
+    filter:
+      drop-shadow(0 2px 3px rgba(0,0,0,.22))
+      drop-shadow(0 10px 14px rgba(0,0,0,.22))
+      drop-shadow(0 1px 0 rgba(255,255,255,.5));
+    animation:icon3d-float 3.4s ease-in-out infinite;
+  }
+  @keyframes icon3d-float{
+    0%,100%{transform:translateY(0) rotate(-1.5deg);}
+    50%{transform:translateY(-7px) rotate(1.5deg);}
+  }
+  @keyframes icon3d-shadow-pulse{
+    0%,100%{opacity:.5;transform:translateX(-50%) scale(1);}
+    50%{opacity:.28;transform:translateX(-50%) scale(.82);}
+  }
+  .icon3d-inline{
+    filter:
+      drop-shadow(0 1px 1px rgba(0,0,0,.2))
+      drop-shadow(0 3px 5px rgba(0,0,0,.22));
+    vertical-align:middle;
+  }
   .greeting-title{font-size:24px;font-weight:800;color:var(--text);letter-spacing:-0.01em;}
   .greeting-name{font-size:15px;color:var(--text-dim);margin-top:4px;font-weight:600;}
   .greeting-divider{width:40px;height:3px;background:var(--primary);border-radius:2px;margin:18px auto;}
   .greeting-quote{font-size:14.5px;color:var(--text);line-height:1.6;font-style:italic;min-height:60px;display:flex;align-items:center;justify-content:center;}
   .greeting-tagalog{font-size:13px;color:var(--text-dim);line-height:1.5;margin-top:12px;padding-top:14px;border-top:1px dashed var(--border);}
+  .greeting-briefing{margin-top:20px;padding-top:18px;border-top:1px solid var(--border);text-align:left;}
+  .briefing-loading{text-align:center;font-size:13px;color:var(--text-dim);padding:10px 0;}
+  .briefing-section{margin-bottom:14px;}
+  .briefing-section:last-child{margin-bottom:0;}
+  .briefing-label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--primary-dark);margin-bottom:4px;display:flex;align-items:center;gap:6px;}
+  .briefing-text{font-size:13.5px;color:var(--text);line-height:1.55;}
+  .briefing-encouragement{
+    margin-top:16px;padding:12px 16px;background:linear-gradient(135deg,#eef1ff,#f5f0ff);
+    border-radius:10px;font-size:13.5px;font-weight:600;color:var(--primary-dark);text-align:center;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+  }
   .greeting-btn{
     margin-top:24px;padding:11px 26px;border:none;border-radius:10px;
     background:var(--primary);color:white;font-weight:700;font-size:14px;
@@ -588,6 +639,9 @@
     <div class="greeting-divider"></div>
     <div class="greeting-quote" id="greetingQuote"></div>
     <div class="greeting-tagalog" id="greetingTagalog"></div>
+    <div class="greeting-briefing" id="greetingBriefing">
+      <div class="briefing-loading">Pulling together your briefing…</div>
+    </div>
     <button class="greeting-btn" id="greetingDismissBtn">Let's get started →</button>
   </div>
 </div>
@@ -925,7 +979,7 @@ function enterApp(){
   document.getElementById('appScreen').classList.remove('hidden');
   document.getElementById('userChip').textContent = session.user.email;
   showGreetingOverlay();
-  loadData();
+  loadData().then(() => populateBriefing());
 }
 
 const GREETING_LINES = [
@@ -971,12 +1025,26 @@ const TAGALOG_JOKES = [
 ];
 
 
+function emoji3d(code, size, fallback){
+  const alt = fallback || '';
+  return `<img class="icon3d-inline" src="https://cdn.jsdelivr.net/gh/shuding/fluentui-emoji-unicode/assets/${code}_3d.png" width="${size}" height="${size}" style="display:inline-block;" alt="${alt}" onerror="this.outerHTML='${alt}'">`;
+}
+
+function emoji3dHero(code, fallback, glowColor){
+  const alt = fallback || '';
+  return `<div class="icon3d-stage" style="--icon-glow-color:${glowColor||'#ffd76a'};">
+    <div class="icon3d-glow"></div>
+    <div class="icon3d-shadow"></div>
+    <img class="icon3d-img" src="https://cdn.jsdelivr.net/gh/shuding/fluentui-emoji-unicode/assets/${code}_3d.png" width="88" height="88" alt="${alt}" onerror="this.parentElement.outerHTML='${alt}'">
+  </div>`;
+}
+
 function getTimeGreeting(){
   const h = new Date().getHours();
-  if(h >= 5 && h < 12) return { icon: '☀️', title: 'Good morning' };
-  if(h >= 12 && h < 17) return { icon: '🌤️', title: 'Good afternoon' };
-  if(h >= 17 && h < 21) return { icon: '🌇', title: 'Good evening' };
-  return { icon: '🌙', title: 'Working late — good on you' };
+  if(h >= 5 && h < 12) return { icon: '2600', fallback: '☀️', title: 'Good morning', glow: '#ffd76a' };
+  if(h >= 12 && h < 17) return { icon: '1f324', fallback: '🌤️', title: 'Good afternoon', glow: '#a8d5ff' };
+  if(h >= 17 && h < 21) return { icon: '1f307', fallback: '🌇', title: 'Good evening', glow: '#ffb37a' };
+  return { icon: '1f319', fallback: '🌙', title: 'Working late — good on you', glow: '#8ea0ff' };
 }
 
 function getFriendlyName(email){
@@ -986,21 +1054,168 @@ function getFriendlyName(email){
 }
 
 function showGreetingOverlay(){
-  const { icon, title } = getTimeGreeting();
+  const { icon, fallback, title, glow } = getTimeGreeting();
   const name = getFriendlyName(session?.user?.email);
   const quote = GREETING_LINES[Math.floor(Math.random() * GREETING_LINES.length)];
   const tagalogJoke = TAGALOG_JOKES[Math.floor(Math.random() * TAGALOG_JOKES.length)];
-  document.getElementById('greetingIcon').textContent = icon;
+  document.getElementById('greetingIcon').innerHTML = emoji3dHero(icon, fallback, glow);
   document.getElementById('greetingTitle').textContent = title + (name ? `, ${name}!` : '!');
   document.getElementById('greetingName').textContent = "Here's what's happening on the board today.";
   document.getElementById('greetingQuote').textContent = quote;
-  document.getElementById('greetingTagalog').textContent = '😄 ' + tagalogJoke;
+  document.getElementById('greetingTagalog').innerHTML = emoji3d('1f604', 22, '😄') + ' ' + escapeHtml(tagalogJoke);
   document.getElementById('greetingOverlay').classList.remove('hidden');
 }
 
 document.getElementById('greetingDismissBtn').onclick = () => {
   document.getElementById('greetingOverlay').classList.add('hidden');
 };
+
+function matchDrafteeName(friendlyName){
+  if(!friendlyName || !drafteeOptions || !drafteeOptions.length) return null;
+  const norm = s => (s||'').toLowerCase().replace(/[^a-z]/g,'');
+  const target = norm(friendlyName);
+  let match = drafteeOptions.find(n => norm(n) === target);
+  if(match) return match;
+  match = drafteeOptions.find(n => norm(n).includes(target) || target.includes(norm(n)));
+  if(match) return match;
+  const words = friendlyName.toLowerCase().split(/\s+/).filter(Boolean);
+  match = drafteeOptions.find(n => {
+    const nWords = n.toLowerCase().split(/\s+/);
+    return words.some(w => w.length > 2 && nWords.includes(w));
+  });
+  return match || null;
+}
+
+function getAssignedOpenItems(matchedName){
+  return rows.filter(r => {
+    const names = (r.draftee||'').split(',').map(s=>s.trim());
+    return names.includes(matchedName) && r.target_release_date && !r.actual_release_to_prodn_date;
+  });
+}
+
+function buildAssessment(items){
+  const total = items.length;
+  if(total === 0){
+    return "You don't have any open items assigned right now — a good moment to help teammates or get ahead on upcoming work.";
+  }
+  const behind = items.filter(r => getScheduleStatus(r) === 'behind').length;
+  const approaching = items.filter(r => getScheduleStatus(r) === 'approaching').length;
+  const onTrack = items.filter(r => getScheduleStatus(r) === 'ontrack').length;
+  if(behind === 0 && approaching === 0){
+    return `You're on track across all ${total} of your open item${total===1?'':'s'} — solid, consistent pace. Honest assessment: on track.`;
+  }
+  if(behind === 0){
+    return `Mostly on track: ${onTrack} on track, ${approaching} approaching ${approaching===1?'its':'their'} due date. Honest assessment: on track, but keep an eye on the ones approaching deadline.`;
+  }
+  if(behind <= Math.ceil(total/3)){
+    return `${behind} of your ${total} open item${total===1?'':'s'} ${behind===1?'is':'are'} running behind schedule. Honest assessment: slightly delayed — nothing dramatic, but worth a closer look this week.`;
+  }
+  return `${behind} of your ${total} open items are behind schedule — that's a real backlog building up. Honest assessment: delayed, and it needs active attention starting today.`;
+}
+
+function pickNextUp(items){
+  if(!items.length) return null;
+  return items.slice().sort((a,b) => scheduleDiffDays(a) - scheduleDiffDays(b))[0];
+}
+
+function buildPlanText(nextItem){
+  if(!nextItem) return "No open items right now — a great time to check in with your team lead for the next assignment, or get ahead on prep work.";
+  const diff = scheduleDiffDays(nextItem);
+  const label = nextItem.so_number || 'this item';
+  const urgency = diff < 0 ? `already ${-diff} day${-diff===1?'':'s'} behind`
+    : diff === 0 ? 'due today'
+    : `due in ${diff} day${diff===1?'':'s'}`;
+  return `Focus next on <b>${escapeHtml(label)}</b>${nextItem.item_name ? ' — ' + escapeHtml(nextItem.item_name) : ''}, ${urgency}. Clearing this one first will do the most to get your schedule back in shape — then move to the next-soonest item on your list.`;
+}
+
+function sumClockedMinutes(logs){
+  let total = 0;
+  logs.forEach(l => {
+    if(l.event_type === 'clock_stop' && l.description){
+      const m = l.description.match(/\+([\d.]+) min/);
+      if(m) total += parseFloat(m[1]);
+    }
+  });
+  return total;
+}
+
+function fmtDuration(minutes){
+  if(!minutes || minutes <= 0) return null;
+  const h = Math.floor(minutes/60);
+  const m = Math.round(minutes%60);
+  if(h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+async function fetchYesterdayRecap(matchedName){
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfYesterday = new Date(startOfToday); startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+  const { data, error } = await sb.from('activity_log').select('*')
+    .ilike('actor', matchedName)
+    .gte('created_at', startOfYesterday.toISOString())
+    .lt('created_at', startOfToday.toISOString());
+  if(error || !data || data.length === 0){
+    return "No logged activity yesterday — could've been a day off, or a good reminder to log updates as you go.";
+  }
+  const statusChanges = data.filter(d => d.event_type === 'status_changed').length;
+  const clockSessions = data.filter(d => d.event_type === 'clock_stop').length;
+  const released = data.filter(d => d.event_type === 'released').length;
+  const created = data.filter(d => d.event_type === 'created' || d.event_type === 'subitem_created').length;
+  const minutes = sumClockedMinutes(data);
+  const parts = [];
+  if(statusChanges) parts.push(`${statusChanges} status update${statusChanges===1?'':'s'}`);
+  if(clockSessions) parts.push(`${clockSessions} clock session${clockSessions===1?'':'s'}${fmtDuration(minutes) ? ' (' + fmtDuration(minutes) + ' logged)' : ''}`);
+  if(released) parts.push(`${released} release${released===1?'':'s'} to production`);
+  if(created) parts.push(`${created} new sub-process${created===1?'':'es'} started`);
+  if(parts.length === 0) parts.push(`${data.length} update${data.length===1?'':'s'} logged`);
+  return `Nice work — yesterday you logged ${parts.join(', ')}. Thank you for keeping the board up to date.`;
+}
+
+const ENCOURAGEMENT_LINES = [
+  "You've got this — one drawing at a time.",
+  "Every item you close out today is real progress. Keep going!",
+  "Consistency beats intensity — steady work wins the week.",
+  "Your team is counting on you, and you're showing up. That matters.",
+  "Small wins today add up to a strong week. Let's go!",
+  "Take it one sub-process at a time — you'll get there.",
+  "Proud of the work you're putting in. Keep it up!",
+  "Today's a fresh start — make it count."
+];
+
+async function populateBriefing(){
+  const briefingEl = document.getElementById('greetingBriefing');
+  if(!briefingEl) return;
+  const friendlyName = getFriendlyName(session?.user?.email);
+  const matchedName = matchDrafteeName(friendlyName);
+  if(!matchedName){
+    briefingEl.innerHTML = `<div class="briefing-section"><div class="briefing-text">No draftee profile matched to your login yet, so a personalized briefing isn't available — but everything else on the board is ready to go.</div></div>`;
+    return;
+  }
+  const items = getAssignedOpenItems(matchedName);
+  const assessmentText = buildAssessment(items);
+  const nextItem = pickNextUp(items);
+  const planText = buildPlanText(nextItem);
+  const recapText = await fetchYesterdayRecap(matchedName);
+  const encouragement = ENCOURAGEMENT_LINES[Math.floor(Math.random() * ENCOURAGEMENT_LINES.length)];
+
+  if(!document.getElementById('greetingBriefing')) return; // overlay closed before this resolved
+  briefingEl.innerHTML = `
+    <div class="briefing-section">
+      <div class="briefing-label">${emoji3d('1f4c5', 20, '📅')} Yesterday</div>
+      <div class="briefing-text">${recapText}</div>
+    </div>
+    <div class="briefing-section">
+      <div class="briefing-label">${emoji3d('1f4ca', 20, '📊')} Your Track Record</div>
+      <div class="briefing-text">${assessmentText}</div>
+    </div>
+    <div class="briefing-section">
+      <div class="briefing-label">${emoji3d('1f3af', 20, '🎯')} Next Up</div>
+      <div class="briefing-text">${planText}</div>
+    </div>
+    <div class="briefing-encouragement">${emoji3d('1f4aa', 20, '💪')} ${escapeHtml(encouragement)}</div>
+  `;
+}
 
 /* ---------------- DATA ---------------- */
 async function loadData(){
