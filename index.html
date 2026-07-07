@@ -1021,6 +1021,14 @@ async function loadData(){
   rows = data || [];
   collapsedSubitems = new Set(rows.map(r => r.id)); // collapse every item's sub-processes by default on each load
 
+  // project_status lives on the base table but isn't exposed by the so_schedule_computed view yet — merge it in directly
+  const { data: statusData } = await sb.from('so_schedule').select('id, project_status');
+  if(statusData){
+    const statusById = {};
+    statusData.forEach(s => { statusById[s.id] = s.project_status; });
+    rows.forEach(r => { r.project_status = statusById[r.id] ?? null; });
+  }
+
   const { data: subData, error: subError } = await sb.from('so_subitems').select('*').order('sort_order', {ascending:true});
   subitemsByParent = {};
   if(!subError && subData){
