@@ -573,6 +573,14 @@
   .greeting-tagalog{font-size:13px;color:var(--text-dim);line-height:1.5;margin-top:12px;padding-top:14px;border-top:1px dashed var(--border);}
   .greeting-briefing{margin-top:20px;padding-top:18px;border-top:1px solid var(--border);text-align:left;}
   .briefing-loading{text-align:center;font-size:13px;color:var(--text-dim);padding:10px 0;}
+  .briefing-skeleton-section{margin-bottom:14px;}
+  .briefing-skeleton-section:last-child{margin-bottom:0;}
+  .briefing-skel-block{
+    height:11px;border-radius:6px;background:linear-gradient(90deg,#eceef5 25%,#f5f6fa 37%,#eceef5 63%);
+    background-size:400% 100%;animation:skeleton-shimmer 1.4s ease infinite;
+  }
+  .briefing-fade-in{animation:briefing-fade-in .35s ease;}
+  @keyframes briefing-fade-in{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
   .briefing-section{margin-bottom:14px;}
   .briefing-section:last-child{margin-bottom:0;}
   .briefing-label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--primary-dark);margin-bottom:4px;display:flex;align-items:center;gap:6px;}
@@ -640,7 +648,24 @@
     <div class="greeting-quote" id="greetingQuote"></div>
     <div class="greeting-tagalog" id="greetingTagalog"></div>
     <div class="greeting-briefing" id="greetingBriefing">
-      <div class="briefing-loading">Pulling together your briefing…</div>
+      <div class="briefing-loading">
+        <div class="briefing-skeleton-section">
+          <div class="briefing-skel-block" style="width:70px;margin-bottom:6px;"></div>
+          <div class="briefing-skel-block" style="width:100%;margin-bottom:4px;"></div>
+          <div class="briefing-skel-block" style="width:82%;"></div>
+        </div>
+        <div class="briefing-skeleton-section">
+          <div class="briefing-skel-block" style="width:120px;margin-bottom:6px;"></div>
+          <div class="briefing-skel-block" style="width:100%;margin-bottom:4px;"></div>
+          <div class="briefing-skel-block" style="width:90%;"></div>
+        </div>
+        <div class="briefing-skeleton-section">
+          <div class="briefing-skel-block" style="width:80px;margin-bottom:6px;"></div>
+          <div class="briefing-skel-block" style="width:100%;margin-bottom:4px;"></div>
+          <div class="briefing-skel-block" style="width:75%;"></div>
+        </div>
+        <div class="briefing-skel-block" style="width:100%;height:40px;border-radius:10px;margin-top:16px;"></div>
+      </div>
     </div>
     <button class="greeting-btn" id="greetingDismissBtn">Let's get started →</button>
   </div>
@@ -1010,18 +1035,20 @@ const GREETING_LINES = [
 ];
 
 const TAGALOG_JOKES = [
-  "Bakit laging pagod ang guwardiya sa bangko? Kasi puro siya \"guard-ing\" buong araw!",
-  "Tanong: Ano ang tawag sa manok na nakatira sa buwan? — \"Space Chicken!\" (Wala lang, para may ngiti ka.)",
-  "Bakit hindi na natuto lumangoy ang kamatis? Kasi laging naka-\"catsup\" na lang.",
-  "Anong prutas ang laging nasa gitna? — Sa\"gitna\"ng-hapon... ay, saging! Sorry, mahilig lang sa puns.",
-  "Bakit mahilig sa math ang mangingisda? Kasi marunong siyang mag-\"multiply\" ng isda!",
-  "Ang taong may sakit sa ngipin, laging \"braces\" for impact.",
-  "Bakit ayaw kumain ng tokwa ang computer? Ayaw niya ng \"soft\" ware.",
-  "Anong sabi ng 0 kay 8? — \"Ang ganda ng belt mo!\"",
-  "Bakit hindi natatakot ang guro sa Monday? Kasi handa na siya sa \"class\" - ic na simula ng linggo.",
-  "Tanong: Bakit palaging updated ang balita sa dagat? Kasi may \"current\" affairs!",
-  "Anong tawag sa taong laging late pero laging may dahilan? — \"Traffic\" Tolentino.",
-  "Bakit ang lungkot ng WiFi? Kasi wala siyang \"connection\" sa'yo ngayon."
+  "Teacher: Juan, i-spell mo ang \"ice cream.\" Juan: I-C-E-C-R-E-A-M po. Teacher: Mali, wala kang \"M\" sa dulo. Juan: Kasi po, natunaw na yung M!",
+  "Anak: Tatay, totoo bang galing tayo sa unggoy? Tatay: 'Wag mong sabihin sa Tita mo, baka mag-alboroto ang buong pamilya.",
+  "Tindera: Manong, sariwa po ba itong isda? Manong: Sariwa na sariwa — kasama pa nga yung amoy dagat!",
+  "Estudyante: Ma'am, pwede na po bang umuwi? May sakit kasi ang Lola ko. Teacher: Sino, anak? Estudyante: Yung Lola sa YouTube po, paubos na load niya.",
+  "Bata: Nanay, san po pumupunta ang mga numero pag nagre-retire na? Nanay: Sa calculator, anak — doon sila nagpapahinga.",
+  "Ama: Anak, kailan ka magtatrabaho? Anak: 'Pag nag-viral na po ang TikTok ko. Ama: Anak, mag-viral ka sa aplikasyon, hindi sa dance.",
+  "Bakit ayaw magpakasal ng kalendaryo? Kasi natatakot siyang magbago ang mga \"dates\" niya.",
+  "Nanay: Anak, bakit ang bagal mong maligo? Anak: Kasi po sabi ni Ate, \"me time\" daw ito.",
+  "Bakit walang traffic papunta sa puso ni Nanay? Kasi laging bukas ang daan papunta sa'yo, anak.",
+  "Juan: Bakit ka humihingi ng tawad sa manok? Pedro: Tinanong ko kasi kung may itlog siya. Sagot niya, \"Egg-sactly!\"",
+  "Estudyante: Sir, pwede po bang hindi kami sumagot sa quiz? Teacher: Bakit naman? Estudyante: Wala pong nakasulat na \"required\" e.",
+  "Bakit hindi na-late si Hesus sa Last Supper? Kasi siya mismo ang nag-reserve ng table.",
+  "Tatay: Anak, bakit may bagsak ka sa Math? Anak: Kasi po, wala akong sagot na tama sa bahay eh — puro sagot ni Google.",
+  "Bakit ang tagal maghintay ng resulta ng NBI clearance? Kasi kasabay mo rin naghihintay ang pasensya mo."
 ];
 
 
@@ -1201,6 +1228,7 @@ async function populateBriefing(){
 
   if(!document.getElementById('greetingBriefing')) return; // overlay closed before this resolved
   briefingEl.innerHTML = `
+  <div class="briefing-fade-in">
     <div class="briefing-section">
       <div class="briefing-label">${emoji3d('1f4c5', 20, '📅')} Yesterday</div>
       <div class="briefing-text">${recapText}</div>
@@ -1214,6 +1242,7 @@ async function populateBriefing(){
       <div class="briefing-text">${planText}</div>
     </div>
     <div class="briefing-encouragement">${emoji3d('1f4aa', 20, '💪')} ${escapeHtml(encouragement)}</div>
+  </div>
   `;
 }
 
