@@ -321,6 +321,7 @@
   }
   tbody td{padding:11px 14px;white-space:nowrap;}
   td.item-name{font-weight:600;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  td.so-number-cell{width:90px;min-width:90px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}
   .gc-group{border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px;}
   .gc-group:last-child{margin-bottom:0;}
   .gc-group-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;}
@@ -338,9 +339,11 @@
   .gc-modal-foot{align-items:center;}
   .gc-summary{font-size:12.5px;color:var(--text-dim);flex:1;}
   .gc-summary-ok{color:var(--green);font-weight:700;}
-  .gc-summary-pending{color:var(--amber);font-weight:600;}
+  .gc-summary-count{color:var(--text-dim);font-weight:600;}
 
-  td.subtoggle-col{width:36px;min-width:36px;text-align:center;padding-left:6px;padding-right:6px;}
+  td.subtoggle-col{width:auto;min-width:36px;white-space:nowrap;text-align:left;padding-left:6px;padding-right:6px;}
+  td.subtoggle-col .subtoggle{vertical-align:middle;}
+  td.subtoggle-col .sched-fill-badge{margin-left:6px;vertical-align:middle;}
   .subtoggle{
     display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;
     cursor:pointer;color:var(--text-dim);font-size:15px;font-weight:700;
@@ -1112,6 +1115,7 @@ let absentToday = new Set();
 let filterClockedIn = false;
 let sortBy = '';
 let collapsedSubitems = new Set();
+let hasLoadedOnce = false;
 let editingId = null; // null = new item
 let currentPresetJobType = 'SO';
 let tickerStarted = false;
@@ -1414,6 +1418,7 @@ async function populateBriefing(){
 
 /* ---------------- DATA ---------------- */
 async function loadData(){
+  const savedScrollY = window.scrollY;
   document.getElementById('boardRoot').innerHTML = `<div class="skeleton-wrap">${Array.from({length:6}).map(() => `
     <div class="skeleton-row">
       <div class="skeleton-block" style="width:80px;"></div>
@@ -1429,7 +1434,10 @@ async function loadData(){
     return;
   }
   rows = data || [];
-  collapsedSubitems = new Set(rows.map(r => r.id)); // collapse every item's sub-processes by default on each load
+  if(!hasLoadedOnce){
+    collapsedSubitems = new Set(rows.map(r => r.id)); // collapse everything only on the very first load
+    hasLoadedOnce = true;
+  }
 
   // project_status lives on the base table but isn't exposed by the so_schedule_computed view yet — merge it in directly
   const { data: statusData } = await sb.from('so_schedule').select('id, project_status');
@@ -1488,6 +1496,7 @@ async function loadData(){
 
   renderBoard();
   startTicker();
+  window.scrollTo(0, savedScrollY);
 }
 
 function populateFilterDropdowns(){
@@ -1628,7 +1637,7 @@ function renderBoard(){
         <div class="table-scroll" id="${scrollId}">
         <table class="board-table">
           <thead><tr>
-            <th>SO Number</th><th></th><th>Company</th><th>Item</th><th>Draftee</th><th>Sales Person</th><th>DIFOT</th><th>DIFOT Days</th><th>Class</th><th>RCD/RC</th>
+            <th class="so-number-cell" style="width:90px;">SO Number</th><th></th><th>Company</th><th>Item</th><th>Draftee</th><th>Sales Person</th><th>DIFOT</th><th>DIFOT Days</th><th>Class</th><th>RCD/RC</th>
             <th>Drafting Transfer</th><th>Target Start</th><th>Target Release</th><th>Actual Release to Prodn</th><th>Project Sales</th><th>Aging</th><th>Actual Hrs</th><th>O/A Excess</th><th>Move to Group</th>
           </tr></thead>
           <tbody>
@@ -1871,10 +1880,10 @@ function rowHtml(r){
   const rowSeq = drafteeRowSeq[r.id];
   const drafteeSeqBadge = rowSeq ? `<span class="draftee-seq-badge" title="${escapeHtml(r.draftee)}'s job queue position, by scheduled date">Job ${rowSeq.seq}/${rowSeq.total}</span>` : '';
   const mainRow = `<tr id="row_${r.id}" class="${scheduleClass}" onclick="openModal('${r.id}')">
-    <td class="item-name">${escapeHtml(r.so_number||'—')}</td>
-    <td class="subtoggle-col" onclick="event.stopPropagation()">${subToggle}</td>
+    <td class="so-number-cell">${escapeHtml(r.so_number||'—')}</td>
+    <td class="subtoggle-col" onclick="event.stopPropagation()">${subToggle}${schedFillBadge}</td>
     <td>${escapeHtml(r.company_name||'—')}</td>
-    <td class="item-name">${escapeHtml(r.item_name||'(untitled)')}${schedFillBadge}</td>
+    <td class="item-name">${escapeHtml(r.item_name||'(untitled)')}</td>
     <td>${escapeHtml(r.draftee||'—')}${drafteeSeqBadge}</td>
     <td>${escapeHtml(r.sales_person||'—')}</td>
     <td>${difot}</td>
@@ -2337,7 +2346,7 @@ function updateGaCheckpointSummary(){
     summaryEl.innerHTML = `<span class="gc-summary-ok">✓ All ${v.totalItems} checkpoints filled — ready to mark Done.</span>`;
     confirmBtn.disabled = false;
   } else {
-    summaryEl.innerHTML = `<span class="gc-summary-pending">${v.filledItems} / ${v.totalItems} checkpoints filled — still needs: ${escapeHtml(v.incompleteGroups.join(', '))}</span>`;
+    summaryEl.innerHTML = `<span class="gc-summary-count">${v.filledItems} / ${v.totalItems} checkpoints filled</span>`;
     confirmBtn.disabled = true;
   }
 }
