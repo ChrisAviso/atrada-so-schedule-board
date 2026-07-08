@@ -137,14 +137,18 @@
   }
   .active-panel-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--green);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
   .active-panel-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.2s infinite;}
-  .active-panel-row{display:flex;gap:14px;align-items:center;padding:6px 0;font-size:13px;border-bottom:1px solid rgba(18,184,134,.15);}
+  .active-panel-row{
+    display:grid;grid-template-columns:72px 1fr 1.4fr 150px 130px 90px;gap:14px;align-items:center;
+    padding:6px 0;font-size:13px;border-bottom:1px solid rgba(18,184,134,.15);cursor:pointer;
+  }
+  .active-panel-row:hover{background:rgba(18,184,134,.06);}
   .active-panel-row:last-child{border-bottom:none;}
-  .active-panel-item{font-weight:600;color:var(--text);min-width:90px;}
-  .active-panel-company{color:var(--text-dim);font-size:12px;min-width:100px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .active-panel-itemname{color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .active-panel-item{font-weight:600;color:var(--text);}
+  .active-panel-company{color:var(--text-dim);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .active-panel-itemname{color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .active-panel-stage{color:var(--text-dim);}
   .active-panel-who{color:var(--text-dim);}
-  .active-panel-time{font-family:'JetBrains Mono',monospace;color:var(--green);font-weight:700;}
+  .active-panel-time{font-family:'JetBrains Mono',monospace;color:var(--green);font-weight:700;text-align:right;}
 
   .not-clocked-panel{
     background:linear-gradient(135deg,#fff4e5,#ffe9d6);border:2px solid var(--amber);
@@ -1635,7 +1639,7 @@ function activePanelHtml(){
   });
   if(activeEntries.length === 0) return '';
   const rowsHtml = activeEntries.map(({sub,parent}) => `
-    <div class="active-panel-row">
+    <div class="active-panel-row" ${parent ? `onclick="scrollToItem('${parent.id}')" title="Jump to this item"` : ''}>
       <span class="active-panel-item">${escapeHtml(parent?.so_number || '—')}</span>
       <span class="active-panel-company">${escapeHtml(parent?.company_name || '—')}</span>
       <span class="active-panel-itemname">${escapeHtml(parent?.item_name || '—')}</span>
