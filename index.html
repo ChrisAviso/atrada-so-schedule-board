@@ -307,27 +307,64 @@
   tr.row-approaching:hover{background:#fef8e7;}
   tr.row-behind{border-left:3px solid var(--red);background:#fffbfb;}
   tr.row-behind:hover{background:#fdedef;}
-  .board-table thead th:nth-child(7),.board-table thead th:nth-child(10),.board-table thead th:nth-child(11),
-  .board-table thead th:nth-child(12),.board-table thead th:nth-child(13),.board-table thead th:nth-child(14),
-  .board-table thead th:nth-child(15),.board-table thead th:nth-child(16),.board-table thead th:nth-child(17){
+  .board-table thead th:nth-child(8),.board-table thead th:nth-child(11),.board-table thead th:nth-child(12),
+  .board-table thead th:nth-child(13),.board-table thead th:nth-child(14),.board-table thead th:nth-child(15),
+  .board-table thead th:nth-child(16),.board-table thead th:nth-child(17),.board-table thead th:nth-child(18){
     text-align:right;
   }
-  .board-table tbody tr:not(.subrow) td:nth-child(7),.board-table tbody tr:not(.subrow) td:nth-child(10),
-  .board-table tbody tr:not(.subrow) td:nth-child(11),.board-table tbody tr:not(.subrow) td:nth-child(12),
-  .board-table tbody tr:not(.subrow) td:nth-child(13),.board-table tbody tr:not(.subrow) td:nth-child(14),
-  .board-table tbody tr:not(.subrow) td:nth-child(15),.board-table tbody tr:not(.subrow) td:nth-child(16),
-  .board-table tbody tr:not(.subrow) td:nth-child(17){
+  .board-table tbody tr:not(.subrow) td:nth-child(8),.board-table tbody tr:not(.subrow) td:nth-child(11),
+  .board-table tbody tr:not(.subrow) td:nth-child(12),.board-table tbody tr:not(.subrow) td:nth-child(13),
+  .board-table tbody tr:not(.subrow) td:nth-child(14),.board-table tbody tr:not(.subrow) td:nth-child(15),
+  .board-table tbody tr:not(.subrow) td:nth-child(16),.board-table tbody tr:not(.subrow) td:nth-child(17),
+  .board-table tbody tr:not(.subrow) td:nth-child(18){
     text-align:right;font-variant-numeric:tabular-nums;
   }
   tbody td{padding:11px 14px;white-space:nowrap;}
   td.item-name{font-weight:600;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .gc-group{border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px;}
+  .gc-group:last-child{margin-bottom:0;}
+  .gc-group-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;}
+  .gc-group-title{font-weight:700;font-size:13.5px;color:var(--text);}
+  .gc-group-subtitle{font-size:12px;color:var(--text-dim);margin-top:2px;font-style:italic;}
+  .gc-group-na{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim);white-space:nowrap;cursor:pointer;font-weight:600;}
+  .gc-group-na input{margin:0;}
+  .gc-items{display:flex;flex-direction:column;gap:8px;}
+  .gc-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 8px;border-radius:6px;background:#fbfbfd;}
+  .gc-check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);cursor:pointer;flex:1;}
+  .gc-check input{margin:0;flex-shrink:0;}
+  .gc-na{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--text-dim);white-space:nowrap;cursor:pointer;font-weight:600;flex-shrink:0;}
+  .gc-na input{margin:0;}
+  .gc-item.gc-item-na{opacity:.55;}
+  .gc-modal-foot{align-items:center;}
+  .gc-summary{font-size:12.5px;color:var(--text-dim);flex:1;}
+  .gc-summary-ok{color:var(--green);font-weight:700;}
+  .gc-summary-pending{color:var(--amber);font-weight:600;}
+
+  td.subtoggle-col{width:36px;min-width:36px;text-align:center;padding-left:6px;padding-right:6px;}
   .subtoggle{
-    display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
-    margin-right:6px;cursor:pointer;color:var(--text-dim);font-size:14px;
-    border-radius:5px;
+    display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;
+    cursor:pointer;color:var(--text-dim);font-size:15px;font-weight:700;
+    border-radius:6px;border:1.5px solid var(--border);background:#fff;
   }
-  .subtoggle:hover{background:var(--gray-pill);color:var(--primary);}
-  .subtoggle-empty{cursor:default;visibility:hidden;}
+  .subtoggle:hover{background:var(--gray-pill);color:var(--primary);border-color:var(--primary);}
+  .subtoggle-empty{cursor:default;visibility:hidden;border-color:transparent;}
+  .sched-fill-badge{
+    display:inline-flex;align-items:center;gap:3px;margin-left:8px;padding:2px 7px;
+    border-radius:10px;font-size:10.5px;font-weight:700;font-family:'JetBrains Mono',monospace;
+    vertical-align:middle;white-space:nowrap;
+  }
+  .sched-fill-low{background:#fdecec;color:var(--red);}
+  .sched-fill-mid{background:#fff6e0;color:var(--amber);}
+  .sched-fill-full{background:#e6f7ef;color:var(--green);}
+  .draftee-seq-badge{
+    display:inline-flex;align-items:center;margin-left:6px;padding:1px 6px;
+    border-radius:8px;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;
+    background:var(--gray-pill);color:var(--text-dim);vertical-align:middle;
+  }
+  .sub-sched-hour{
+    font-size:11px;border:1.5px solid var(--border);border-radius:6px;padding:3px 4px;
+    font-family:'JetBrains Mono',monospace;background:#fbfbfd;color:var(--text-dim);margin:0 2px;
+  }
   .move-group-select{
     font-size:11.5px;border:1.5px solid var(--border);border-radius:6px;
     padding:5px 7px;font-family:inherit;background:#fbfbfd;color:var(--text-dim);
@@ -658,6 +695,25 @@
   </div>
 </div>
 
+<div class="modal-backdrop hidden" id="gaCheckpointModalBackdrop">
+  <div class="modal ga-checkpoint-modal">
+    <div class="modal-head">
+      <h2>GA Approval Checkpoints</h2>
+      <button class="modal-close" id="gaCheckpointCloseBtn">✕</button>
+    </div>
+    <div class="modal-body" id="gaCheckpointBody">
+      <!-- filled by JS -->
+    </div>
+    <div class="modal-foot gc-modal-foot">
+      <div id="gaCheckpointSummary" class="gc-summary"></div>
+      <div class="foot-right">
+        <button class="btn-secondary" id="gaCheckpointCancelBtn">Cancel</button>
+        <button class="btn-primary-sm" id="gaCheckpointConfirmBtn" disabled>Confirm &amp; mark Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ===================== GREETING OVERLAY ===================== -->
 <div id="greetingOverlay" class="greeting-overlay hidden">
   <div class="greeting-card">
@@ -926,9 +982,120 @@ function isSupervisor(){
   return SUPERVISOR_EMAILS.includes(session.user.email.toLowerCase());
 }
 
+const GA_CHECKPOINT_GROUPS = [
+  {
+    key: 'lower_drawing_block',
+    title: 'Lower Drawing Block Details',
+    subtitle: 'GA Approval — are these correct?',
+    allowNA: false,
+    items: [
+      'SO number',
+      "Client's detail",
+      'Assembly code',
+      'Assembly name',
+      'Revision Number',
+      'Drawn Date',
+      'Checked Date',
+      'Approval Date',
+    ]
+  },
+  {
+    key: 'painting_block',
+    title: 'Painting Block Details',
+    allowNA: true,
+    items: [
+      'Paint Colour internally',
+      'Paint Colour externally',
+      'Paint Type (2 pak, Galv/Pre-Galv, Powder Coat)',
+    ]
+  },
+  {
+    key: 'electrical',
+    title: 'Electrical Details',
+    allowNA: true,
+    items: [
+      'Electrical Incomer 1 Phase',
+      'Electrical Incomer 3 Phase',
+      "Correct type and q'ty of GPO",
+      "Correct type and q'ty of Light Switch",
+      "Correct type and q'ty of Junction Box",
+      "Correct type and q'ty of Distribution Box",
+      "Correct type and q'ty of Caravan Inlet Plug",
+      "Correct type and q'ty of Isolator",
+      "Correct type and q'ty of Exit Lights",
+    ]
+  },
+  {
+    key: 'ga_drawing',
+    title: 'GA Drawing',
+    allowNA: false,
+    items: [
+      'Read and understand the Sales Order description and Cost Sheet',
+      "Verify that items and q'ty listed in the SO and Cost Sheet are in conformity",
+      'O/A dimensions of the container',
+      'Clear internal dimensions',
+      'Clear spacing dimensions',
+      'O/A dimensions of all items inside or outside the container',
+      'Location dimensions of all items inside and outside the container',
+      'Proper distribution and spacing of all dimensions',
+      'Correct section views (where the arrow points)',
+      'Complete and correct Netsuite code for all items inside and outside the container',
+    ]
+  },
+  {
+    key: 'stickers_container',
+    title: 'Stickers & Plaque — For Container',
+    allowNA: true,
+    items: [
+      '2x (ST23415) Container Sticker – Atrada Colored Graphics (1x on each external long side)',
+      '2x (ST23413) Atrada Large Sticker (White Graphics) (1x on the container door external and internal side)',
+    ]
+  },
+  {
+    key: 'stickers_box',
+    title: 'Stickers & Plaque — For Box, Cages, Framed & Stand-Alone Assembly',
+    allowNA: true,
+    items: [
+      '(PL23404-SA) Atrada Plaque - 84 x 30 Sub-Assy',
+      '(PL23405-SA) Atrada Plaque For CRLD Bins Sub-Assy',
+      '(PL23406-SA) Atrada Plaque 125 x 30 Sub-Assy',
+      '(ST23411) Atrada Large Sticker (Blue Graphics)',
+      '(ST23412) Atrada Large Sticker (Blue Graphics)',
+      '(ST23413) Atrada Large Sticker (White Graphics)',
+      '(ST23414) Atrada Large Sticker (White Graphics)',
+      '(ST19702) Empty Lifting Sticker 32mm (White Graphics)',
+      '(ST22848) Empty Lifting Sticker 32mm (Black Graphics)',
+      '(ST029) Tie Down Points Only Sticker',
+      '(ST009) Lifting Lugs Sticker',
+      'Correct WLL sticker',
+    ]
+  },
+  {
+    key: 'stickers_lubestation',
+    title: 'Stickers & Plaque — For Lubestation',
+    allowNA: true,
+    items: [
+      'Correct line number stickers (32mm height) for pumps',
+      'Correct line number stickers (32mm height) for dispensers (inside box)',
+      'Correct line oil/waste/grease/coolant name stickers (32mm height) (inside box)',
+      'Correct line oil/waste/grease/coolant name stickers (32mm height) (on doors)',
+      '(ST19702) Empty Lifting Sticker 32mm (White Graphics)',
+      '(ST22848) Empty Lifting Sticker 32mm (Black Graphics)',
+      '(ST029) Tie Down Points Only Sticker',
+      '(ST009) Lifting Lugs Sticker',
+      'Correct bund capacity sticker',
+    ]
+  },
+];
+
+let gaCheckpointSubitemId = null;
+let gaCheckpointSelectEl = null;
+let gaCheckpointState = {};
+
 let session = null;
 let rows = [];
 let subitemsByParent = {};
+let drafteeRowSeq = {}; // { rowId: {seq, total} } — this row's position in its draftee's overall job queue, ordered by schedule/target date
 let logsBySubitem = {};
 let salesPersonOptions = [];
 let drafteeOptions = [];
@@ -1115,149 +1282,130 @@ document.getElementById('greetingDismissBtn').onclick = () => {
   document.getElementById('greetingOverlay').classList.add('hidden');
 };
 
-function matchDrafteeName(friendlyName){
-  if(!friendlyName || !drafteeOptions || !drafteeOptions.length) return null;
-  const norm = s => (s||'').toLowerCase().replace(/[^a-z]/g,'');
-  const target = norm(friendlyName);
-  let match = drafteeOptions.find(n => norm(n) === target);
-  if(match) return match;
-  match = drafteeOptions.find(n => norm(n).includes(target) || target.includes(norm(n)));
-  if(match) return match;
-  const words = friendlyName.toLowerCase().split(/\s+/).filter(Boolean);
-  match = drafteeOptions.find(n => {
-    const nWords = n.toLowerCase().split(/\s+/);
-    return words.some(w => w.length > 2 && nWords.includes(w));
-  });
-  return match || null;
-}
-
-function getAssignedOpenItems(matchedName){
-  return rows.filter(r => {
-    const names = (r.draftee||'').split(',').map(s=>s.trim());
-    return names.includes(matchedName) && r.target_release_date && !r.actual_release_to_prodn_date;
-  });
-}
-
-function buildAssessment(items){
-  const total = items.length;
-  if(total === 0){
-    return "You don't have any open items assigned right now — a good moment to help teammates or get ahead on upcoming work.";
-  }
-  const behind = items.filter(r => getScheduleStatus(r) === 'behind').length;
-  const approaching = items.filter(r => getScheduleStatus(r) === 'approaching').length;
-  const onTrack = items.filter(r => getScheduleStatus(r) === 'ontrack').length;
-  if(behind === 0 && approaching === 0){
-    return `You're on track across all ${total} of your open item${total===1?'':'s'} — solid, consistent pace. Honest assessment: on track.`;
-  }
-  if(behind === 0){
-    return `Mostly on track: ${onTrack} on track, ${approaching} approaching ${approaching===1?'its':'their'} due date. Honest assessment: on track, but keep an eye on the ones approaching deadline.`;
-  }
-  if(behind <= Math.ceil(total/3)){
-    return `${behind} of your ${total} open item${total===1?'':'s'} ${behind===1?'is':'are'} running behind schedule. Honest assessment: slightly delayed — nothing dramatic, but worth a closer look this week.`;
-  }
-  return `${behind} of your ${total} open items are behind schedule — that's a real backlog building up. Honest assessment: delayed, and it needs active attention starting today.`;
-}
-
-function pickNextUp(items){
-  if(!items.length) return null;
-  return items.slice().sort((a,b) => scheduleDiffDays(a) - scheduleDiffDays(b))[0];
-}
-
-function buildPlanText(nextItem){
-  if(!nextItem) return "No open items right now — a great time to check in with your team lead for the next assignment, or get ahead on prep work.";
-  const diff = scheduleDiffDays(nextItem);
-  const label = nextItem.so_number || 'this item';
-  const urgency = diff < 0 ? `already ${-diff} day${-diff===1?'':'s'} behind`
-    : diff === 0 ? 'due today'
-    : `due in ${diff} day${diff===1?'':'s'}`;
-  return `Focus next on <b>${escapeHtml(label)}</b>${nextItem.item_name ? ' — ' + escapeHtml(nextItem.item_name) : ''}, ${urgency}. Clearing this one first will do the most to get your schedule back in shape — then move to the next-soonest item on your list.`;
-}
-
-function sumClockedMinutes(logs){
-  let total = 0;
-  logs.forEach(l => {
-    if(l.event_type === 'clock_stop' && l.description){
-      const m = l.description.match(/\+([\d.]+) min/);
-      if(m) total += parseFloat(m[1]);
-    }
-  });
-  return total;
-}
-
-function fmtDuration(minutes){
-  if(!minutes || minutes <= 0) return null;
-  const h = Math.floor(minutes/60);
-  const m = Math.round(minutes%60);
-  if(h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
-}
-
-async function fetchYesterdayRecap(matchedName){
+function buildDrafteeBriefing(myName){
   const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startOfYesterday = new Date(startOfToday); startOfYesterday.setDate(startOfYesterday.getDate() - 1);
-  const { data, error } = await sb.from('activity_log').select('*')
-    .ilike('actor', matchedName)
-    .gte('created_at', startOfYesterday.toISOString())
-    .lt('created_at', startOfToday.toISOString());
-  if(error || !data || data.length === 0){
-    return "No logged activity yesterday — could've been a day off, or a good reminder to log updates as you go.";
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterdayStart = new Date(todayStart); yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+
+  const parentById = {};
+  rows.forEach(r => { parentById[r.id] = r; });
+
+  /* ---- Yesterday's logged work, from time-clock entries on subitems assigned to this draftee ---- */
+  let yesterdaySeconds = 0;
+  const stageSeen = new Set();
+  const yesterdayStages = [];
+  Object.keys(subitemsByParent).forEach(parentId => {
+    (subitemsByParent[parentId] || []).forEach(s => {
+      const assigned = (s.draftee || '').split(',').map(x => x.trim()).includes(myName);
+      if(!assigned) return;
+      (logsBySubitem[s.id] || []).forEach(l => {
+        const started = new Date(l.started_at);
+        if(started >= yesterdayStart && started < todayStart){
+          const dur = l.duration_seconds != null ? l.duration_seconds :
+            (l.ended_at ? Math.max(0, Math.floor((new Date(l.ended_at) - started) / 1000)) : 0);
+          yesterdaySeconds += dur;
+          const parent = parentById[parentId];
+          const label = parent ? (parent.so_number || parent.item_name || 'an item') : 'an item';
+          const key = label + '|' + s.subitem_type;
+          if(!stageSeen.has(key)){ stageSeen.add(key); yesterdayStages.push(`${label} — ${s.subitem_type}`); }
+        }
+      });
+    });
+  });
+
+  /* ---- Items assigned to this draftee (parent level) ---- */
+  const myItems = rows.filter(r => (r.draftee || '').split(',').map(x => x.trim()).includes(myName));
+  const completedItems = myItems.filter(r => r.actual_release_to_prodn_date);
+  const openItems = myItems.filter(r => !r.actual_release_to_prodn_date && r.target_release_date);
+  const statused = openItems.map(r => ({ r, status: getScheduleStatus(r), diff: scheduleDiffDays(r) }));
+  const behindCount = statused.filter(x => x.status === 'behind').length;
+
+  /* ---- Honest assessment ---- */
+  let assessment;
+  if(openItems.length === 0){
+    assessment = completedItems.length > 0
+      ? `You have no open items right now — everything assigned to you is complete. Clean slate!`
+      : `You don't have any items assigned yet — check in with your supervisor for your next job.`;
+  } else if(behindCount === 0){
+    assessment = openItems.length === 1
+      ? `You're on track — your 1 open item is within schedule.`
+      : `You're on track — all ${openItems.length} of your open items are within schedule.`;
+  } else if(behindCount < openItems.length){
+    assessment = `You're mostly on track, but ${behindCount} of your ${openItems.length} open item${openItems.length === 1 ? '' : 's'} ${behindCount === 1 ? 'is' : 'are'} running behind and need${behindCount === 1 ? 's' : ''} attention.`;
+  } else {
+    assessment = `You're currently behind on all ${openItems.length} of your open item${openItems.length === 1 ? '' : 's'} — let's prioritize catching up today.`;
   }
-  const statusChanges = data.filter(d => d.event_type === 'status_changed').length;
-  const clockSessions = data.filter(d => d.event_type === 'clock_stop').length;
-  const released = data.filter(d => d.event_type === 'released').length;
-  const created = data.filter(d => d.event_type === 'created' || d.event_type === 'subitem_created').length;
-  const minutes = sumClockedMinutes(data);
-  const parts = [];
-  if(statusChanges) parts.push(`${statusChanges} status update${statusChanges===1?'':'s'}`);
-  if(clockSessions) parts.push(`${clockSessions} clock session${clockSessions===1?'':'s'}${fmtDuration(minutes) ? ' (' + fmtDuration(minutes) + ' logged)' : ''}`);
-  if(released) parts.push(`${released} release${released===1?'':'s'} to production`);
-  if(created) parts.push(`${created} new sub-process${created===1?'':'es'} started`);
-  if(parts.length === 0) parts.push(`${data.length} update${data.length===1?'':'s'} logged`);
-  return `Nice work — yesterday you logged ${parts.join(', ')}. Thank you for keeping the board up to date.`;
+
+  /* ---- Plan: most urgent open item first (most overdue, else soonest due) ---- */
+  const sortedByUrgency = statused.slice().sort((a, b) => a.diff - b.diff);
+  const next = sortedByUrgency[0];
+  let planText;
+  if(next){
+    const r = next.r;
+    const label = r.so_number || r.item_name || 'your next item';
+    const diff = next.diff;
+    const dueText = diff < 0 ? `${-diff} day${-diff === 1 ? '' : 's'} overdue`
+      : diff === 0 ? 'due today'
+      : `due in ${diff} day${diff === 1 ? '' : 's'}`;
+    const mySubs = (subitemsByParent[r.id] || []).filter(s => (s.draftee || '').split(',').map(x => x.trim()).includes(myName));
+    const activeStage = mySubs.find(s => s.status === 'In Progress') || mySubs.find(s => s.status === 'Not Started' || s.status === 'On-Hold');
+    const stageText = activeStage ? ` Start with "${activeStage.subitem_type}" to keep it moving.` : '';
+    const itemNameSuffix = (r.item_name && r.item_name !== label) ? ` (${r.item_name})` : '';
+    planText = `Focus next on ${label}${itemNameSuffix} — ${dueText}.${stageText}`;
+  } else {
+    planText = `No open items in the queue right now — a great time to check with your supervisor for what's next.`;
+  }
+
+  return { yesterdaySeconds, yesterdayStages, completedCount: completedItems.length, openCount: openItems.length, behindCount, assessment, planText };
 }
 
-const ENCOURAGEMENT_LINES = [
-  "You've got this — one drawing at a time.",
-  "Every item you close out today is real progress. Keep going!",
-  "Consistency beats intensity — steady work wins the week.",
-  "Your team is counting on you, and you're showing up. That matters.",
-  "Small wins today add up to a strong week. Let's go!",
-  "Take it one sub-process at a time — you'll get there.",
-  "Proud of the work you're putting in. Keep it up!",
-  "Today's a fresh start — make it count."
-];
+function fmtFriendlyDuration(totalSeconds){
+  if(!totalSeconds || totalSeconds <= 0) return null;
+  const h = Math.floor(totalSeconds/3600);
+  const m = Math.floor((totalSeconds%3600)/60);
+  if(h === 0) return `${m}m`;
+  if(m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
 
 async function populateBriefing(){
   const briefingEl = document.getElementById('greetingBriefing');
   if(!briefingEl) return;
-  const friendlyName = getFriendlyName(session?.user?.email);
-  const matchedName = matchDrafteeName(friendlyName);
-  if(!matchedName){
+  const myName = getMyDrafteeName();
+  if(!myName){
     briefingEl.innerHTML = `<div class="briefing-section"><div class="briefing-text">No draftee profile matched to your login yet, so a personalized briefing isn't available — but everything else on the board is ready to go.</div></div>`;
     return;
   }
-  const items = getAssignedOpenItems(matchedName);
-  const assessmentText = buildAssessment(items);
-  const nextItem = pickNextUp(items);
-  const planText = buildPlanText(nextItem);
-  const recapText = await fetchYesterdayRecap(matchedName);
-  const encouragement = ENCOURAGEMENT_LINES[Math.floor(Math.random() * ENCOURAGEMENT_LINES.length)];
+  const b = buildDrafteeBriefing(myName);
+  const friendlyDur = fmtFriendlyDuration(b.yesterdaySeconds);
+  const recapText = friendlyDur
+    ? `Yesterday you logged ${friendlyDur} on: ${b.yesterdayStages.join(', ')}.`
+    : `No time logged yesterday — let's make today count.`;
+  const appreciationText = b.completedCount > 0
+    ? `You've completed ${b.completedCount} item${b.completedCount === 1 ? '' : 's'} so far — great work keeping things moving!`
+    : `You're just getting started — every item you complete builds momentum.`;
+  const encouragement = b.behindCount > 0
+    ? `Keep pushing — closing out one stage at a time is how the behind items turn into on-time wins. You've got this!`
+    : `Keep up the great work — steady, consistent progress is exactly what keeps the whole board on track!`;
 
   if(!document.getElementById('greetingBriefing')) return; // overlay closed before this resolved
   briefingEl.innerHTML = `
   <div class="briefing-fade-in">
     <div class="briefing-section">
       <div class="briefing-label">${emoji3d('1f4c5', 20, '📅')} Yesterday</div>
-      <div class="briefing-text">${recapText}</div>
+      <div class="briefing-text">${escapeHtml(recapText)}</div>
+    </div>
+    <div class="briefing-section">
+      <div class="briefing-label">${emoji3d('1f64c', 20, '🙌')} Appreciation</div>
+      <div class="briefing-text">${escapeHtml(appreciationText)}</div>
     </div>
     <div class="briefing-section">
       <div class="briefing-label">${emoji3d('1f4ca', 20, '📊')} Your Track Record</div>
-      <div class="briefing-text">${assessmentText}</div>
+      <div class="briefing-text">${escapeHtml(b.assessment)}</div>
     </div>
     <div class="briefing-section">
       <div class="briefing-label">${emoji3d('1f3af', 20, '🎯')} Next Up</div>
-      <div class="briefing-text">${planText}</div>
+      <div class="briefing-text">${escapeHtml(b.planText)}</div>
     </div>
     <div class="briefing-encouragement">${emoji3d('1f4aa', 20, '💪')} ${escapeHtml(encouragement)}</div>
   </div>
@@ -1290,6 +1438,25 @@ async function loadData(){
     statusData.forEach(s => { statusById[s.id] = s.project_status; });
     rows.forEach(r => { r.project_status = statusById[r.id] ?? null; });
   }
+
+  drafteeRowSeq = {};
+  const byDrafteeRows = {};
+  rows.forEach(r => {
+    if(r.actual_release_to_prodn_date) return; // already released — not part of the active queue
+    const orderDate = r.schedule_start_date || r.target_start_date || r.drafting_transfer_date;
+    if(!orderDate) return;
+    (r.draftee || '').split(',').map(x => x.trim()).filter(Boolean).forEach(n => {
+      (byDrafteeRows[n] = byDrafteeRows[n] || []).push(r);
+    });
+  });
+  Object.values(byDrafteeRows).forEach(list => {
+    list.sort((a, b) => {
+      const da = a.schedule_start_date || a.target_start_date || a.drafting_transfer_date;
+      const db = b.schedule_start_date || b.target_start_date || b.drafting_transfer_date;
+      return new Date(da).getTime() - new Date(db).getTime();
+    });
+    list.forEach((r, idx) => { drafteeRowSeq[r.id] = { seq: idx + 1, total: list.length }; });
+  });
 
   const { data: subData, error: subError } = await sb.from('so_subitems').select('*').order('sort_order', {ascending:true});
   subitemsByParent = {};
@@ -1461,7 +1628,7 @@ function renderBoard(){
         <div class="table-scroll" id="${scrollId}">
         <table class="board-table">
           <thead><tr>
-            <th>SO Number</th><th>Company</th><th>Item</th><th>Draftee</th><th>Sales Person</th><th>DIFOT</th><th>DIFOT Days</th><th>Class</th><th>RCD/RC</th>
+            <th>SO Number</th><th></th><th>Company</th><th>Item</th><th>Draftee</th><th>Sales Person</th><th>DIFOT</th><th>DIFOT Days</th><th>Class</th><th>RCD/RC</th>
             <th>Drafting Transfer</th><th>Target Start</th><th>Target Release</th><th>Actual Release to Prodn</th><th>Project Sales</th><th>Aging</th><th>Actual Hrs</th><th>O/A Excess</th><th>Move to Group</th>
           </tr></thead>
           <tbody>
@@ -1469,12 +1636,12 @@ function renderBoard(){
           </tbody>
           <tfoot>
             <tr class="group-foot">
-              <td colspan="13">Group totals</td>
+              <td colspan="14">Group totals</td>
               <td>${fmtMoney(totalSales)}</td>
               <td colspan="4"></td>
             </tr>
             <tr class="group-foot">
-              <td colspan="6">Average DIFOT days</td>
+              <td colspan="7">Average DIFOT days</td>
               <td>${avgDifot !== null ? avgDifot.toFixed(1) : '—'}</td>
               <td colspan="11"></td>
             </tr>
@@ -1676,30 +1843,6 @@ function getScheduleStatus(r){
   return 'ontrack';
 }
 
-function getPrimaryDraftee(r){
-  return (r.draftee||'').split(',').map(s=>s.trim()).filter(Boolean)[0] || null;
-}
-
-function jobOrderPill(r){
-  const name = getPrimaryDraftee(r);
-  if(!name) return '';
-  const assigned = rows.filter(x => getPrimaryDraftee(x) === name)
-    .slice()
-    .sort((a,b) => new Date(a.created_at||0) - new Date(b.created_at||0));
-  const idx = assigned.findIndex(x => x.id === r.id);
-  if(idx === -1 || assigned.length < 2) return '';
-  return ` <span class="job-order-pill">Job ${idx+1}/${assigned.length}</span>`;
-}
-
-function progressBadge(r){
-  const subs = subitemsByParent[r.id] || [];
-  if(subs.length === 0) return '';
-  const done = subs.filter(s => s.status === 'Done').length;
-  const pct = Math.round((done/subs.length)*100);
-  const cls = pct === 100 ? 'progress-full' : pct === 0 ? 'progress-zero' : 'progress-partial';
-  return `<span class="progress-badge ${cls}" title="${done} of ${subs.length} sub-processes done">🖩 ${pct}%</span> `;
-}
-
 function rowHtml(r){
   const difot = difotPill(r.computed_difot_status);
   const classColors = {Container:'pill-class-container', Standard:'pill-class-standard', Lubestation:'pill-class-lubestation', Custom:'pill-class-custom'};
@@ -1720,11 +1863,19 @@ function rowHtml(r){
   ).join('') + (!GROUP_ORDER.includes(r.group_name) ? `<option value="${escapeAttr(r.group_name||'')}" selected>${escapeHtml(r.group_name||'(none)')}</option>` : '');
   const scheduleStatus = getScheduleStatus(r);
   const scheduleClass = scheduleStatus ? `row-${scheduleStatus}` : '';
+  const subsForFill = subitemsByParent[r.id] || [];
+  const filledSubs = subsForFill.filter(s => s.schedule_start_date && s.schedule_end_date).length;
+  const schedFillPct = subsForFill.length ? Math.round((filledSubs / subsForFill.length) * 100) : null;
+  const schedFillTier = schedFillPct === null ? '' : (schedFillPct >= 100 ? 'sched-fill-full' : schedFillPct >= 50 ? 'sched-fill-mid' : 'sched-fill-low');
+  const schedFillBadge = schedFillPct === null ? '' : `<span class="sched-fill-badge ${schedFillTier}" title="${filledSubs} of ${subsForFill.length} sub-processes scheduled">📅 ${schedFillPct}%</span>`;
+  const rowSeq = drafteeRowSeq[r.id];
+  const drafteeSeqBadge = rowSeq ? `<span class="draftee-seq-badge" title="${escapeHtml(r.draftee)}'s job queue position, by scheduled date">Job ${rowSeq.seq}/${rowSeq.total}</span>` : '';
   const mainRow = `<tr id="row_${r.id}" class="${scheduleClass}" onclick="openModal('${r.id}')">
     <td class="item-name">${escapeHtml(r.so_number||'—')}</td>
+    <td class="subtoggle-col" onclick="event.stopPropagation()">${subToggle}</td>
     <td>${escapeHtml(r.company_name||'—')}</td>
-    <td class="item-name">${subToggle}${progressBadge(r)}${escapeHtml(r.item_name||'(untitled)')}</td>
-    <td>${escapeHtml(r.draftee||'—')}${jobOrderPill(r)}</td>
+    <td class="item-name">${escapeHtml(r.item_name||'(untitled)')}${schedFillBadge}</td>
+    <td>${escapeHtml(r.draftee||'—')}${drafteeSeqBadge}</td>
     <td>${escapeHtml(r.sales_person||'—')}</td>
     <td>${difot}</td>
     <td class="dim">${r.computed_difot_10days ?? '—'}</td>
@@ -1750,7 +1901,7 @@ function subRowHtml(s, jobType, rcdOrRc){
   const isDisabledForRC = jobType === 'OPPTS' && rcdOrRc === 'RC' && (s.subitem_type === 'Drawing/BOM Prep' || s.subitem_type === 'Checking');
   if(isDisabledForRC){
     return `<tr class="subrow subrow-disabled" onclick="event.stopPropagation()">
-    <td colspan="18">
+    <td colspan="19">
       <div class="sub-content sub-content-disabled">
         <span class="sub-indent-icon">↳</span>
         <span class="sub-label">${escapeHtml(s.subitem_type)}</span>
@@ -1768,20 +1919,24 @@ function subRowHtml(s, jobType, rcdOrRc){
     ? `<span class="sub-draftee-readonly" title="Auto-set from line item draftee">${escapeHtml(s.draftee || '—')}</span>`
     : `<select class="sub-draftee" onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleSubDrafteeChange(this, '${s.id}')">${lookupOptionsHtml('draftee', s.draftee)}</select>`;
   return `<tr class="subrow" onclick="event.stopPropagation()">
-    <td colspan="18">
+    <td colspan="19">
       <div class="sub-content">
         <span class="sub-indent-icon">↳</span>
         <span class="sub-label">${escapeHtml(s.subitem_type)}</span>
         ${drafteeCell}
         <span class="sub-schedule">
           <span class="sub-sched-label">Schedule:</span>
-          <input type="date" class="sub-sched-date" value="${s.schedule_start_date||''}" title="Schedule start"
-            onclick="event.stopPropagation()" onchange="event.stopPropagation(); updateSubSchedule('${s.id}', 'schedule_start_date', this.value)">
+          <input type="date" class="sub-sched-date" value="${s.schedule_start_date||''}" title="Schedule start date"
+            onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleSubScheduleChange(this, '${s.id}', 'schedule_start_date')">
+          <select class="sub-sched-hour" title="Schedule start hour" onclick="event.stopPropagation()"
+            onchange="event.stopPropagation(); handleSubScheduleChange(this, '${s.id}', 'schedule_start_hour')">${hourOptionsHtml(s.schedule_start_hour)}</select>
           <span class="sub-sched-arrow">→</span>
-          <input type="date" class="sub-sched-date" value="${s.schedule_end_date||''}" title="Schedule end"
-            onclick="event.stopPropagation()" onchange="event.stopPropagation(); updateSubSchedule('${s.id}', 'schedule_end_date', this.value)">
+          <input type="date" class="sub-sched-date" value="${s.schedule_end_date||''}" title="Schedule end date"
+            onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleSubScheduleChange(this, '${s.id}', 'schedule_end_date')">
+          <select class="sub-sched-hour" title="Schedule end hour" onclick="event.stopPropagation()"
+            onchange="event.stopPropagation(); handleSubScheduleChange(this, '${s.id}', 'schedule_end_hour')">${hourOptionsHtml(s.schedule_end_hour)}</select>
         </span>
-        <select class="sub-status" onchange="updateSubStatus('${s.id}', this.value)" onclick="event.stopPropagation()">${statusOptions}</select>
+        <select class="sub-status" onchange="updateSubStatus('${s.id}', this.value, this)" onclick="event.stopPropagation()">${statusOptions}</select>
         <button class="clock-btn ${s.clock_running?'running':''}" onclick="event.stopPropagation(); toggleClock('${s.id}')">
           <span class="dot"></span>${s.clock_running ? 'Stop' : 'Start'}
         </button>
@@ -2062,7 +2217,15 @@ document.getElementById('logEditCancelBtn').onclick = closeLogEditor;
 document.getElementById('logEditAddBtn').onclick = addLogEditorRow;
 document.getElementById('logEditSaveBtn').onclick = saveLogEditorChanges;
 
-async function updateSubStatus(subitemId, status){
+async function updateSubStatus(subitemId, status, selectEl){
+  if(status === 'Done'){
+    const allSubs = Object.values(subitemsByParent).flat();
+    const sub = allSubs.find(s => s.id === subitemId);
+    if(sub && sub.subitem_type === 'GA For Approval Prep'){
+      openGaCheckpointModal(subitemId, selectEl);
+      return;
+    }
+  }
   await sb.from('so_subitems').update({ status }).eq('id', subitemId);
 }
 
@@ -2072,6 +2235,193 @@ async function updateSubDraftee(subitemId, draftee){
 
 async function updateSubSchedule(subitemId, column, value){
   await sb.from('so_subitems').update({ [column]: value || null }).eq('id', subitemId);
+}
+
+/* ---------------- GA APPROVAL CHECKPOINTS ---------------- */
+function gaCheckpointKey(groupKey, idx){ return `${groupKey}::${idx}`; }
+
+function groupIsAllNA(group){
+  return group.items.every((_, idx) => gaCheckpointState[gaCheckpointKey(group.key, idx)] === 'na');
+}
+
+function openGaCheckpointModal(subitemId, selectEl){
+  const allSubs = Object.values(subitemsByParent).flat();
+  const sub = allSubs.find(s => s.id === subitemId);
+  if(!sub) return;
+  gaCheckpointSubitemId = subitemId;
+  gaCheckpointSelectEl = selectEl || null;
+  gaCheckpointState = Object.assign({}, sub.ga_checkpoints || {});
+  renderGaCheckpointModal();
+  document.getElementById('gaCheckpointModalBackdrop').classList.remove('hidden');
+}
+
+function renderGaCheckpointModal(){
+  const body = document.getElementById('gaCheckpointBody');
+  body.innerHTML = GA_CHECKPOINT_GROUPS.map(renderGaCheckpointGroup).join('');
+  updateGaCheckpointSummary();
+}
+
+function renderGaCheckpointGroup(group){
+  const allNA = group.allowNA && groupIsAllNA(group);
+  const itemsHtml = group.items.map((item, idx) => {
+    const key = gaCheckpointKey(group.key, idx);
+    const state = gaCheckpointState[key];
+    const isNA = state === 'na';
+    const isChecked = state === 'checked';
+    return `<div class="gc-item ${isNA ? 'gc-item-na' : ''}">
+      <label class="gc-check">
+        <input type="checkbox" ${isChecked ? 'checked' : ''} ${isNA ? 'disabled' : ''}
+          onchange="setGaCheckpointState('${key}', this.checked ? 'checked' : undefined)">
+        <span>${escapeHtml(item)}</span>
+      </label>
+      ${group.allowNA ? `<label class="gc-na">
+        <input type="checkbox" ${isNA ? 'checked' : ''}
+          onchange="setGaCheckpointState('${key}', this.checked ? 'na' : undefined)">
+        N/A
+      </label>` : ''}
+    </div>`;
+  }).join('');
+  return `<div class="gc-group">
+    <div class="gc-group-head">
+      <div>
+        <div class="gc-group-title">${escapeHtml(group.title)}</div>
+        ${group.subtitle ? `<div class="gc-group-subtitle">${escapeHtml(group.subtitle)}</div>` : ''}
+      </div>
+      ${group.allowNA ? `<label class="gc-group-na">
+        <input type="checkbox" ${allNA ? 'checked' : ''} onchange="setGaGroupNA('${group.key}', this.checked)">
+        Mark entire group N/A
+      </label>` : ''}
+    </div>
+    <div class="gc-items">${itemsHtml}</div>
+  </div>`;
+}
+
+function setGaCheckpointState(key, value){
+  if(value === undefined || value === 'undefined') delete gaCheckpointState[key];
+  else gaCheckpointState[key] = value;
+  renderGaCheckpointModal();
+}
+
+function setGaGroupNA(groupKey, checked){
+  const group = GA_CHECKPOINT_GROUPS.find(g => g.key === groupKey);
+  if(!group) return;
+  group.items.forEach((_, idx) => {
+    const key = gaCheckpointKey(groupKey, idx);
+    if(checked) gaCheckpointState[key] = 'na';
+    else delete gaCheckpointState[key];
+  });
+  renderGaCheckpointModal();
+}
+
+function gaCheckpointValidation(){
+  let totalItems = 0, filledItems = 0;
+  const incompleteGroups = [];
+  GA_CHECKPOINT_GROUPS.forEach(group => {
+    let groupIncomplete = 0;
+    group.items.forEach((_, idx) => {
+      totalItems++;
+      const state = gaCheckpointState[gaCheckpointKey(group.key, idx)];
+      if(state === 'checked' || state === 'na') filledItems++;
+      else groupIncomplete++;
+    });
+    if(groupIncomplete > 0) incompleteGroups.push(group.title);
+  });
+  return { totalItems, filledItems, complete: filledItems === totalItems, incompleteGroups };
+}
+
+function updateGaCheckpointSummary(){
+  const v = gaCheckpointValidation();
+  const summaryEl = document.getElementById('gaCheckpointSummary');
+  const confirmBtn = document.getElementById('gaCheckpointConfirmBtn');
+  if(v.complete){
+    summaryEl.innerHTML = `<span class="gc-summary-ok">✓ All ${v.totalItems} checkpoints filled — ready to mark Done.</span>`;
+    confirmBtn.disabled = false;
+  } else {
+    summaryEl.innerHTML = `<span class="gc-summary-pending">${v.filledItems} / ${v.totalItems} checkpoints filled — still needs: ${escapeHtml(v.incompleteGroups.join(', '))}</span>`;
+    confirmBtn.disabled = true;
+  }
+}
+
+function closeGaCheckpointModal(revertSelect){
+  document.getElementById('gaCheckpointModalBackdrop').classList.add('hidden');
+  if(revertSelect && gaCheckpointSelectEl){
+    const allSubs = Object.values(subitemsByParent).flat();
+    const sub = allSubs.find(s => s.id === gaCheckpointSubitemId);
+    gaCheckpointSelectEl.value = sub ? sub.status : 'Not Started';
+  }
+  gaCheckpointSubitemId = null;
+  gaCheckpointSelectEl = null;
+  gaCheckpointState = {};
+}
+
+async function confirmGaCheckpoint(){
+  const v = gaCheckpointValidation();
+  if(!v.complete) return;
+  const subitemId = gaCheckpointSubitemId;
+  await sb.from('so_subitems').update({
+    status: 'Done',
+    ga_checkpoints: gaCheckpointState,
+    ga_checkpoints_verified_at: new Date().toISOString()
+  }).eq('id', subitemId);
+  document.getElementById('gaCheckpointModalBackdrop').classList.add('hidden');
+  gaCheckpointSubitemId = null;
+  gaCheckpointSelectEl = null;
+  gaCheckpointState = {};
+  await loadData();
+}
+
+document.getElementById('gaCheckpointCloseBtn').onclick = () => closeGaCheckpointModal(true);
+document.getElementById('gaCheckpointCancelBtn').onclick = () => closeGaCheckpointModal(true);
+document.getElementById('gaCheckpointConfirmBtn').onclick = confirmGaCheckpoint;
+
+function hourOptionsHtml(selected){
+  let opts = '<option value="">--</option>';
+  for(let h = 0; h < 24; h++){
+    const label = String(h).padStart(2,'0') + ':00';
+    opts += `<option value="${h}" ${(selected !== null && selected !== undefined && String(selected) === String(h)) ? 'selected' : ''}>${label}</option>`;
+  }
+  return opts;
+}
+
+// Combines a schedule date + optional hour into a timestamp for overlap comparisons.
+// Missing hour defaults to start-of-day for start fields, end-of-day for end fields.
+function schedDateTime(dateStr, hourVal, isEnd){
+  if(!dateStr) return null;
+  const h = (hourVal === null || hourVal === undefined || hourVal === '') ? (isEnd ? 23 : 0) : Number(hourVal);
+  return new Date(`${dateStr}T${String(h).padStart(2,'0')}:00:00`).getTime();
+}
+
+async function handleSubScheduleChange(inputEl, subitemId, column){
+  const rawValue = inputEl.value;
+  const isHourCol = column.endsWith('_hour');
+  const newValue = rawValue === '' ? null : (isHourCol ? Number(rawValue) : rawValue);
+  const allSubs = Object.values(subitemsByParent).flat();
+  const sub = allSubs.find(s => s.id === subitemId);
+  if(!sub) return;
+  const prevValue = sub[column] ?? '';
+  const candidate = { ...sub, [column]: newValue };
+  const draftees = (sub.draftee || '').split(',').map(x => x.trim()).filter(Boolean);
+
+  if(draftees.length && candidate.schedule_start_date && candidate.schedule_end_date){
+    const aStart = schedDateTime(candidate.schedule_start_date, candidate.schedule_start_hour, false);
+    const aEnd = schedDateTime(candidate.schedule_end_date, candidate.schedule_end_hour, true);
+    const conflicts = allSubs.filter(o => {
+      if(o.id === subitemId || o.status === 'Done') return false;
+      const oDraftees = (o.draftee || '').split(',').map(x => x.trim());
+      if(!draftees.some(d => oDraftees.includes(d))) return false;
+      if(!o.schedule_start_date || !o.schedule_end_date) return false;
+      const bStart = schedDateTime(o.schedule_start_date, o.schedule_start_hour, false);
+      const bEnd = schedDateTime(o.schedule_end_date, o.schedule_end_hour, true);
+      return aStart <= bEnd && aEnd >= bStart;
+    });
+    if(conflicts.length){
+      const list = conflicts.map(c => `• ${c.subitem_type} (${fmtDate(c.schedule_start_date)}${c.schedule_start_hour!=null?' '+String(c.schedule_start_hour).padStart(2,'0')+':00':''} → ${fmtDate(c.schedule_end_date)}${c.schedule_end_hour!=null?' '+String(c.schedule_end_hour).padStart(2,'0')+':00':''})`).join('\n');
+      const proceed = confirm(`Scheduling conflict for ${draftees.join(', ')}:\n${list}\n\nThis overlaps with the schedule you just set. Save anyway?`);
+      if(!proceed){ inputEl.value = prevValue; return; }
+    }
+  }
+  sub[column] = newValue;
+  await updateSubSchedule(subitemId, column, newValue);
 }
 
 function toggleRemarksPopover(btnEl){
