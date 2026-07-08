@@ -200,7 +200,7 @@
   .count-chip.count-ontrack{background:#eefaf1;color:var(--green);}
   .open-so-list{max-height:220px;overflow-y:auto;}
   .open-so-row{
-    display:grid;grid-template-columns:9px 90px 1fr 1.3fr auto 90px 110px;gap:12px;align-items:center;
+    display:grid;grid-template-columns:9px 180px 1fr 1.3fr auto 90px 110px;gap:12px;align-items:center;
     padding:6px 0;font-size:13px;border-bottom:1px solid var(--border);cursor:pointer;border-radius:6px;transition:background .1s;
   }
   .open-so-row:hover{background:#eef1ff;}
@@ -321,7 +321,7 @@
   }
   tbody td{padding:11px 14px;white-space:nowrap;}
   td.item-name{font-weight:600;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  td.so-number-cell{width:90px;min-width:90px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}
+  td.so-number-cell{width:180px;min-width:180px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}
   .gc-group{border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px;}
   .gc-group:last-child{margin-bottom:0;}
   .gc-group-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;}
@@ -1637,7 +1637,7 @@ function renderBoard(){
         <div class="table-scroll" id="${scrollId}">
         <table class="board-table">
           <thead><tr>
-            <th class="so-number-cell" style="width:90px;">SO Number</th><th></th><th>Company</th><th>Item</th><th>Draftee</th><th>Sales Person</th><th>DIFOT</th><th>DIFOT Days</th><th>Class</th><th>RCD/RC</th>
+            <th class="so-number-cell" style="width:180px;">SO Number</th><th></th><th>Company</th><th>Item</th><th>Draftee</th><th>Sales Person</th><th>DIFOT</th><th>DIFOT Days</th><th>Class</th><th>RCD/RC</th>
             <th>Drafting Transfer</th><th>Target Start</th><th>Target Release</th><th>Actual Release to Prodn</th><th>Project Sales</th><th>Aging</th><th>Actual Hrs</th><th>O/A Excess</th><th>Move to Group</th>
           </tr></thead>
           <tbody>
