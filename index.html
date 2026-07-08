@@ -1886,7 +1886,7 @@ function rowHtml(r){
   const schedFillBadge = schedFillPct === null ? '' : `<span class="sched-fill-badge ${schedFillTier}" title="${filledSubs} of ${subsForFill.length} sub-processes scheduled">📅 ${schedFillPct}%</span>`;
   const rowSeq = drafteeRowSeq[r.id];
   const drafteeSeqBadge = rowSeq ? `<span class="draftee-seq-badge" title="${escapeHtml(r.draftee)}'s job queue position, by scheduled date">Job ${rowSeq.seq}/${rowSeq.total}</span>` : '';
-  const isUntouched = subsForFill.length > 0 && subsForFill.every(s => !s.draftee && !s.schedule_start_date && !s.schedule_end_date);
+  const isUntouched = subsForFill.length > 0 && filledSubs === 0;
   const newItemBadge = isUntouched ? `<span class="new-item-badge" title="No draftee or schedule set on any sub-process yet">NEW</span>` : '';
   const mainRow = `<tr id="row_${r.id}" class="${scheduleClass}" onclick="openModal('${r.id}')">
     <td class="so-number-cell">${escapeHtml(r.so_number||'—')}</td>
