@@ -156,6 +156,29 @@
   }
   .active-panel-stop-btn:hover{background:var(--green);color:white;}
 
+  .break-panel{
+    background:#fff8ed;border:1px solid var(--amber);border-radius:10px;padding:12px 16px;margin-bottom:18px;
+  }
+  .break-panel-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--amber);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+  .break-panel-dot{width:8px;height:8px;border-radius:50%;background:var(--amber);}
+  .break-panel-row{
+    display:grid;grid-template-columns:180px 1fr 1.4fr 150px 130px 150px 90px;gap:14px;align-items:center;
+    padding:6px 0;font-size:13px;border-bottom:1px solid rgba(224,146,26,.18);cursor:pointer;
+  }
+  .break-panel-row:hover{background:rgba(224,146,26,.08);}
+  .break-panel-row:last-child{border-bottom:none;}
+  .break-panel-item{font-weight:600;color:var(--text);}
+  .break-panel-company{color:var(--text-dim);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .break-panel-itemname{color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .break-panel-stage{color:var(--text-dim);}
+  .break-panel-who{color:var(--text-dim);}
+  .break-panel-loggedout{font-family:'JetBrains Mono',monospace;color:var(--amber);font-size:12px;}
+  .break-panel-resume-btn{
+    font-size:11.5px;font-weight:700;color:var(--amber);background:white;border:1.5px solid var(--amber);
+    border-radius:6px;padding:4px 8px;cursor:pointer;white-space:nowrap;
+  }
+  .break-panel-resume-btn:hover{background:var(--amber);color:white;}
+
   .not-clocked-panel{
     background:linear-gradient(135deg,#fff4e5,#ffe9d6);border:2px solid var(--amber);
     border-radius:12px;padding:14px 18px;margin-bottom:16px;box-shadow:0 4px 16px rgba(245,166,35,.28);
@@ -1949,6 +1972,37 @@ function activePanelHtml(){
   </div>`;
 }
 
+function onBreakPanelHtml(){
+  const breakEntries = [];
+  Object.keys(subitemsByParent).forEach(parentId => {
+    (subitemsByParent[parentId] || []).forEach(s => {
+      if(s.on_break){
+        const parent = rows.find(r => r.id === parentId);
+        const stoppedLogs = (logsBySubitem[s.id] || []).filter(l => l.ended_at);
+        stoppedLogs.sort((a,b) => new Date(b.ended_at) - new Date(a.ended_at));
+        const loggedOutAt = stoppedLogs[0] ? stoppedLogs[0].ended_at : null;
+        breakEntries.push({ sub: s, parent, loggedOutAt });
+      }
+    });
+  });
+  if(breakEntries.length === 0) return '';
+  breakEntries.sort((a,b) => new Date(b.loggedOutAt||0) - new Date(a.loggedOutAt||0));
+  const rowsHtml = breakEntries.map(({sub,parent,loggedOutAt}) => `
+    <div class="break-panel-row" ${parent ? `onclick="scrollToItem('${parent.id}')" title="Jump to this item"` : ''}>
+      <span class="break-panel-item">${escapeHtml(parent?.so_number || '—')}</span>
+      <span class="break-panel-company">${escapeHtml(parent?.company_name || '—')}</span>
+      <span class="break-panel-itemname">${escapeHtml(parent?.item_name || '—')}</span>
+      <span class="break-panel-stage">${escapeHtml(sub.subitem_type)}</span>
+      <span class="break-panel-who">${escapeHtml(sub.draftee||'—')}</span>
+      <span class="break-panel-loggedout">${loggedOutAt ? fmtLogTime(loggedOutAt) : '—'}</span>
+      <button class="break-panel-resume-btn" onclick="event.stopPropagation(); toggleClock('${sub.id}')" title="Resume where you left off">▶ Resume</button>
+    </div>`).join('');
+  return `<div class="break-panel">
+    <div class="break-panel-title"><span class="break-panel-dot"></span>On Break — resume where you left off (${breakEntries.length})</div>
+    ${rowsHtml}
+  </div>`;
+}
+
 function scrollTable(id, deltaX){
   const el = document.getElementById(id);
   if(el) el.scrollBy({left: deltaX, behavior:'smooth'});
@@ -2181,7 +2235,7 @@ async function toggleClock(subitemId){
     await sb.from('so_subitems').update({ clock_running:false, clock_started_at:null, total_seconds: totalSeconds }).eq('id', subitemId);
   } else {
     await sb.from('so_time_logs').insert({ subitem_id: subitemId, started_at: nowIso });
-    const updatePayload = { clock_running:true, clock_started_at: nowIso };
+    const updatePayload = { clock_running:true, clock_started_at: nowIso, on_break: false };
     if(sub.status === 'Not Started') updatePayload.status = 'In Progress';
     await sb.from('so_subitems').update(updatePayload).eq('id', subitemId);
   }
@@ -2192,7 +2246,7 @@ let breakPromptActive = false;
 let breakAutoOffTimer = null;
 
 function refreshTopPanels(){
-  document.getElementById('activePanelRoot').innerHTML = notClockedInHtml() + activePanelHtml() + openSoSummaryHtml();
+  document.getElementById('activePanelRoot').innerHTML = notClockedInHtml() + activePanelHtml() + onBreakPanelHtml() + openSoSummaryHtml();
 }
 
 function startBreakScheduler(){
@@ -2253,7 +2307,9 @@ async function resolveBreakPrompt(stopClock, runningSubs){
   if(stopClock){
     for(const sub of runningSubs){
       await toggleClock(sub.id);
+      await sb.from('so_subitems').update({ on_break: true }).eq('id', sub.id);
     }
+    await loadData();
   }
 }
 
@@ -2362,7 +2418,7 @@ async function updateSubStatus(subitemId, status, selectEl){
       }
     }
   }
-  await sb.from('so_subitems').update({ status }).eq('id', subitemId);
+  await sb.from('so_subitems').update({ status, on_break: false }).eq('id', subitemId);
 }
 
 async function updateSubDraftee(subitemId, draftee){
@@ -2497,7 +2553,8 @@ async function confirmGaCheckpoint(){
   await sb.from('so_subitems').update({
     status: 'Done',
     ga_checkpoints: gaCheckpointState,
-    ga_checkpoints_verified_at: new Date().toISOString()
+    ga_checkpoints_verified_at: new Date().toISOString(),
+    on_break: false
   }).eq('id', subitemId);
   document.getElementById('gaCheckpointModalBackdrop').classList.add('hidden');
   gaCheckpointSubitemId = null;
