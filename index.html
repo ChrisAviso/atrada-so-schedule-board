@@ -2280,13 +2280,11 @@ function scrollToItem(id){
     }
     return false;
   };
-  requestAnimationFrame(() => {
-    if(!attemptScroll()){
-      // Item is hidden by an active filter — clear filters and try again
-      document.getElementById('clearFiltersBtn').click();
-      requestAnimationFrame(() => setTimeout(attemptScroll, 50));
-    }
-  });
+  if(!attemptScroll()){
+    // Item is hidden by an active filter — clear filters and try again
+    document.getElementById('clearFiltersBtn').click();
+    setTimeout(attemptScroll, 50);
+  }
 }
 
 async function moveToGroup(id, newGroup){
