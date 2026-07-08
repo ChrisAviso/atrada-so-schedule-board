@@ -364,6 +364,13 @@
     border-radius:8px;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;
     background:var(--gray-pill);color:var(--text-dim);vertical-align:middle;
   }
+  .new-item-badge{
+    display:inline-flex;align-items:center;margin-left:6px;padding:2px 7px;
+    border-radius:10px;font-size:10px;font-weight:800;letter-spacing:.04em;
+    background:linear-gradient(135deg,#ff6b6b,#ffa94d);color:#fff;vertical-align:middle;
+    animation:new-item-pulse 2s ease-in-out infinite;
+  }
+  @keyframes new-item-pulse{0%,100%{opacity:1;}50%{opacity:.7;}}
   .sub-sched-hour{
     font-size:11px;border:1.5px solid var(--border);border-radius:6px;padding:3px 4px;
     font-family:'JetBrains Mono',monospace;background:#fbfbfd;color:var(--text-dim);margin:0 2px;
@@ -1879,9 +1886,11 @@ function rowHtml(r){
   const schedFillBadge = schedFillPct === null ? '' : `<span class="sched-fill-badge ${schedFillTier}" title="${filledSubs} of ${subsForFill.length} sub-processes scheduled">📅 ${schedFillPct}%</span>`;
   const rowSeq = drafteeRowSeq[r.id];
   const drafteeSeqBadge = rowSeq ? `<span class="draftee-seq-badge" title="${escapeHtml(r.draftee)}'s job queue position, by scheduled date">Job ${rowSeq.seq}/${rowSeq.total}</span>` : '';
+  const isUntouched = subsForFill.length > 0 && subsForFill.every(s => !s.draftee && !s.schedule_start_date && !s.schedule_end_date);
+  const newItemBadge = isUntouched ? `<span class="new-item-badge" title="No draftee or schedule set on any sub-process yet">NEW</span>` : '';
   const mainRow = `<tr id="row_${r.id}" class="${scheduleClass}" onclick="openModal('${r.id}')">
     <td class="so-number-cell">${escapeHtml(r.so_number||'—')}</td>
-    <td class="subtoggle-col" onclick="event.stopPropagation()">${subToggle}${schedFillBadge}</td>
+    <td class="subtoggle-col" onclick="event.stopPropagation()">${subToggle}${newItemBadge}${schedFillBadge}</td>
     <td>${escapeHtml(r.company_name||'—')}</td>
     <td class="item-name">${escapeHtml(r.item_name||'(untitled)')}</td>
     <td>${escapeHtml(r.draftee||'—')}${drafteeSeqBadge}</td>
