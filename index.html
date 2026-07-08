@@ -101,6 +101,7 @@
     cursor:pointer;font-family:inherit;
   }
   .icon-btn:hover{border-color:var(--primary);color:var(--primary);}
+  .icon-btn.synced{border-color:var(--green);color:var(--green);transition:border-color .6s ease,color .6s ease;}
 
   main{max-width:1900px;margin:0 auto;padding:22px 26px 80px;}
 
@@ -138,7 +139,7 @@
   .active-panel-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--green);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
   .active-panel-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.2s infinite;}
   .active-panel-row{
-    display:grid;grid-template-columns:180px 1fr 1.4fr 150px 130px 90px;gap:14px;align-items:center;
+    display:grid;grid-template-columns:180px 1fr 1.4fr 150px 130px 90px 74px;gap:14px;align-items:center;
     padding:6px 0;font-size:13px;border-bottom:1px solid rgba(18,184,134,.15);cursor:pointer;
   }
   .active-panel-row:hover{background:rgba(18,184,134,.06);}
@@ -149,6 +150,11 @@
   .active-panel-stage{color:var(--text-dim);}
   .active-panel-who{color:var(--text-dim);}
   .active-panel-time{font-family:'JetBrains Mono',monospace;color:var(--green);font-weight:700;text-align:right;}
+  .active-panel-stop-btn{
+    font-size:11.5px;font-weight:700;color:var(--green);background:white;border:1.5px solid var(--green);
+    border-radius:6px;padding:4px 8px;cursor:pointer;white-space:nowrap;
+  }
+  .active-panel-stop-btn:hover{background:var(--green);color:white;}
 
   .not-clocked-panel{
     background:linear-gradient(135deg,#fff4e5,#ffe9d6);border:2px solid var(--amber);
@@ -1203,6 +1209,7 @@ function enterApp(){
   document.getElementById('userChip').textContent = session.user.email;
   showGreetingOverlay();
   loadData().then(() => populateBriefing());
+  subscribeToLiveUpdates();
 }
 
 const GREETING_LINES = [
@@ -1473,7 +1480,7 @@ async function loadData(){
     list.forEach((r, idx) => { drafteeRowSeq[r.id] = { seq: idx + 1, total: list.length }; });
   });
 
-  const { data: subData, error: subError } = await sb.from('so_subitems').select('*').order('sort_order', {ascending:true});
+  const { data: subData, error: subError } = await sb.from('so_subitems').select('*').order('sort_order', {ascending:true}).order('created_at', {ascending:true});
   subitemsByParent = {};
   if(!subError && subData){
     subData.forEach(s => {
@@ -1513,6 +1520,108 @@ function populateFilterDropdowns(){
     drafteeOptions.map(n => `<option value="${escapeAttr(n)}" ${n===filterDraftee?'selected':''}>${escapeHtml(n)}</option>`).join('');
   spSel.innerHTML = '<option value="">All Sales People</option>' +
     salesPersonOptions.map(n => `<option value="${escapeAttr(n)}" ${n===filterSalesPerson?'selected':''}>${escapeHtml(n)}</option>`).join('');
+}
+
+/* ---------------- LIVE MULTI-USER SYNC (subtle background refresh) ---------------- */
+function isSafeToAutoRefresh(){
+  const active = document.activeElement;
+  if(active){
+    const tag = active.tagName;
+    if(tag === 'TEXTAREA') return false;
+    if(tag === 'INPUT' && !['checkbox','radio'].includes(active.type)) return false;
+  }
+  const openModalIds = ['breakModalBackdrop','gaCheckpointModalBackdrop','logEditModalBackdrop'];
+  if(openModalIds.some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); })) return false;
+  if(document.querySelector('.remarks-popover:not(.hidden)')) return false;
+  return true;
+}
+
+let silentRefreshTimer = null;
+function scheduleSilentRefresh(){
+  if(silentRefreshTimer) return; // already debounced/pending
+  silentRefreshTimer = setTimeout(async () => {
+    silentRefreshTimer = null;
+    if(!isSafeToAutoRefresh()){ scheduleSilentRefresh(); return; } // retry shortly rather than drop the update
+    await silentReload();
+  }, 1000);
+}
+
+function flashSynced(){
+  const btn = document.getElementById('refreshBtn');
+  if(!btn) return;
+  btn.classList.add('synced');
+  setTimeout(() => btn.classList.remove('synced'), 900);
+}
+
+async function silentReload(){
+  const savedScrollY = window.scrollY;
+  const { data, error } = await sb.from('so_schedule_computed').select('*').order('created_at', {ascending:true});
+  if(error) return; // stay quiet in the background; the next live event will retry
+  rows = data || [];
+
+  const { data: statusData } = await sb.from('so_schedule').select('id, project_status');
+  if(statusData){
+    const statusById = {};
+    statusData.forEach(s => { statusById[s.id] = s.project_status; });
+    rows.forEach(r => { r.project_status = statusById[r.id] ?? null; });
+  }
+
+  drafteeRowSeq = {};
+  const byDrafteeRows = {};
+  rows.forEach(r => {
+    if(r.actual_release_to_prodn_date) return;
+    const orderDate = r.schedule_start_date || r.target_start_date || r.drafting_transfer_date;
+    if(!orderDate) return;
+    (r.draftee || '').split(',').map(x => x.trim()).filter(Boolean).forEach(n => {
+      (byDrafteeRows[n] = byDrafteeRows[n] || []).push(r);
+    });
+  });
+  Object.values(byDrafteeRows).forEach(list => {
+    list.sort((a, b) => {
+      const da = a.schedule_start_date || a.target_start_date || a.drafting_transfer_date;
+      const db = b.schedule_start_date || b.target_start_date || b.drafting_transfer_date;
+      return new Date(da).getTime() - new Date(db).getTime();
+    });
+    list.forEach((r, idx) => { drafteeRowSeq[r.id] = { seq: idx + 1, total: list.length }; });
+  });
+
+  const { data: subData, error: subError } = await sb.from('so_subitems').select('*').order('sort_order', {ascending:true}).order('created_at', {ascending:true});
+  subitemsByParent = {};
+  if(!subError && subData){
+    subData.forEach(s => { (subitemsByParent[s.parent_id] = subitemsByParent[s.parent_id] || []).push(s); });
+  }
+
+  const { data: logData, error: logError } = await sb.from('so_time_logs').select('*').order('started_at', {ascending:false});
+  logsBySubitem = {};
+  if(!logError && logData){
+    logData.forEach(l => { (logsBySubitem[l.subitem_id] = logsBySubitem[l.subitem_id] || []).push(l); });
+  }
+
+  const { data: lookupData } = await sb.from('so_lookup_names').select('*').order('name', {ascending:true});
+  if(lookupData){
+    salesPersonOptions = lookupData.filter(l => l.category === 'sales_person').map(l => l.name);
+    drafteeOptions = lookupData.filter(l => l.category === 'draftee').map(l => l.name);
+  }
+  populateFilterDropdowns();
+
+  const todayStr2 = new Date().toISOString().slice(0,10);
+  const { data: absenteeData } = await sb.from('so_absentees').select('draftee_name').eq('absent_date', todayStr2);
+  const nowHour2 = new Date().getHours();
+  absentToday = nowHour2 < 17 ? new Set((absenteeData||[]).map(a => a.draftee_name)) : new Set();
+
+  renderBoard();
+  window.scrollTo(0, savedScrollY);
+  flashSynced();
+}
+
+let realtimeChannel = null;
+function subscribeToLiveUpdates(){
+  if(realtimeChannel) return;
+  realtimeChannel = sb.channel('so-schedule-board-live')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'so_schedule' }, () => scheduleSilentRefresh())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'so_subitems' }, () => scheduleSilentRefresh())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'so_time_logs' }, () => scheduleSilentRefresh())
+    .subscribe();
 }
 document.getElementById('refreshBtn').onclick = loadData;
 
@@ -1832,6 +1941,7 @@ function activePanelHtml(){
       <span class="active-panel-stage">${escapeHtml(sub.subitem_type)}</span>
       <span class="active-panel-who">${escapeHtml(sub.draftee||'—')}</span>
       <span class="active-panel-time" data-active-panel-timer="${sub.id}">${fmtDuration(liveElapsed(sub))}</span>
+      <button class="active-panel-stop-btn" onclick="event.stopPropagation(); toggleClock('${sub.id}')" title="Clock off">⏹ Stop</button>
     </div>`).join('');
   return `<div class="active-panel">
     <div class="active-panel-title"><span class="active-panel-dot"></span>Clocked in now (${activeEntries.length})</div>
@@ -2244,8 +2354,12 @@ async function updateSubStatus(subitemId, status, selectEl){
     const allSubs = Object.values(subitemsByParent).flat();
     const sub = allSubs.find(s => s.id === subitemId);
     if(sub && sub.subitem_type === 'GA For Approval Prep'){
-      openGaCheckpointModal(subitemId, selectEl);
-      return;
+      const otherGaRows = allSubs.filter(s => s.parent_id === sub.parent_id && s.subitem_type === 'GA For Approval Prep' && s.id !== subitemId);
+      const allOthersDone = otherGaRows.every(s => s.status === 'Done');
+      if(allOthersDone){
+        openGaCheckpointModal(subitemId, selectEl);
+        return;
+      }
     }
   }
   await sb.from('so_subitems').update({ status }).eq('id', subitemId);
