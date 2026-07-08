@@ -1955,7 +1955,8 @@ function subRowHtml(s, jobType, rcdOrRc){
             onchange="event.stopPropagation(); handleSubScheduleChange(this, '${s.id}', 'schedule_end_hour')">${hourOptionsHtml(s.schedule_end_hour)}</select>
         </span>
         <select class="sub-status" onchange="updateSubStatus('${s.id}', this.value, this)" onclick="event.stopPropagation()">${statusOptions}</select>
-        <button class="clock-btn ${s.clock_running?'running':''}" onclick="event.stopPropagation(); toggleClock('${s.id}')">
+        <button class="clock-btn ${s.clock_running?'running':''}" onclick="event.stopPropagation(); toggleClock('${s.id}')"
+          title="${isSupervisor() && !(s.draftee||'').split(',').map(x=>x.trim()).includes(getMyDrafteeName()) ? `Supervisor override — clocking on behalf of ${escapeHtml(s.draftee||'unassigned')}` : ''}">
           <span class="dot"></span>${s.clock_running ? 'Stop' : 'Start'}
         </button>
         <span class="clock-hover-wrap">
@@ -2032,9 +2033,10 @@ async function toggleClock(subitemId){
     return;
   }
   const myName = getMyDrafteeName();
-  if(!myName){ alert("Only assigned draftees can start or stop their own timer."); return; }
+  const supervisorOverride = isSupervisor();
+  if(!myName && !supervisorOverride){ alert("Only assigned draftees can start or stop their own timer."); return; }
   const subDraftees = (sub.draftee||'').split(',').map(x=>x.trim()).filter(Boolean);
-  if(!subDraftees.includes(myName)){
+  if(!supervisorOverride && !subDraftees.includes(myName)){
     alert(`This sub-process is assigned to ${sub.draftee || 'someone else'}. You can only clock in/out on your own assignments.`);
     return;
   }
@@ -2047,11 +2049,13 @@ async function toggleClock(subitemId){
       alert(`This sub-process is marked "${sub.status}" — clocking is disabled. Change its status to Not Started or In Progress first.`);
       return;
     }
-    const conflict = allSubs.find(s => s.id !== subitemId && s.clock_running &&
-      (s.draftee||'').split(',').map(x=>x.trim()).includes(myName));
-    if(conflict){
-      alert(`You're already clocked into "${conflict.subitem_type}". Stop that timer before starting another — only one job can be clocked at a time.`);
-      return;
+    if(!supervisorOverride){
+      const conflict = allSubs.find(s => s.id !== subitemId && s.clock_running &&
+        (s.draftee||'').split(',').map(x=>x.trim()).includes(myName));
+      if(conflict){
+        alert(`You're already clocked into "${conflict.subitem_type}". Stop that timer before starting another — only one job can be clocked at a time.`);
+        return;
+      }
     }
   }
   const nowIso = new Date().toISOString();
