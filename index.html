@@ -2273,7 +2273,7 @@ function scrollToItem(id){
     if(el){
       const groupDiv = el.closest('.group');
       if(groupDiv) groupDiv.classList.remove('collapsed');
-      el.scrollIntoView({behavior:'smooth', block:'center'});
+      el.scrollIntoView({block:'center'});
       el.classList.add('row-flash');
       setTimeout(() => el.classList.remove('row-flash'), 1600);
       return true;
