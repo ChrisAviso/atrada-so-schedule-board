@@ -503,6 +503,15 @@
   }
   .inline-sched-bar.dragging{opacity:.85;box-shadow:0 2px 10px rgba(0,0,0,.35);z-index:5;}
   .inline-sched-bar.done{background:var(--text-dim);}
+  .inline-sched-bar.overdue{
+    background:repeating-linear-gradient(45deg,var(--red),var(--red) 5px,#a8283f 5px,#a8283f 10px);
+    border:1.5px solid #8a1c30;box-shadow:0 1px 4px rgba(214,61,87,.4);
+  }
+  .inline-sched-overdue-tag{
+    position:absolute;right:-2px;top:-16px;font-size:9px;font-weight:800;color:var(--red);
+    background:#fff;padding:0 4px;border-radius:4px;border:1px solid var(--red);white-space:nowrap;
+  }
+  .inline-sched-overdue-label{font-size:10.5px;font-weight:800;color:var(--red);white-space:nowrap;}
   .inline-sched-body{flex:1;cursor:grab;min-width:4px;}
   .inline-sched-body:active{cursor:grabbing;}
   .inline-sched-handle{width:7px;cursor:ew-resize;background:rgba(255,255,255,.45);flex-shrink:0;}
@@ -2659,18 +2668,27 @@ function shiftDateStr(dateStr, days){
 function inlineScheduleBarHtml(s){
   const windowStart = inlineGanttWindowStart();
   const totalW = INLINE_GANTT_WINDOW_DAYS * INLINE_GANTT_DAY_W;
-  const todayOff = inlineGanttDayOff(new Date().toISOString().slice(0,10), windowStart);
+  const todayStr = new Date().toISOString().slice(0,10);
+  const todayOff = inlineGanttDayOff(todayStr, windowStart);
   let barHtml = '';
+  let overdueDays = 0;
   if(s.schedule_start_date && s.schedule_end_date){
+    const isOverdue = s.status !== 'Done' && new Date(todayStr+'T00:00:00') > new Date(s.schedule_end_date+'T00:00:00');
+    if(isOverdue){
+      overdueDays = Math.round((new Date(todayStr+'T00:00:00') - new Date(s.schedule_end_date+'T00:00:00')) / 86400000);
+    }
     const startOff = inlineGanttDayOff(s.schedule_start_date, windowStart);
     const endOff = inlineGanttDayOff(s.schedule_end_date, windowStart) + 1;
     const left = startOff * INLINE_GANTT_DAY_W;
     const width = Math.max((endOff - startOff) * INLINE_GANTT_DAY_W, INLINE_GANTT_DAY_W);
-    barHtml = `<div class="inline-sched-bar ${s.status==='Done'?'done':''}" style="left:${left}px; width:${width}px;" data-subid="${s.id}"
-        title="${fmtDate(s.schedule_start_date)} → ${fmtDate(s.schedule_end_date)}">
+    const barCls = s.status==='Done' ? 'done' : (isOverdue ? 'overdue' : '');
+    const titleSuffix = isOverdue ? ` — ${overdueDays}d overdue` : '';
+    barHtml = `<div class="inline-sched-bar ${barCls}" style="left:${left}px; width:${width}px;" data-subid="${s.id}"
+        title="${fmtDate(s.schedule_start_date)} → ${fmtDate(s.schedule_end_date)}${titleSuffix}">
       <div class="inline-sched-handle left" data-mode="resize-start"></div>
       <div class="inline-sched-body" data-mode="move"></div>
       <div class="inline-sched-handle right" data-mode="resize-end"></div>
+      ${isOverdue ? `<span class="inline-sched-overdue-tag">+${overdueDays}d</span>` : ''}
     </div>`;
   } else {
     barHtml = `<span class="inline-sched-hint">click to schedule</span>`;
@@ -2681,7 +2699,7 @@ function inlineScheduleBarHtml(s){
       <div class="inline-sched-today" style="left:${todayOff*INLINE_GANTT_DAY_W}px;"></div>
       ${barHtml}
     </div>
-    <span class="inline-sched-datelabel" data-subid="${s.id}">${s.schedule_start_date ? shortDateRange(s.schedule_start_date, s.schedule_end_date) : '—'}</span>
+    <span class="inline-sched-datelabel" data-subid="${s.id}">${s.schedule_start_date ? shortDateRange(s.schedule_start_date, s.schedule_end_date) : '—'}</span>${overdueDays > 0 ? `<span class="inline-sched-overdue-label">⚠ ${overdueDays}d over</span>` : ''}
   </span>`;
 }
 
