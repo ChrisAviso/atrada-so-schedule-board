@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
   :root{
     --bg:#e7e9f1;
@@ -572,6 +573,14 @@
   .btn-danger-mini{border:none;background:none;color:var(--red);font-size:14px;cursor:pointer;padding:4px;}
   .btn-danger{background:none;border:1.5px solid var(--red);color:var(--red);border-radius:8px;padding:9px 16px;font-weight:600;font-size:13.5px;cursor:pointer;font-family:inherit;}
   .btn-danger:hover{background:var(--red);color:white;}
+  .dashboard-modal{max-width:1060px;}
+  .dashboard-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  .dashboard-card{background:#fafbff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;min-height:120px;}
+  .dashboard-card-title{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-dim);margin-bottom:10px;}
+  .dashboard-card canvas{max-height:220px;}
+  .dashboard-card-empty{font-size:12.5px;color:var(--text-dim);padding:20px 0;text-align:center;}
+  .dashboard-owner-divider{grid-column:1/-1;margin-top:4px;padding-top:14px;border-top:1.5px dashed var(--border);display:flex;align-items:center;gap:8px;}
+  .dashboard-owner-label{font-size:11px;font-weight:800;color:var(--primary-dark);text-transform:uppercase;letter-spacing:.05em;}
   .foot-right{display:flex;gap:10px;}
   .btn-secondary{background:white;border:1.5px solid var(--border);border-radius:8px;padding:9px 16px;font-weight:600;font-size:13.5px;cursor:pointer;font-family:inherit;}
   .section-label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-dim);font-weight:700;margin:18px 0 10px;}
@@ -814,6 +823,7 @@
     <div class="toolbar-top">
       <input class="search-box" id="searchBox" placeholder="Search item name or SO number…">
       <div class="toolbar-actions">
+        <button class="icon-btn" id="dashboardBtn">📊 Dashboard</button>
         <button class="icon-btn" id="exportCsvBtn">⬇ Export CSV</button>
         <button class="icon-btn" id="printViewBtn">🖨 Print View</button>
         <button class="btn-primary-sm" id="newGroupItemBtn">+ New SO Item</button>
@@ -977,6 +987,18 @@
   </div>
 </div>
 
+<div class="modal-backdrop hidden" id="dashboardModalBackdrop">
+  <div class="modal dashboard-modal">
+    <div class="modal-head">
+      <h2>Team Dashboard</h2>
+      <button class="modal-close" id="dashboardCloseBtn">✕</button>
+    </div>
+    <div class="modal-body" id="dashboardBody">
+      <!-- filled by JS -->
+    </div>
+  </div>
+</div>
+
 <script>
 /* =======================================================================
    CONFIG — paste your Supabase project values below.
@@ -1026,6 +1048,12 @@ function getMyDrafteeName(){
 function isSupervisor(){
   if(!session || !session.user || !session.user.email) return false;
   return SUPERVISOR_EMAILS.includes(session.user.email.toLowerCase());
+}
+
+const DASHBOARD_OWNER_EMAIL = 'chris.aviso@atrada.com.au';
+function isDashboardOwner(){
+  if(!session || !session.user || !session.user.email) return false;
+  return session.user.email.toLowerCase() === DASHBOARD_OWNER_EMAIL;
 }
 
 const GA_CHECKPOINT_GROUPS = [
@@ -3098,6 +3126,229 @@ deleteBtn.onclick = async () => {
   closeModal();
   await loadData();
 };
+
+/* ---------------- TEAM DASHBOARD ---------------- */
+const DASHBOARD_STAGE_TYPES = ['GA For Approval Prep','Detailing/PDF/DXF Prep','Checking','Release','Production Hand-Over','Cost Analysis','Drawing/BOM Prep','Costing Prep','Review/Release'];
+const DASHBOARD_STAGE_COLORS = ['#3a5ceb','#12b886','#f5a623','#e64c66','#7c5cf0','#0aa3a3','#d6534f','#2c9c4a','#9c6b2c'];
+const DASHBOARD_PIE_COLORS = ['#3a5ceb','#12b886','#f5a623','#e64c66','#7c5cf0','#0aa3a3','#d6534f','#2c9c4a','#9c6b2c','#5c6bc0'];
+
+function fmtShortDate(isoDateStr){
+  const d = new Date(isoDateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-AU', {day:'numeric', month:'short'});
+}
+
+function isWeekday(d){
+  const day = new Date(d).getDay();
+  return day >= 1 && day <= 5;
+}
+
+function getMonday(d){
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = (day === 0 ? -6 : 1 - day);
+  date.setDate(date.getDate() + diff);
+  date.setHours(0,0,0,0);
+  return date;
+}
+
+function getFriday(mondayDate){
+  const f = new Date(mondayDate);
+  f.setDate(f.getDate() + 4);
+  f.setHours(23,59,59,999);
+  return f;
+}
+
+function buildTeamDailyHoursTrend(){
+  const days = [];
+  const totals = {};
+  const today = new Date(); today.setHours(0,0,0,0);
+  for(let i = 29; i >= 0; i--){
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    if(!isWeekday(d)) continue;
+    const key = d.toISOString().slice(0,10);
+    days.push(key);
+    totals[key] = 0;
+  }
+  Object.values(logsBySubitem).flat().forEach(l => {
+    const started = new Date(l.started_at);
+    const dur = l.duration_seconds != null ? l.duration_seconds :
+      (l.ended_at ? Math.max(0, Math.floor((new Date(l.ended_at) - started)/1000)) : 0);
+    const key = started.toISOString().slice(0,10);
+    if(totals.hasOwnProperty(key)) totals[key] += dur;
+  });
+  return { labels: days.map(fmtShortDate), data: days.map(k => +(totals[k]/3600).toFixed(2)) };
+}
+
+function buildJobsCompletedPerWeek(){
+  const buckets = [];
+  const thisMonday = getMonday(new Date());
+  for(let i = 7; i >= 0; i--){
+    const monday = new Date(thisMonday); monday.setDate(monday.getDate() - i*7);
+    buckets.push({ label: fmtShortDate(monday.toISOString().slice(0,10)), weekStart: monday.getTime(), count: 0 });
+  }
+  rows.forEach(r => {
+    if(!r.actual_release_to_prodn_date) return;
+    const relMonday = getMonday(new Date(r.actual_release_to_prodn_date + 'T00:00:00')).getTime();
+    const bucket = buckets.find(b => b.weekStart === relMonday);
+    if(bucket) bucket.count++;
+  });
+  return { labels: buckets.map(b=>b.label), data: buckets.map(b=>b.count) };
+}
+
+function buildSubProcessBottleneck(){
+  const sums = {}; const counts = {};
+  DASHBOARD_STAGE_TYPES.forEach(t => { sums[t]=0; counts[t]=0; });
+  Object.values(subitemsByParent).flat().forEach(s => {
+    if(!s.total_seconds || s.total_seconds <= 0) return;
+    if(!sums.hasOwnProperty(s.subitem_type)) return;
+    sums[s.subitem_type] += s.total_seconds;
+    counts[s.subitem_type]++;
+  });
+  const withData = DASHBOARD_STAGE_TYPES.filter(t => counts[t] > 0);
+  return { labels: withData, data: withData.map(t => +((sums[t]/counts[t])/3600).toFixed(2)) };
+}
+
+function buildPipelineHealth(){
+  const openItems = rows.filter(r => !r.actual_release_to_prodn_date && r.target_release_date);
+  const counts = { behind:0, approaching:0, ontrack:0 };
+  openItems.forEach(r => { const st = getScheduleStatus(r); if(st) counts[st]++; });
+  return counts;
+}
+
+function buildOpenJobsPerDraftee(){
+  const openItems = rows.filter(r => !r.actual_release_to_prodn_date);
+  const counts = {};
+  openItems.forEach(r => {
+    (r.draftee||'').split(',').map(x=>x.trim()).filter(Boolean).forEach(n => {
+      counts[n] = (counts[n]||0) + 1;
+    });
+  });
+  const names = Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
+  return { labels: names, data: names.map(n=>counts[n]) };
+}
+
+function buildHoursThisWeekChartData(){
+  const monday = getMonday(new Date());
+  const friday = getFriday(monday);
+  const perDraftee = {};
+  const allSubs = Object.values(subitemsByParent).flat();
+  const subById = {}; allSubs.forEach(s => subById[s.id]=s);
+  Object.keys(logsBySubitem).forEach(subId => {
+    const sub = subById[subId];
+    if(!sub) return;
+    const names = (sub.draftee||'').split(',').map(x=>x.trim()).filter(Boolean);
+    if(names.length===0) return;
+    (logsBySubitem[subId]||[]).forEach(l => {
+      const started = new Date(l.started_at);
+      if(started < monday || started > friday) return;
+      const dur = l.duration_seconds != null ? l.duration_seconds :
+        (l.ended_at ? Math.max(0, Math.floor((new Date(l.ended_at)-started)/1000)) : Math.max(0, Math.floor((Date.now()-started)/1000)));
+      names.forEach(n => {
+        perDraftee[n] = perDraftee[n] || {};
+        perDraftee[n][sub.subitem_type] = (perDraftee[n][sub.subitem_type]||0) + dur;
+      });
+    });
+  });
+  const names = Object.keys(perDraftee).sort();
+  const datasets = DASHBOARD_STAGE_TYPES.map((stage, i) => ({
+    label: stage,
+    data: names.map(n => +(((perDraftee[n][stage]||0))/3600).toFixed(2)),
+    backgroundColor: DASHBOARD_STAGE_COLORS[i % DASHBOARD_STAGE_COLORS.length]
+  })).filter(ds => ds.data.some(v => v > 0));
+  return { labels: names, datasets };
+}
+
+let dashboardCharts = {};
+function destroyDashboardCharts(){
+  Object.values(dashboardCharts).forEach(c => c && c.destroy());
+  dashboardCharts = {};
+}
+
+function dashboardCardHtml(id, title, wide){
+  return `<div class="dashboard-card"${wide ? ' style="grid-column:1/-1;"' : ''}>
+    <div class="dashboard-card-title">${title}</div>
+    <canvas id="${id}"></canvas>
+  </div>`;
+}
+
+function openDashboardModal(){
+  const owner = isDashboardOwner();
+  const body = document.getElementById('dashboardBody');
+  body.innerHTML = `<div class="dashboard-grid">
+    ${dashboardCardHtml('chartDailyHours', 'Team Daily Hours (last 30 weekdays)')}
+    ${dashboardCardHtml('chartJobsPerWeek', 'Jobs Completed Per Week (Mon\u2013Fri)')}
+    ${dashboardCardHtml('chartBottleneck', 'Sub-Process Bottleneck (avg hours)')}
+    ${dashboardCardHtml('chartPipeline', 'Pipeline Health')}
+    ${owner ? `
+    <div class="dashboard-owner-divider"><span class="dashboard-owner-label">👁 Visible to you only</span></div>
+    ${dashboardCardHtml('chartOpenPerDraftee', 'Open Jobs Per Draftee')}
+    ${dashboardCardHtml('chartWorkloadShare', 'Workload Share')}
+    ${dashboardCardHtml('chartHoursThisWeek', 'Hours Logged This Week (Mon\u2013Fri) Per Draftee', true)}
+    ` : ''}
+  </div>`;
+  document.getElementById('dashboardModalBackdrop').classList.remove('hidden');
+  destroyDashboardCharts();
+
+  const dailyHours = buildTeamDailyHoursTrend();
+  dashboardCharts.daily = new Chart(document.getElementById('chartDailyHours'), {
+    type: 'line',
+    data: { labels: dailyHours.labels, datasets: [{ label:'Hours', data: dailyHours.data, borderColor:'#3a5ceb', backgroundColor:'rgba(58,92,235,.08)', fill:true, tension:.3, pointRadius:2 }] },
+    options: { plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true } } }
+  });
+
+  const jobsPerWeek = buildJobsCompletedPerWeek();
+  dashboardCharts.jobsWeek = new Chart(document.getElementById('chartJobsPerWeek'), {
+    type: 'bar',
+    data: { labels: jobsPerWeek.labels, datasets: [{ label:'Completed', data: jobsPerWeek.data, backgroundColor:'#12b886' }] },
+    options: { plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } } }
+  });
+
+  const bottleneck = buildSubProcessBottleneck();
+  dashboardCharts.bottleneck = new Chart(document.getElementById('chartBottleneck'), {
+    type: 'bar',
+    data: { labels: bottleneck.labels, datasets: [{ label:'Avg hours', data: bottleneck.data, backgroundColor:'#f5a623' }] },
+    options: { indexAxis:'y', plugins:{legend:{display:false}}, scales:{ x:{ beginAtZero:true } } }
+  });
+
+  const pipeline = buildPipelineHealth();
+  dashboardCharts.pipeline = new Chart(document.getElementById('chartPipeline'), {
+    type: 'doughnut',
+    data: { labels:['Behind','Approaching','On Track'], datasets:[{ data:[pipeline.behind, pipeline.approaching, pipeline.ontrack], backgroundColor:['#d63d57','#e0921a','#0da374'] }] },
+    options: { plugins:{legend:{position:'bottom'}} }
+  });
+
+  if(owner){
+    const openPerDraftee = buildOpenJobsPerDraftee();
+    dashboardCharts.openPerDraftee = new Chart(document.getElementById('chartOpenPerDraftee'), {
+      type: 'bar',
+      data: { labels: openPerDraftee.labels, datasets: [{ label:'Open jobs', data: openPerDraftee.data, backgroundColor:'#7c5cf0' }] },
+      options: { plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } } }
+    });
+
+    dashboardCharts.workloadShare = new Chart(document.getElementById('chartWorkloadShare'), {
+      type: 'pie',
+      data: { labels: openPerDraftee.labels, datasets: [{ data: openPerDraftee.data, backgroundColor: DASHBOARD_PIE_COLORS }] },
+      options: { plugins:{legend:{position:'bottom'}} }
+    });
+
+    const hoursWeek = buildHoursThisWeekChartData();
+    dashboardCharts.hoursWeek = new Chart(document.getElementById('chartHoursThisWeek'), {
+      type: 'bar',
+      data: { labels: hoursWeek.labels, datasets: hoursWeek.datasets },
+      options: { plugins:{legend:{position:'bottom'}}, scales:{ x:{ stacked:true }, y:{ stacked:true, beginAtZero:true } } }
+    });
+  }
+}
+
+function closeDashboardModal(){
+  document.getElementById('dashboardModalBackdrop').classList.add('hidden');
+  destroyDashboardCharts();
+}
+document.getElementById('dashboardBtn').onclick = openDashboardModal;
+document.getElementById('dashboardCloseBtn').onclick = closeDashboardModal;
+document.getElementById('dashboardModalBackdrop').addEventListener('click', e => {
+  if(e.target.id === 'dashboardModalBackdrop') closeDashboardModal();
+});
 
 checkSession();
 startBreakScheduler();
