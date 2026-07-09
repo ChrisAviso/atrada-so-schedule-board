@@ -2106,14 +2106,21 @@ function openJobsSummaryHtml(jobType, title){
     const poCell = poDays !== null ? `<span class="open-so-po" title="Days since drafting transfer (PO proxy)">${poDays}d since PO</span>` : `<span class="open-so-po dim">—</span>`;
 
     let approvalCell = `<span class="open-so-approval dim">—</span>`;
-    if(r.requires_client_approval){
-      if(r.project_status === 'Awaiting Client Approval' && r.first_sent_for_approval_date){
-        const waitDays = Math.round((todayD - new Date(r.first_sent_for_approval_date+'T00:00:00')) / 86400000);
-        approvalCell = `<span class="open-so-approval waiting" title="Still waiting on the client">${waitDays}d awaiting</span>`;
-      } else if(r.actual_approval_received_date && r.first_sent_for_approval_date){
-        const totalWait = Math.round((new Date(r.actual_approval_received_date+'T00:00:00') - new Date(r.first_sent_for_approval_date+'T00:00:00')) / 86400000);
-        approvalCell = `<span class="open-so-approval done" title="Total time the client took to approve">${totalWait}d waited</span>`;
-      }
+    const sentDate = r.first_sent_for_approval_date || r.actual_sent_for_approval;
+    const statusLower = (r.project_status || '').toLowerCase();
+    const isCurrentlyAwaiting = r.requires_client_approval
+      ? r.project_status === 'Awaiting Client Approval'
+      : statusLower.includes('awaiting client approval');
+    const isApproved = r.requires_client_approval
+      ? (r.project_status === 'Client Approved - Drafting In Progress' && r.actual_approval_received_date)
+      : (statusLower.includes('client approved') && r.actual_approval_received_date);
+
+    if(isCurrentlyAwaiting && sentDate){
+      const waitDays = Math.round((todayD - new Date(sentDate+'T00:00:00')) / 86400000);
+      approvalCell = `<span class="open-so-approval waiting" title="Still waiting on the client">${waitDays}d awaiting</span>`;
+    } else if(isApproved && sentDate){
+      const totalWait = Math.round((new Date(r.actual_approval_received_date+'T00:00:00') - new Date(sentDate+'T00:00:00')) / 86400000);
+      approvalCell = `<span class="open-so-approval done" title="Total time the client took to approve">${totalWait}d waited</span>`;
     }
 
     return `<div class="open-so-row" onclick="scrollToItem('${r.id}')" title="Jump to this item">
