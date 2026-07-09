@@ -485,6 +485,10 @@
   .sub-sched-date:focus{outline:none;border-color:var(--primary);}
   .sub-sched-arrow{color:var(--text-dim);font-size:11px;}
   .sub-sched-label{font-size:11px;color:var(--text-dim);font-weight:600;}
+  .sub-sched-disabled{
+    font-size:11.5px;color:var(--text-dim);font-style:italic;background:var(--gray-pill);
+    padding:5px 10px;border-radius:6px;border:1px dashed var(--border);
+  }
   .inline-sched-track{
     position:relative;height:24px;border-radius:5px;border:1px solid var(--border);
     background:repeating-linear-gradient(90deg, rgba(0,0,0,.03) 0, rgba(0,0,0,.03) 1px, transparent 1px, transparent 12px);
@@ -2247,7 +2251,7 @@ function rowHtml(r){
   </tr>`;
   const subsList = subitemsByParent[r.id] || [];
   const subs = isCollapsed ? '' : subsList.map((s, idx) => {
-    let html = subRowHtml(s, r.job_type, r.rcd_or_rc);
+    let html = subRowHtml(s, r.job_type, r.rcd_or_rc, r.requires_client_approval);
     const isLastGaRow = s.subitem_type === 'GA For Approval Prep' &&
       (idx === subsList.length-1 || subsList[idx+1].subitem_type !== 'GA For Approval Prep');
     if(isLastGaRow && r.requires_client_approval) html += clientApprovalInlineRowHtml(r);
@@ -2256,7 +2260,7 @@ function rowHtml(r){
   return mainRow + subs;
 }
 
-function subRowHtml(s, jobType, rcdOrRc){
+function subRowHtml(s, jobType, rcdOrRc, requiresClientApproval){
   const isDisabledForRC = jobType === 'OPPTS' && rcdOrRc === 'RC' && (s.subitem_type === 'Drawing/BOM Prep' || s.subitem_type === 'Checking');
   if(isDisabledForRC){
     return `<tr class="subrow subrow-disabled" onclick="event.stopPropagation()">
@@ -2269,6 +2273,7 @@ function subRowHtml(s, jobType, rcdOrRc){
     </td>
   </tr>`;
   }
+  const isClass2Ga = s.subitem_type === 'GA For Approval Prep' && !requiresClientApproval;
   const elapsed = liveElapsed(s);
   const statusOptions = ['Not Started','In Progress','On-Hold','Done'].map(opt =>
     `<option value="${opt}" ${s.status===opt?'selected':''}>${opt}</option>`
@@ -2277,21 +2282,27 @@ function subRowHtml(s, jobType, rcdOrRc){
   const drafteeCell = isAutoDraftee
     ? `<span class="sub-draftee-readonly" title="Auto-set from line item draftee">${escapeHtml(s.draftee || '—')}</span>`
     : `<select class="sub-draftee" onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleSubDrafteeChange(this, '${s.id}')">${lookupOptionsHtml('draftee', s.draftee)}</select>`;
+  const scheduleCellHtml = isClass2Ga
+    ? `<span class="sub-schedule">
+         <span class="sub-sched-label">Schedule:</span>
+         <span class="sub-sched-disabled" title="Standard product — no reserved slot needed. Marking GA Done schedules Detailing onward automatically.">Not scheduled — standard product</span>
+       </span>`
+    : `<span class="sub-schedule">
+         <span class="sub-sched-label">Schedule:</span>
+         ${inlineScheduleBarHtml(s)}
+         <select class="sub-sched-hour" title="Schedule start hour" onclick="event.stopPropagation()"
+           onchange="event.stopPropagation(); handleSubScheduleChange(this, '${s.id}', 'schedule_start_hour')">${hourOptionsHtml(s.schedule_start_hour)}</select>
+         <span class="sub-sched-arrow">→</span>
+         <select class="sub-sched-hour" title="Schedule end hour" onclick="event.stopPropagation()"
+           onchange="event.stopPropagation(); handleSubScheduleChange(this, '${s.id}', 'schedule_end_hour')">${hourOptionsHtml(s.schedule_end_hour)}</select>
+       </span>`;
   return `<tr class="subrow" onclick="event.stopPropagation()">
     <td colspan="19">
       <div class="sub-content">
         <span class="sub-indent-icon">↳</span>
         <span class="sub-label">${escapeHtml(s.subitem_type)}</span>
         ${drafteeCell}
-        <span class="sub-schedule">
-          <span class="sub-sched-label">Schedule:</span>
-          ${inlineScheduleBarHtml(s)}
-          <select class="sub-sched-hour" title="Schedule start hour" onclick="event.stopPropagation()"
-            onchange="event.stopPropagation(); handleSubScheduleChange(this, '${s.id}', 'schedule_start_hour')">${hourOptionsHtml(s.schedule_start_hour)}</select>
-          <span class="sub-sched-arrow">→</span>
-          <select class="sub-sched-hour" title="Schedule end hour" onclick="event.stopPropagation()"
-            onchange="event.stopPropagation(); handleSubScheduleChange(this, '${s.id}', 'schedule_end_hour')">${hourOptionsHtml(s.schedule_end_hour)}</select>
-        </span>
+        ${scheduleCellHtml}
         <select class="sub-status" onchange="updateSubStatus('${s.id}', this.value, this)" onclick="event.stopPropagation()">${statusOptions}</select>
         <button class="clock-btn ${s.clock_running?'running':''}" onclick="event.stopPropagation(); toggleClock('${s.id}')"
           title="${isSupervisor() && !(s.draftee||'').split(',').map(x=>x.trim()).includes(getMyDrafteeName()) ? `Supervisor override — clocking on behalf of ${escapeHtml(s.draftee||'unassigned')}` : ''}">
@@ -2379,7 +2390,8 @@ async function toggleClock(subitemId){
     return;
   }
   if(!sub.clock_running){
-    if(!sub.schedule_start_date || !sub.schedule_end_date){
+    const isClass2Ga = sub.subitem_type === 'GA For Approval Prep' && parentRow && !parentRow.requires_client_approval;
+    if(!isClass2Ga && (!sub.schedule_start_date || !sub.schedule_end_date)){
       alert("This sub-process doesn't have a Schedule (start/end date) set yet — set its schedule dates first before clocking in.");
       return;
     }
@@ -2584,10 +2596,22 @@ async function updateSubStatus(subitemId, status, selectEl){
     const allSubs = Object.values(subitemsByParent).flat();
     const sub = allSubs.find(s => s.id === subitemId);
     if(sub && sub.subitem_type === 'GA For Approval Prep'){
+      const parentRecord = rows.find(r => r.id === sub.parent_id);
       const otherGaRows = allSubs.filter(s => s.parent_id === sub.parent_id && s.subitem_type === 'GA For Approval Prep' && s.id !== subitemId);
       const allOthersDone = otherGaRows.every(s => s.status === 'Done');
-      if(allOthersDone){
-        openGaCheckpointModal(subitemId, selectEl);
+      if(parentRecord && parentRecord.requires_client_approval){
+        // Class 1 — the 53-item checklist gate still applies before GA can be marked Done.
+        if(allOthersDone){
+          openGaCheckpointModal(subitemId, selectEl);
+          return;
+        }
+      } else if(allOthersDone){
+        // Class 2 — GA has no schedule of its own and no checklist gate; marking it Done directly
+        // triggers the cascade (Detailing/Checking/Release) starting from today.
+        await sb.from('so_subitems').update({ status, on_break: false, on_break_auto: false }).eq('id', subitemId);
+        const todayStr = new Date().toISOString().slice(0,10);
+        await cascadeScheduleForward(sub.parent_id, 'GA For Approval Prep', todayStr);
+        await loadData();
         return;
       }
     }
