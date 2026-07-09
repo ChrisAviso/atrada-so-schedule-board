@@ -488,11 +488,13 @@
   .sub-sched-disabled{
     font-size:11.5px;color:var(--text-dim);font-style:italic;background:var(--gray-pill);
     padding:5px 10px;border-radius:6px;border:1px dashed var(--border);
+    width:438px;box-sizing:border-box;flex-shrink:0;
   }
+  .sub-sched-hour:disabled{background:var(--gray-pill);color:var(--text-dim);cursor:not-allowed;}
   .inline-sched-track{
     position:relative;height:24px;border-radius:5px;border:1px solid var(--border);
     background:repeating-linear-gradient(90deg, rgba(0,0,0,.03) 0, rgba(0,0,0,.03) 1px, transparent 1px, transparent 12px);
-    flex-shrink:0;cursor:pointer;
+    flex-shrink:0;cursor:pointer;overflow:hidden;
   }
   .inline-sched-today{position:absolute;top:0;bottom:0;width:2px;background:var(--primary);z-index:2;pointer-events:none;}
   .inline-sched-bar{
@@ -2217,7 +2219,10 @@ function rowHtml(r){
   ).join('') + (!GROUP_ORDER.includes(r.group_name) ? `<option value="${escapeAttr(r.group_name||'')}" selected>${escapeHtml(r.group_name||'(none)')}</option>` : '');
   const scheduleStatus = getScheduleStatus(r);
   const scheduleClass = scheduleStatus ? `row-${scheduleStatus}` : '';
-  const subsForFill = subitemsByParent[r.id] || [];
+  const subsForFillAll = subitemsByParent[r.id] || [];
+  const subsForFill = subsForFillAll.filter(s =>
+    !((s.subitem_type === 'GA For Approval Prep' || s.subitem_type === 'Sales Handover') && !r.requires_client_approval)
+  );
   const filledSubs = subsForFill.filter(s => s.schedule_start_date && s.schedule_end_date).length;
   const schedFillPct = subsForFill.length ? Math.round((filledSubs / subsForFill.length) * 100) : null;
   const schedFillTier = schedFillPct === null ? '' : (schedFillPct >= 100 ? 'sched-fill-full' : schedFillPct >= 50 ? 'sched-fill-mid' : 'sched-fill-low');
@@ -2273,7 +2278,7 @@ function subRowHtml(s, jobType, rcdOrRc, requiresClientApproval){
     </td>
   </tr>`;
   }
-  const isClass2Ga = s.subitem_type === 'GA For Approval Prep' && !requiresClientApproval;
+  const isClass2Ga = (s.subitem_type === 'GA For Approval Prep' || s.subitem_type === 'Sales Handover') && !requiresClientApproval;
   const elapsed = liveElapsed(s);
   const statusOptions = ['Not Started','In Progress','On-Hold','Done'].map(opt =>
     `<option value="${opt}" ${s.status===opt?'selected':''}>${opt}</option>`
@@ -2285,7 +2290,12 @@ function subRowHtml(s, jobType, rcdOrRc, requiresClientApproval){
   const scheduleCellHtml = isClass2Ga
     ? `<span class="sub-schedule">
          <span class="sub-sched-label">Schedule:</span>
-         <span class="sub-sched-disabled" title="Standard product — no reserved slot needed. Marking GA Done schedules Detailing onward automatically.">Not scheduled — standard product</span>
+         <span class="inline-sched-wrap">
+           <span class="sub-sched-disabled" title="Standard product — no reserved slot needed. Marking GA Done schedules Detailing onward automatically.">Not scheduled — standard product</span>
+         </span>
+         <select class="sub-sched-hour" disabled>${hourOptionsHtml(null)}</select>
+         <span class="sub-sched-arrow">→</span>
+         <select class="sub-sched-hour" disabled>${hourOptionsHtml(null)}</select>
        </span>`
     : `<span class="sub-schedule">
          <span class="sub-sched-label">Schedule:</span>
@@ -2390,7 +2400,7 @@ async function toggleClock(subitemId){
     return;
   }
   if(!sub.clock_running){
-    const isClass2Ga = sub.subitem_type === 'GA For Approval Prep' && parentRow && !parentRow.requires_client_approval;
+    const isClass2Ga = (sub.subitem_type === 'GA For Approval Prep' || sub.subitem_type === 'Sales Handover') && parentRow && !parentRow.requires_client_approval;
     if(!isClass2Ga && (!sub.schedule_start_date || !sub.schedule_end_date)){
       alert("This sub-process doesn't have a Schedule (start/end date) set yet — set its schedule dates first before clocking in.");
       return;
@@ -2818,10 +2828,35 @@ document.addEventListener('pointerdown', (e) => {
 
 document.addEventListener('pointermove', (e) => {
   if(!inlineDragState || e.pointerId !== inlineDragState.pointerId) return;
-  const deltaX = e.clientX - inlineDragState.startX;
-  const deltaDays = Math.round(deltaX / INLINE_GANTT_DAY_W);
+  const rawDeltaX = e.clientX - inlineDragState.startX;
   const windowStart = inlineGanttWindowStart();
+  const trackWidthPx = INLINE_GANTT_WINDOW_DAYS * INLINE_GANTT_DAY_W;
 
+  const origStartOff = inlineGanttDayOff(inlineDragState.origStart, windowStart);
+  const origLeftPx = origStartOff * INLINE_GANTT_DAY_W;
+  const origEndOffExclusive = inlineGanttDayOff(inlineDragState.origEnd, windowStart) + 1;
+  const origWidthPx = Math.max((origEndOffExclusive - origStartOff) * INLINE_GANTT_DAY_W, INLINE_GANTT_DAY_W);
+
+  // Clamp the pixel delta to the track's visible bounds FIRST — both the bar's visual position
+  // and the resulting committed dates are derived from this SAME clamped value, so the two can
+  // never disagree (previously the bar could visually stop at an edge while the underlying date
+  // kept changing unseen, causing it to "teleport" once you released the drag).
+  let clampedDeltaX = rawDeltaX;
+  let newLeft = origLeftPx, newWidthPx = origWidthPx;
+
+  if(inlineDragState.mode === 'move'){
+    clampedDeltaX = Math.max(-origLeftPx, Math.min(rawDeltaX, trackWidthPx - origWidthPx - origLeftPx));
+    newLeft = origLeftPx + clampedDeltaX;
+  } else if(inlineDragState.mode === 'resize-start'){
+    clampedDeltaX = Math.max(-origLeftPx, Math.min(rawDeltaX, origWidthPx - INLINE_GANTT_DAY_W));
+    newLeft = origLeftPx + clampedDeltaX;
+    newWidthPx = origLeftPx + origWidthPx - newLeft;
+  } else if(inlineDragState.mode === 'resize-end'){
+    clampedDeltaX = Math.max(INLINE_GANTT_DAY_W - origWidthPx, Math.min(rawDeltaX, trackWidthPx - origLeftPx - origWidthPx));
+    newWidthPx = origWidthPx + clampedDeltaX;
+  }
+
+  const deltaDays = Math.round(clampedDeltaX / INLINE_GANTT_DAY_W);
   let newStart = inlineDragState.origStart;
   let newEnd = inlineDragState.origEnd;
 
@@ -2836,26 +2871,8 @@ document.addEventListener('pointermove', (e) => {
     if(new Date(newEnd) < new Date(newStart)) newEnd = newStart;
   }
 
-  // The bar itself follows the raw pixel delta smoothly (1:1 with the cursor) — only the
-  // committed dates and the text label snap to whole days. Quantizing the bar's visual
-  // position to day-steps (the old behavior) made it feel like it was fighting the cursor.
-  const origStartOff = inlineGanttDayOff(inlineDragState.origStart, windowStart);
-  const origLeftPx = origStartOff * INLINE_GANTT_DAY_W;
-  const origEndOffExclusive = inlineGanttDayOff(inlineDragState.origEnd, windowStart) + 1;
-  const origWidthPx = Math.max((origEndOffExclusive - origStartOff) * INLINE_GANTT_DAY_W, INLINE_GANTT_DAY_W);
-
-  if(inlineDragState.mode === 'move'){
-    inlineDragState.barEl.style.left = (origLeftPx + deltaX) + 'px';
-    inlineDragState.barEl.style.width = origWidthPx + 'px';
-  } else if(inlineDragState.mode === 'resize-start'){
-    const newLeft = Math.min(origLeftPx + deltaX, origLeftPx + origWidthPx - INLINE_GANTT_DAY_W);
-    inlineDragState.barEl.style.left = newLeft + 'px';
-    inlineDragState.barEl.style.width = (origLeftPx + origWidthPx - newLeft) + 'px';
-  } else if(inlineDragState.mode === 'resize-end'){
-    const newWidth = Math.max(origWidthPx + deltaX, INLINE_GANTT_DAY_W);
-    inlineDragState.barEl.style.width = newWidth + 'px';
-  }
-
+  inlineDragState.barEl.style.left = newLeft + 'px';
+  inlineDragState.barEl.style.width = newWidthPx + 'px';
   inlineDragState.barEl.title = `${fmtDate(newStart)} → ${fmtDate(newEnd)}`;
   const lbl = document.querySelector(`.inline-sched-datelabel[data-subid="${inlineDragState.subitemId}"]`);
   if(lbl) lbl.textContent = shortDateRange(newStart, newEnd);
