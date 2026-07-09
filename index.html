@@ -237,7 +237,7 @@
   .count-chip.count-ontrack{background:#eefaf1;color:var(--green);}
   .open-so-list{max-height:220px;overflow-y:auto;}
   .open-so-row{
-    display:grid;grid-template-columns:9px 180px 1fr 1.3fr 330px 90px 110px;gap:12px;align-items:center;
+    display:grid;grid-template-columns:9px 180px 1fr 1.3fr 330px 100px 120px 90px 110px;gap:12px;align-items:center;
     padding:6px 0;font-size:13px;border-bottom:1px solid var(--border);cursor:pointer;border-radius:6px;transition:background .1s;
   }
   .open-so-row:hover{background:#eef1ff;}
@@ -256,6 +256,11 @@
     font-size:11px;font-weight:700;color:var(--primary-dark);background:rgba(58,92,235,.1);
     border-radius:12px;padding:3px 10px;white-space:nowrap;justify-self:start;
   }
+  .open-so-po{font-size:11.5px;font-weight:600;color:var(--text-dim);white-space:nowrap;}
+  .open-so-approval{font-size:11.5px;font-weight:700;white-space:nowrap;}
+  .open-so-approval.waiting{color:#a1750a;}
+  .open-so-approval.done{color:var(--green);}
+  .open-so-po.dim,.open-so-approval.dim{color:var(--border);font-weight:400;}
   .open-so-days{font-weight:700;white-space:nowrap;text-align:right;}
   .open-so-days.text-behind{color:var(--red);}
   .open-so-days.text-approaching{color:#a1750a;}
@@ -281,7 +286,11 @@
   .group.collapsed .group-body{display:none;}
 
   .group-body{background:var(--surface);position:relative;}
-  .table-nav{position:sticky;top:64px;float:right;margin-right:14px;display:flex;gap:6px;z-index:5;}
+  .table-nav{
+    position:sticky;top:64px;z-index:6;display:flex;justify-content:flex-end;gap:6px;
+    padding-right:14px;pointer-events:none;height:0;
+  }
+  .table-nav .scroll-btn{pointer-events:auto;margin-top:8px;}
   .scroll-btn{
     width:26px;height:26px;border-radius:50%;border:1.5px solid var(--border);
     background:white;color:var(--text-dim);font-size:15px;font-weight:700;cursor:pointer;
@@ -2037,12 +2046,31 @@ function openJobsSummaryHtml(jobType, title){
       : diff === 0 ? 'Due today'
       : `${diff} day${diff===1?'':'s'} left`;
     const statusBadge = `<span class="open-so-status">${escapeHtml(r.project_status || 'In Progress')}</span>`;
+
+    const todayD = new Date(); todayD.setHours(0,0,0,0);
+    const poDays = r.drafting_transfer_date
+      ? Math.round((todayD - new Date(r.drafting_transfer_date+'T00:00:00')) / 86400000) : null;
+    const poCell = poDays !== null ? `<span class="open-so-po" title="Days since drafting transfer (PO proxy)">${poDays}d since PO</span>` : `<span class="open-so-po dim">—</span>`;
+
+    let approvalCell = `<span class="open-so-approval dim">—</span>`;
+    if(r.requires_client_approval){
+      if(r.project_status === 'Awaiting Client Approval' && r.first_sent_for_approval_date){
+        const waitDays = Math.round((todayD - new Date(r.first_sent_for_approval_date+'T00:00:00')) / 86400000);
+        approvalCell = `<span class="open-so-approval waiting" title="Still waiting on the client">${waitDays}d awaiting</span>`;
+      } else if(r.actual_approval_received_date && r.first_sent_for_approval_date){
+        const totalWait = Math.round((new Date(r.actual_approval_received_date+'T00:00:00') - new Date(r.first_sent_for_approval_date+'T00:00:00')) / 86400000);
+        approvalCell = `<span class="open-so-approval done" title="Total time the client took to approve">${totalWait}d waited</span>`;
+      }
+    }
+
     return `<div class="open-so-row" onclick="scrollToItem('${r.id}')" title="Jump to this item">
       <span class="open-so-dot dot-${status}"></span>
       <span class="open-so-so">${escapeHtml(r.so_number || '—')}</span>
       <span class="open-so-company">${escapeHtml(r.company_name || '—')}</span>
       <span class="open-so-item">${escapeHtml(r.item_name||'(untitled)')}</span>
       ${statusBadge}
+      ${poCell}
+      ${approvalCell}
       <span class="open-so-sales">${fmtMoney(r.project_sales)}</span>
       <span class="open-so-days text-${status}">${label}</span>
     </div>`;
