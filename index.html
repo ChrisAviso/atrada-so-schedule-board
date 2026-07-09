@@ -471,6 +471,25 @@
   .sub-sched-date:focus{outline:none;border-color:var(--primary);}
   .sub-sched-arrow{color:var(--text-dim);font-size:11px;}
   .sub-sched-label{font-size:11px;color:var(--text-dim);font-weight:600;}
+  .inline-sched-track{
+    position:relative;height:24px;border-radius:5px;border:1px solid var(--border);
+    background:repeating-linear-gradient(90deg, rgba(0,0,0,.03) 0, rgba(0,0,0,.03) 1px, transparent 1px, transparent 12px);
+    flex-shrink:0;cursor:pointer;
+  }
+  .inline-sched-today{position:absolute;top:0;bottom:0;width:2px;background:var(--primary);z-index:2;pointer-events:none;}
+  .inline-sched-bar{
+    position:absolute;top:1px;bottom:1px;background:var(--primary);border-radius:4px;
+    display:flex;align-items:stretch;box-shadow:0 1px 2px rgba(0,0,0,.15);z-index:1;
+  }
+  .inline-sched-bar.dragging{opacity:.85;box-shadow:0 2px 10px rgba(0,0,0,.35);z-index:5;}
+  .inline-sched-bar.done{background:var(--text-dim);}
+  .inline-sched-body{flex:1;cursor:grab;min-width:4px;}
+  .inline-sched-body:active{cursor:grabbing;}
+  .inline-sched-handle{width:7px;cursor:ew-resize;background:rgba(255,255,255,.45);flex-shrink:0;}
+  .inline-sched-handle.left{border-radius:4px 0 0 4px;}
+  .inline-sched-handle.right{border-radius:0 4px 4px 0;}
+  .inline-sched-handle:hover{background:rgba(255,255,255,.75);}
+  .inline-sched-hint{font-size:9.5px;color:var(--text-dim);padding-left:6px;pointer-events:none;line-height:24px;position:absolute;}
   .sub-draftee-readonly{
     font-size:12px;color:var(--text-dim);background:var(--gray-pill);border-radius:6px;
     padding:5px 10px;min-width:150px;display:inline-block;font-style:italic;
@@ -1655,6 +1674,7 @@ function populateFilterDropdowns(){
 
 /* ---------------- LIVE MULTI-USER SYNC (subtle background refresh) ---------------- */
 function isSafeToAutoRefresh(){
+  if(inlineDragState) return false;
   const active = document.activeElement;
   if(active){
     const tag = active.tagName;
@@ -2238,13 +2258,10 @@ function subRowHtml(s, jobType, rcdOrRc){
         ${drafteeCell}
         <span class="sub-schedule">
           <span class="sub-sched-label">Schedule:</span>
-          <input type="date" class="sub-sched-date" value="${s.schedule_start_date||''}" title="Schedule start date"
-            onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleSubScheduleChange(this, '${s.id}', 'schedule_start_date')">
+          ${inlineScheduleBarHtml(s)}
           <select class="sub-sched-hour" title="Schedule start hour" onclick="event.stopPropagation()"
             onchange="event.stopPropagation(); handleSubScheduleChange(this, '${s.id}', 'schedule_start_hour')">${hourOptionsHtml(s.schedule_start_hour)}</select>
           <span class="sub-sched-arrow">→</span>
-          <input type="date" class="sub-sched-date" value="${s.schedule_end_date||''}" title="Schedule end date"
-            onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleSubScheduleChange(this, '${s.id}', 'schedule_end_date')">
           <select class="sub-sched-hour" title="Schedule end hour" onclick="event.stopPropagation()"
             onchange="event.stopPropagation(); handleSubScheduleChange(this, '${s.id}', 'schedule_end_hour')">${hourOptionsHtml(s.schedule_end_hour)}</select>
         </span>
@@ -2558,6 +2575,158 @@ async function updateSubDraftee(subitemId, draftee){
 async function updateSubSchedule(subitemId, column, value){
   await sb.from('so_subitems').update({ [column]: value || null }).eq('id', subitemId);
 }
+
+/* ---------------- DRAG-TO-SCHEDULE INLINE BAR ---------------- */
+const INLINE_GANTT_DAY_W = 12;
+const INLINE_GANTT_WINDOW_DAYS = 26;
+const INLINE_GANTT_LEAD_DAYS = 4;
+
+function inlineGanttWindowStart(){
+  const d = new Date(); d.setHours(0,0,0,0);
+  d.setDate(d.getDate() - INLINE_GANTT_LEAD_DAYS);
+  return d;
+}
+function inlineGanttDayOff(dateStr, windowStart){
+  return Math.round((new Date(dateStr+'T00:00:00') - windowStart) / 86400000);
+}
+function shiftDateStr(dateStr, days){
+  const d = new Date(dateStr+'T00:00:00');
+  d.setDate(d.getDate()+days);
+  return d.toISOString().slice(0,10);
+}
+
+function inlineScheduleBarHtml(s){
+  const windowStart = inlineGanttWindowStart();
+  const totalW = INLINE_GANTT_WINDOW_DAYS * INLINE_GANTT_DAY_W;
+  const todayOff = inlineGanttDayOff(new Date().toISOString().slice(0,10), windowStart);
+  let barHtml = '';
+  if(s.schedule_start_date && s.schedule_end_date){
+    const startOff = inlineGanttDayOff(s.schedule_start_date, windowStart);
+    const endOff = inlineGanttDayOff(s.schedule_end_date, windowStart) + 1;
+    const left = startOff * INLINE_GANTT_DAY_W;
+    const width = Math.max((endOff - startOff) * INLINE_GANTT_DAY_W, INLINE_GANTT_DAY_W);
+    barHtml = `<div class="inline-sched-bar ${s.status==='Done'?'done':''}" style="left:${left}px; width:${width}px;" data-subid="${s.id}"
+        title="${fmtDate(s.schedule_start_date)} → ${fmtDate(s.schedule_end_date)}">
+      <div class="inline-sched-handle left" data-mode="resize-start"></div>
+      <div class="inline-sched-body" data-mode="move"></div>
+      <div class="inline-sched-handle right" data-mode="resize-end"></div>
+    </div>`;
+  } else {
+    barHtml = `<span class="inline-sched-hint">click to schedule</span>`;
+  }
+  return `<div class="inline-sched-track" data-subid="${s.id}" style="width:${totalW}px;"
+      onclick="event.stopPropagation(); handleInlineTrackClick(event, '${s.id}')">
+    <div class="inline-sched-today" style="left:${todayOff*INLINE_GANTT_DAY_W}px;"></div>
+    ${barHtml}
+  </div>`;
+}
+
+async function handleInlineTrackClick(e, subitemId){
+  if(e.target.closest('.inline-sched-bar')) return; // clicked an existing bar, not empty track — drag handles that
+  const track = e.currentTarget;
+  const rect = track.getBoundingClientRect();
+  const dayIndex = Math.floor((e.clientX - rect.left) / INLINE_GANTT_DAY_W);
+  const windowStart = inlineGanttWindowStart();
+  const clicked = new Date(windowStart); clicked.setDate(clicked.getDate()+dayIndex);
+  const dateStr = clicked.toISOString().slice(0,10);
+  const ok = await commitSubScheduleDrag(subitemId, dateStr, dateStr);
+  if(ok) await loadData();
+}
+
+async function commitSubScheduleDrag(subitemId, newStartDate, newEndDate){
+  const allSubs = Object.values(subitemsByParent).flat();
+  const sub = allSubs.find(s => s.id === subitemId);
+  if(!sub) return false;
+  const draftees = (sub.draftee || '').split(',').map(x => x.trim()).filter(Boolean);
+  const candidate = { ...sub, schedule_start_date: newStartDate, schedule_end_date: newEndDate };
+
+  if(draftees.length && candidate.schedule_start_date && candidate.schedule_end_date){
+    const aStart = schedDateTime(candidate.schedule_start_date, candidate.schedule_start_hour, false);
+    const aEnd = schedDateTime(candidate.schedule_end_date, candidate.schedule_end_hour, true);
+    const conflicts = allSubs.filter(o => {
+      if(o.id === subitemId || o.status === 'Done') return false;
+      const oDraftees = (o.draftee || '').split(',').map(x => x.trim());
+      if(!draftees.some(d => oDraftees.includes(d))) return false;
+      if(!o.schedule_start_date || !o.schedule_end_date) return false;
+      const bStart = schedDateTime(o.schedule_start_date, o.schedule_start_hour, false);
+      const bEnd = schedDateTime(o.schedule_end_date, o.schedule_end_hour, true);
+      return aStart <= bEnd && aEnd >= bStart;
+    });
+    if(conflicts.length){
+      const list = conflicts.map(c => `• ${c.subitem_type} (${fmtDate(c.schedule_start_date)} → ${fmtDate(c.schedule_end_date)})`).join('\n');
+      const proceed = confirm(`Scheduling conflict for ${draftees.join(', ')}:\n${list}\n\nThis overlaps with the schedule you just set. Save anyway?`);
+      if(!proceed) return false;
+    }
+  }
+  sub.schedule_start_date = newStartDate;
+  sub.schedule_end_date = newEndDate;
+  await sb.from('so_subitems').update({ schedule_start_date: newStartDate, schedule_end_date: newEndDate }).eq('id', subitemId);
+  return true;
+}
+
+let inlineDragState = null;
+
+document.addEventListener('pointerdown', (e) => {
+  const handle = e.target.closest('.inline-sched-handle, .inline-sched-body');
+  if(!handle) return;
+  const barEl = handle.closest('.inline-sched-bar');
+  const subitemId = barEl.dataset.subid;
+  const allSubs = Object.values(subitemsByParent).flat();
+  const sub = allSubs.find(s => s.id === subitemId);
+  if(!sub || !sub.schedule_start_date || !sub.schedule_end_date) return;
+  e.preventDefault();
+  e.stopPropagation();
+  inlineDragState = {
+    subitemId, mode: handle.dataset.mode, startX: e.clientX,
+    origStart: sub.schedule_start_date, origEnd: sub.schedule_end_date,
+    barEl, previewStart: null, previewEnd: null,
+  };
+  barEl.classList.add('dragging');
+  barEl.setPointerCapture && barEl.setPointerCapture(e.pointerId);
+  document.body.style.userSelect = 'none';
+});
+
+document.addEventListener('pointermove', (e) => {
+  if(!inlineDragState) return;
+  const deltaX = e.clientX - inlineDragState.startX;
+  const deltaDays = Math.round(deltaX / INLINE_GANTT_DAY_W);
+  const windowStart = inlineGanttWindowStart();
+
+  let newStart = inlineDragState.origStart;
+  let newEnd = inlineDragState.origEnd;
+
+  if(inlineDragState.mode === 'move'){
+    newStart = shiftDateStr(inlineDragState.origStart, deltaDays);
+    newEnd = shiftDateStr(inlineDragState.origEnd, deltaDays);
+  } else if(inlineDragState.mode === 'resize-start'){
+    newStart = shiftDateStr(inlineDragState.origStart, deltaDays);
+    if(new Date(newStart) > new Date(newEnd)) newStart = newEnd;
+  } else if(inlineDragState.mode === 'resize-end'){
+    newEnd = shiftDateStr(inlineDragState.origEnd, deltaDays);
+    if(new Date(newEnd) < new Date(newStart)) newEnd = newStart;
+  }
+
+  const startOff = inlineGanttDayOff(newStart, windowStart);
+  const endOff = inlineGanttDayOff(newEnd, windowStart) + 1;
+  inlineDragState.barEl.style.left = (startOff * INLINE_GANTT_DAY_W) + 'px';
+  inlineDragState.barEl.style.width = Math.max((endOff-startOff)*INLINE_GANTT_DAY_W, INLINE_GANTT_DAY_W) + 'px';
+  inlineDragState.barEl.title = `${fmtDate(newStart)} → ${fmtDate(newEnd)}`;
+  inlineDragState.previewStart = newStart;
+  inlineDragState.previewEnd = newEnd;
+});
+
+document.addEventListener('pointerup', async (e) => {
+  if(!inlineDragState) return;
+  const { subitemId, barEl, previewStart, previewEnd, origStart, origEnd } = inlineDragState;
+  barEl.classList.remove('dragging');
+  document.body.style.userSelect = '';
+  inlineDragState = null;
+  const newStart = previewStart || origStart;
+  const newEnd = previewEnd || origEnd;
+  if(newStart === origStart && newEnd === origEnd) return; // no actual movement, skip a needless reload
+  await commitSubScheduleDrag(subitemId, newStart, newEnd);
+  await loadData();
+});
 
 /* ---------------- GA APPROVAL CHECKPOINTS ---------------- */
 function gaCheckpointKey(groupKey, idx){ return `${groupKey}::${idx}`; }
@@ -2986,21 +3155,38 @@ function renderJobGanttPanel(record){
     : subs.slice().sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).map(s=>s.subitem_type);
 
   const todayStr = new Date().toISOString().slice(0,10);
-  const allDates = [todayStr];
-  subs.forEach(s => { if(s.schedule_start_date) allDates.push(s.schedule_start_date); if(s.schedule_end_date) allDates.push(s.schedule_end_date); });
-  if(record.drafting_transfer_date) allDates.push(record.drafting_transfer_date);
-  if(record.first_sent_for_approval_date) allDates.push(record.first_sent_for_approval_date);
-  if(record.actual_approval_received_date) allDates.push(record.actual_approval_received_date);
-  if(record.target_release_date) allDates.push(record.target_release_date);
+  // Base window strictly on today + real schedule dates first — these are actual scheduled work,
+  // always worth showing in full even if stale.
+  const scheduleDates = [todayStr];
+  subs.forEach(s => { if(s.schedule_start_date) scheduleDates.push(s.schedule_start_date); if(s.schedule_end_date) scheduleDates.push(s.schedule_end_date); });
+  const sortedBase = scheduleDates.map(d => new Date(d+'T00:00:00')).sort((a,b)=>a-b);
+  let windowStart = sortedBase[0];
+  let windowEnd = sortedBase[sortedBase.length-1];
 
-  const sortedDates = allDates.map(d => new Date(d+'T00:00:00')).sort((a,b)=>a-b);
-  const windowStart = sortedDates[0];
-  const windowEndRaw = sortedDates[sortedDates.length-1];
-  const totalDays = Math.max(Math.round((windowEndRaw - windowStart)/86400000) + 3, 12);
+  // Secondary reference dates (transfer, approval-sent/received, target release) only extend the window
+  // if they're reasonably close (<=30 days) — otherwise a job delayed by months/years would blow the
+  // visual timeline out to be unusably wide and default-scroll away from anything relevant.
+  const MAX_EXTRA_GAP_DAYS = 30;
+  function maybeExtend(dateStr){
+    if(!dateStr) return;
+    const d = new Date(dateStr+'T00:00:00');
+    if(d < windowStart){
+      if(Math.round((windowStart - d)/86400000) <= MAX_EXTRA_GAP_DAYS) windowStart = d;
+    } else if(d > windowEnd){
+      if(Math.round((d - windowEnd)/86400000) <= MAX_EXTRA_GAP_DAYS) windowEnd = d;
+    }
+  }
+  maybeExtend(record.drafting_transfer_date);
+  maybeExtend(record.first_sent_for_approval_date);
+  maybeExtend(record.actual_approval_received_date);
+  maybeExtend(record.target_release_date);
+
+  const totalDays = Math.max(Math.round((windowEnd - windowStart)/86400000) + 3, 12);
   const DAY_W = 68;
 
   function dayOff(dateStr){ return Math.round((new Date(dateStr+'T00:00:00') - windowStart)/86400000); }
   const todayOffset = dayOff(todayStr);
+  const scrollToPx = Math.max(0, (todayOffset - 2) * DAY_W);
 
   let headerHtml = '<div class="gantt-day-header-row">';
   for(let i=0;i<totalDays;i++){
@@ -3053,7 +3239,7 @@ function renderJobGanttPanel(record){
     `;
   });
 
-  return `<div class="gantt-shell"><div class="gantt-grid-table" style="grid-template-columns:130px 1fr;">
+  return `<div class="gantt-shell" data-today-scroll="${scrollToPx}"><div class="gantt-grid-table" style="grid-template-columns:130px 1fr;">
     <div class="gantt-grid-head"><div>Stage</div><div class="gantt-timeline-head">${headerHtml}</div></div>
     ${rowsHtml}
   </div></div>`;
@@ -3260,6 +3446,8 @@ function openModal(id, presetGroup, presetJobType){
   modalBody.innerHTML = computedHtml + formHtml + activityHtml;
   backdrop.classList.remove('hidden');
   if(record) loadActivityLog(record.id);
+  const jgShell = modalBody.querySelector('.gantt-shell[data-today-scroll]');
+  if(jgShell) jgShell.scrollLeft = parseInt(jgShell.dataset.todayScroll, 10) || 0;
 }
 
 function toggleActivityLog(){
