@@ -1150,20 +1150,24 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const GROUP_ORDER = [
-  "Sales Order Drafting & Drawings Prep",
-  "Done Drafting & Drawings Prep",
-  "Done Sales Order - Released for Fabrication",
-  "Done Sales Order - Awaiting Client Approval",
-  "Done Sales Order - For Cost Analysis",
-  "Done Cost Analysis",
-  "Done Sales Order - Finalised",
+const SO_STAGE_GROUP_ORDER = [
+  "Sales Handover",
+  "GA For Approval Prep",
+  "Awaiting Client Approval",
+  "Detailing/PDF/DXF Prep",
+  "Checking / Release",
+  "Production Handover",
+  "Cost Analysis",
+  "Done"
+];
+const OPPTS_GROUP_ORDER = [
   "OPPTS/PROJTS Cost Sheet Prep",
   "Done OPPTS/PROJTS - Cost Sheet Prep",
   "Done OPPTS/PROJTS - Reviewed/Release"
 ];
-const GROUP_COLORS = ["#3a5ceb","#12b886","#f5a623","#e64c66","#7c5cf0","#0aa3a3","#d6534f","#2c9c4a","#9c6b2c","#5c6bc0","#546e7a"];
-const NEW_ITEM_GROUP = "Sales Order Drafting & Drawings Prep";
+const GROUP_ORDER = [...SO_STAGE_GROUP_ORDER, ...OPPTS_GROUP_ORDER];
+const GROUP_COLORS = ["#546e7a","#3a5ceb","#e0921a","#12b886","#f5a623","#7c5cf0","#0aa3a3","#0da374","#2c9c4a","#9c6b2c","#5c6bc0"];
+const NEW_ITEM_GROUP = null;
 const NEW_OPPTS_GROUP = "OPPTS/PROJTS Cost Sheet Prep";
 
 const AUTHORIZED_DRAFTEES = {
@@ -1878,6 +1882,54 @@ document.getElementById('clearFiltersBtn').addEventListener('click', () => {
   renderBoard();
 });
 
+function computeCurrentStageGroup(job){
+  const subs = subitemsByParent[job.id] || [];
+
+  function allDone(type){
+    const list = subs.filter(s => s.subitem_type === type);
+    return list.length > 0 && list.every(s => s.status === 'Done');
+  }
+  function anyTouched(type){
+    return subs.some(s => s.subitem_type === type && s.status !== 'Not Started');
+  }
+  // Finds the most-advanced touched stage within a strictly-ordered sequence, and whether that
+  // whole sequence has been fully completed. This deliberately looks past an earlier stage whose
+  // status was never formally updated even though real work has clearly moved on past it.
+  function findStageInSeq(seq){
+    let lastTouchedIdx = -1;
+    seq.forEach((type, idx) => { if(anyTouched(type)) lastTouchedIdx = idx; });
+    if(lastTouchedIdx === -1) return { done:false, stage: seq[0] };
+    if(allDone(seq[lastTouchedIdx])){
+      const nextIdx = lastTouchedIdx + 1;
+      if(nextIdx >= seq.length) return { done:true };
+      return { done:false, stage: seq[nextIdx] };
+    }
+    return { done:false, stage: seq[lastTouchedIdx] };
+  }
+
+  // A Class 1 job genuinely waiting on the client takes priority over everything else.
+  if(job.requires_client_approval && job.project_status === 'Awaiting Client Approval' && allDone('GA For Approval Prep')){
+    return 'Awaiting Client Approval';
+  }
+
+  // Class 1 walks through Sales Handover first; Class 2's Handover is decorative (schedule
+  // disabled) so it's excluded from the sequence entirely for grouping purposes.
+  const CORE_SEQ = job.requires_client_approval
+    ? ['Sales Handover','GA For Approval Prep','Detailing/PDF/DXF Prep','Checking / Release']
+    : ['GA For Approval Prep','Detailing/PDF/DXF Prep','Checking / Release'];
+  const coreResult = findStageInSeq(CORE_SEQ);
+  if(!coreResult.done) return coreResult.stage;
+
+  // Only once the core pipeline is genuinely finished do we look at the tail — these two can
+  // sometimes get worked independently/early, so they're deliberately kept separate rather than
+  // letting them jump the core queue.
+  const TAIL_SEQ = ['Production Handover','Cost Analysis'];
+  const tailResult = findStageInSeq(TAIL_SEQ);
+  if(!tailResult.done) return tailResult.stage;
+
+  return 'Done';
+}
+
 function renderBoard(){
   const q = document.getElementById('searchBox').value.trim().toLowerCase();
   const today = new Date(); today.setHours(0,0,0,0);
@@ -1913,7 +1965,7 @@ function renderBoard(){
 
   const groups = {};
   filtered.forEach(r => {
-    const g = r.group_name || "(No group)";
+    const g = (r.job_type !== 'OPPTS' && !r.group_name) ? computeCurrentStageGroup(r) : (r.group_name || "(No group)");
     (groups[g] = groups[g] || []).push(r);
   });
 
@@ -2260,9 +2312,12 @@ function rowHtml(r){
   const subToggle = hasSubs
     ? `<span class="subtoggle" onclick="event.stopPropagation(); toggleSubitems('${r.id}')" title="${isCollapsed?'Show':'Hide'} sub-processes">${isCollapsed ? '▸' : '▾'}</span>`
     : `<span class="subtoggle subtoggle-empty"></span>`;
-  const groupOptions = GROUP_ORDER.map(g =>
+  const relevantGroupList = r.job_type === 'OPPTS' ? OPPTS_GROUP_ORDER : SO_STAGE_GROUP_ORDER;
+  const autoOption = r.job_type !== 'OPPTS'
+    ? `<option value="" ${!r.group_name?'selected':''}>Auto (current stage: ${escapeHtml(computeCurrentStageGroup(r))})</option>` : '';
+  const groupOptions = autoOption + relevantGroupList.map(g =>
     `<option value="${escapeAttr(g)}" ${g===r.group_name?'selected':''}>${escapeHtml(g)}</option>`
-  ).join('') + (!GROUP_ORDER.includes(r.group_name) ? `<option value="${escapeAttr(r.group_name||'')}" selected>${escapeHtml(r.group_name||'(none)')}</option>` : '');
+  ).join('') + (r.group_name && !relevantGroupList.includes(r.group_name) ? `<option value="${escapeAttr(r.group_name)}" selected>${escapeHtml(r.group_name)}</option>` : '');
   const scheduleStatus = getScheduleStatus(r);
   const scheduleClass = scheduleStatus ? `row-${scheduleStatus}` : '';
   const subsForFillAll = subitemsByParent[r.id] || [];
@@ -3591,8 +3646,8 @@ function scrollToItem(id){
 }
 
 async function moveToGroup(id, newGroup){
-  await sb.from('so_schedule').update({ group_name: newGroup }).eq('id', id);
-  await loadData();
+  await sb.from('so_schedule').update({ group_name: newGroup || null }).eq('id', id);
+  await silentReload();
 }
 
 /* ---------------- MODAL ---------------- */
@@ -3700,7 +3755,15 @@ function openModal(id, presetGroup, presetJobType){
       </div>`;
     }
     if(f.type === 'select'){
-      const opts = f.options.map(opt => `<option value="${escapeAttr(opt)}" ${val===opt?'selected':''}>${escapeHtml(opt)}</option>`).join('');
+      let selectOptions = f.options;
+      let autoOptHtml = '';
+      if(f.key === 'group_name'){
+        selectOptions = currentPresetJobType === 'OPPTS' ? OPPTS_GROUP_ORDER : SO_STAGE_GROUP_ORDER;
+        if(currentPresetJobType !== 'OPPTS'){
+          autoOptHtml = `<option value="" ${!val?'selected':''}>Auto (current stage: ${escapeHtml(record ? computeCurrentStageGroup(record) : '—')})</option>`;
+        }
+      }
+      const opts = autoOptHtml + selectOptions.map(opt => `<option value="${escapeAttr(opt)}" ${val===opt?'selected':''}>${escapeHtml(opt)}</option>`).join('');
       return `<div class="field">
         <label>${fieldLabel}</label>
         <select id="f_${f.key}">${opts}</select>
