@@ -490,6 +490,8 @@
   .inline-sched-handle.right{border-radius:0 4px 4px 0;}
   .inline-sched-handle:hover{background:rgba(255,255,255,.75);}
   .inline-sched-hint{font-size:9.5px;color:var(--text-dim);padding-left:6px;pointer-events:none;line-height:24px;position:absolute;}
+  .inline-sched-wrap{display:flex;align-items:center;gap:8px;}
+  .inline-sched-datelabel{font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;min-width:78px;}
   .sub-draftee-readonly{
     font-size:12px;color:var(--text-dim);background:var(--gray-pill);border-radius:6px;
     padding:5px 10px;min-width:150px;display:inline-block;font-style:italic;
@@ -2614,11 +2616,22 @@ function inlineScheduleBarHtml(s){
   } else {
     barHtml = `<span class="inline-sched-hint">click to schedule</span>`;
   }
-  return `<div class="inline-sched-track" data-subid="${s.id}" style="width:${totalW}px;"
-      onclick="event.stopPropagation(); handleInlineTrackClick(event, '${s.id}')">
-    <div class="inline-sched-today" style="left:${todayOff*INLINE_GANTT_DAY_W}px;"></div>
-    ${barHtml}
-  </div>`;
+  return `<span class="inline-sched-wrap">
+    <div class="inline-sched-track" data-subid="${s.id}" style="width:${totalW}px;"
+        onclick="event.stopPropagation(); handleInlineTrackClick(event, '${s.id}')">
+      <div class="inline-sched-today" style="left:${todayOff*INLINE_GANTT_DAY_W}px;"></div>
+      ${barHtml}
+    </div>
+    <span class="inline-sched-datelabel" data-subid="${s.id}">${s.schedule_start_date ? shortDateRange(s.schedule_start_date, s.schedule_end_date) : '—'}</span>
+  </span>`;
+}
+
+function shortDateRange(startStr, endStr){
+  const opts = {day:'numeric', month:'short'};
+  const s = new Date(startStr+'T00:00:00').toLocaleDateString('en-AU', opts);
+  if(startStr === endStr) return s;
+  const e = new Date(endStr+'T00:00:00').toLocaleDateString('en-AU', opts);
+  return `${s} → ${e}`;
 }
 
 async function handleInlineTrackClick(e, subitemId){
@@ -2711,6 +2724,8 @@ document.addEventListener('pointermove', (e) => {
   inlineDragState.barEl.style.left = (startOff * INLINE_GANTT_DAY_W) + 'px';
   inlineDragState.barEl.style.width = Math.max((endOff-startOff)*INLINE_GANTT_DAY_W, INLINE_GANTT_DAY_W) + 'px';
   inlineDragState.barEl.title = `${fmtDate(newStart)} → ${fmtDate(newEnd)}`;
+  const lbl = document.querySelector(`.inline-sched-datelabel[data-subid="${inlineDragState.subitemId}"]`);
+  if(lbl) lbl.textContent = shortDateRange(newStart, newEnd);
   inlineDragState.previewStart = newStart;
   inlineDragState.previewEnd = newEnd;
 });
