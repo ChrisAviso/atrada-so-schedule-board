@@ -1981,13 +1981,21 @@ function activePanelHtml(){
 
 function onBreakPanelHtml(){
   const breakEntries = [];
+  const now = new Date();
+  const isSameLocalDay = (iso) => {
+    if(!iso) return false;
+    const d = new Date(iso);
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  };
   Object.keys(subitemsByParent).forEach(parentId => {
     (subitemsByParent[parentId] || []).forEach(s => {
-      if(s.on_break){
-        const parent = rows.find(r => r.id === parentId);
+      const isPausedMidwork = s.status === 'In Progress' && !s.clock_running && (s.total_seconds||0) > 0;
+      if(s.on_break || isPausedMidwork){
         const stoppedLogs = (logsBySubitem[s.id] || []).filter(l => l.ended_at);
         stoppedLogs.sort((a,b) => new Date(b.ended_at) - new Date(a.ended_at));
         const loggedOutAt = stoppedLogs[0] ? stoppedLogs[0].ended_at : null;
+        if(!isSameLocalDay(loggedOutAt)) return; // only today's pauses belong here
+        const parent = rows.find(r => r.id === parentId);
         breakEntries.push({ sub: s, parent, loggedOutAt });
       }
     });
@@ -1995,15 +2003,9 @@ function onBreakPanelHtml(){
   if(breakEntries.length === 0) return '';
   breakEntries.sort((a,b) => new Date(b.loggedOutAt||0) - new Date(a.loggedOutAt||0));
   const rowsHtml = breakEntries.map(({sub,parent,loggedOutAt}) => {
-    const metaParts = [];
-    if(sub.on_break_auto){
-      metaParts.push(`<span class="break-panel-auto-tag" title="No response within 5 minutes — clocked off automatically">⏱ Auto-stopped, no response</span>`);
-    }
-    if(sub.remarks){
-      const preview = sub.remarks.length > 160 ? sub.remarks.slice(0, 160) + '…' : sub.remarks;
-      metaParts.push(`<span class="break-panel-note-text">📝 Last note: ${escapeHtml(preview)}</span>`);
-    }
-    const metaHtml = metaParts.length ? `<div class="break-panel-meta">${metaParts.join('')}</div>` : '';
+    const metaHtml = sub.on_break_auto
+      ? `<div class="break-panel-meta"><span class="break-panel-auto-tag" title="No response within 5 minutes — clocked off automatically">⏱ Auto-stopped, no response</span></div>`
+      : '';
     return `
     <div class="break-panel-entry">
       <div class="break-panel-row" ${parent ? `onclick="scrollToItem('${parent.id}')" title="Jump to this item"` : ''}>
@@ -2019,7 +2021,7 @@ function onBreakPanelHtml(){
     </div>`;
   }).join('');
   return `<div class="break-panel">
-    <div class="break-panel-title"><span class="break-panel-dot"></span>On Break — resume where you left off (${breakEntries.length})</div>
+    <div class="break-panel-title"><span class="break-panel-dot"></span>Paused — resume where you left off (${breakEntries.length})</div>
     ${rowsHtml}
   </div>`;
 }
