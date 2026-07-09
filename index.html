@@ -281,7 +281,7 @@
   .group.collapsed .group-body{display:none;}
 
   .group-body{background:var(--surface);position:relative;}
-  .table-nav{position:absolute;top:8px;right:14px;display:flex;gap:6px;z-index:5;}
+  .table-nav{position:sticky;top:64px;float:right;margin-right:14px;display:flex;gap:6px;z-index:5;}
   .scroll-btn{
     width:26px;height:26px;border-radius:50%;border:1.5px solid var(--border);
     background:white;color:var(--text-dim);font-size:15px;font-weight:700;cursor:pointer;
@@ -967,7 +967,7 @@
             <option value="Detailing/PDF/DXF Prep">Detailing/PDF/DXF Prep</option>
             <option value="Checking">Checking</option>
             <option value="Release">Release</option>
-            <option value="Production Hand-Over">Production Hand-Over</option>
+            <option value="Production Handover">Production Handover</option>
             <option value="Cost Analysis">Cost Analysis</option>
             <option value="Drawing/BOM Prep">Drawing/BOM Prep</option>
             <option value="Costing Prep">Costing Prep</option>
@@ -2702,19 +2702,20 @@ async function handleInlineTrackClick(e, subitemId){
   const clicked = new Date(windowStart); clicked.setDate(clicked.getDate()+dayIndex);
   const dateStr = clicked.toISOString().slice(0,10);
   const ok = await commitSubScheduleDrag(subitemId, dateStr, dateStr);
-  if(ok) await loadData();
+  if(ok) await silentReload();
 }
 
 /* ---------------- STAGE DEPENDENCY CASCADE ---------------- */
 // Verified against the real 10-day rule: GA(3d)->Detailing(5d Class2/8d Class1)->Checking(2d)->Release(same day as Checking).
 // Sales Handover(2d)->GA also cascades for Class 1 jobs. Each link starts the next workday after the
 // previous stage's end, except Release which shares Checking's last day rather than starting a new one.
-const STAGE_DURATIONS_CASCADE = { 'Sales Handover': 2, 'GA For Approval Prep': 3, 'Checking': 2, 'Release': 1 };
+const STAGE_DURATIONS_CASCADE = { 'Sales Handover': 2, 'GA For Approval Prep': 3, 'Checking / Release': 2, 'Production Handover': 1, 'Cost Analysis': 1 };
 const CASCADE_NEXT = {
   'Sales Handover': 'GA For Approval Prep',
   'GA For Approval Prep': 'Detailing/PDF/DXF Prep',
-  'Detailing/PDF/DXF Prep': 'Checking',
-  'Checking': 'Release',
+  'Detailing/PDF/DXF Prep': 'Checking / Release',
+  'Checking / Release': 'Production Handover',
+  'Production Handover': 'Cost Analysis',
 };
 
 function addWorkdaysJS(dateStr, n){
@@ -2750,17 +2751,11 @@ async function cascadeScheduleForward(parentId, fromStageType, fromEndDate){
     const nextSub = (subitemsByParent[parentId]||[]).find(s => s.subitem_type === nextType);
     if(!nextSub) break;
 
-    let nextStart, nextEnd;
-    if(nextType === 'Release'){
-      nextStart = currentEnd;
-      nextEnd = currentEnd;
-    } else {
-      const duration = nextType === 'Detailing/PDF/DXF Prep'
-        ? (record.requires_client_approval ? 8 : 5)
-        : (STAGE_DURATIONS_CASCADE[nextType] || 1);
-      nextStart = addWorkdaysJS(currentEnd, 1);
-      nextEnd = workdaySpanEnd(nextStart, duration);
-    }
+    const duration = nextType === 'Detailing/PDF/DXF Prep'
+      ? (record.requires_client_approval ? 8 : 5)
+      : (STAGE_DURATIONS_CASCADE[nextType] || 1);
+    const nextStart = addWorkdaysJS(currentEnd, 1);
+    const nextEnd = workdaySpanEnd(nextStart, duration);
 
     await sb.from('so_subitems').update({ schedule_start_date: nextStart, schedule_end_date: nextEnd }).eq('id', nextSub.id);
     nextSub.schedule_start_date = nextStart;
@@ -2890,7 +2885,7 @@ document.addEventListener('pointerup', async (e) => {
   const newEnd = previewEnd || origEnd;
   if(newStart === origStart && newEnd === origEnd) return; // no actual movement, skip a needless reload
   await commitSubScheduleDrag(subitemId, newStart, newEnd);
-  await loadData();
+  await silentReload();
 });
 
 /* ---------------- GA APPROVAL CHECKPOINTS ---------------- */
@@ -3035,7 +3030,7 @@ async function confirmGaCheckpoint(){
   gaCheckpointSubitemId = null;
   gaCheckpointSelectEl = null;
   gaCheckpointState = {};
-  await loadData();
+  await silentReload();
 }
 
 document.getElementById('gaCheckpointCloseBtn').onclick = () => closeGaCheckpointModal(true);
@@ -3328,27 +3323,26 @@ async function requestRevision(parentId){
     actual_sent_for_approval: null
   }).eq('id', parentId);
   closeModal();
-  await loadData();
+  await silentReload();
 }
 async function markClientApproved(parentId){
   if(!confirm("Confirm the client has approved this job? This starts the hard 10-day release clock.")) return;
   await sb.from('so_schedule').update({ project_status: 'Client Approved - Drafting In Progress' }).eq('id', parentId);
-  await loadData(); // refresh so actual_approval_received_date (set server-side by the trigger) is available locally
+  await silentReload(); // refresh so actual_approval_received_date (set server-side by the trigger) is available locally
   const record = rows.find(r => r.id === parentId);
   if(record && record.actual_approval_received_date){
     await cascadeScheduleForward(parentId, 'GA For Approval Prep', record.actual_approval_received_date);
   }
   closeModal();
-  await loadData();
+  await silentReload();
 }
 
 const JOB_GANTT_STAGE_LABELS = {
   'Sales Handover': 'Sales Handover',
   'GA For Approval Prep': 'GA',
   'Detailing/PDF/DXF Prep': 'Detailing',
-  'Checking': 'Checking',
-  'Release': 'Release',
-  'Production Hand-Over': 'Hand-Over',
+  'Checking / Release': 'Checking/Release',
+  'Production Handover': 'Hand-Over',
   'Cost Analysis': 'Cost Analysis',
   'Drawing/BOM Prep': 'Drawing/BOM',
   'Costing Prep': 'Costing Prep',
@@ -3360,7 +3354,7 @@ function renderJobGanttPanel(record){
   if(subs.length === 0) return `<div class="gantt-empty">No sub-processes on this job yet.</div>`;
 
   const stageOrder = record.requires_client_approval
-    ? ['Sales Handover','GA For Approval Prep','__CLIENT_APPROVAL__','Detailing/PDF/DXF Prep','Checking','Release','Production Hand-Over','Cost Analysis']
+    ? ['Sales Handover','GA For Approval Prep','__CLIENT_APPROVAL__','Detailing/PDF/DXF Prep','Checking / Release','Production Handover','Cost Analysis']
     : subs.slice().sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).map(s=>s.subitem_type);
 
   const todayStr = new Date().toISOString().slice(0,10);
@@ -3528,7 +3522,7 @@ const FIELDS = [
   {key:'rcd_or_rc', label:'RCD / RC', type:'select', options:['RCD','RC']},
   {key:'project_status', label:'Project Status', type:'select', options:[
     'In Progress','Awaiting Client Approval','Client Approved - Drafting In Progress',
-    'Released - For Production Hand-Over','Done - Production Hand-Over'
+    'Released - For Production Handover','Done - Production Handover'
   ]},
   {key:'drafting_transfer_date', label:'Drafting transfer date', type:'date'},
   {key:'target_sent_for_approval', label:'Target sent for approval', type:'date'},
@@ -3764,8 +3758,8 @@ deleteBtn.onclick = async () => {
 };
 
 /* ---------------- TEAM DASHBOARD ---------------- */
-const DASHBOARD_STAGE_TYPES = ['Sales Handover','GA For Approval Prep','Detailing/PDF/DXF Prep','Checking','Release','Production Hand-Over','Cost Analysis','Drawing/BOM Prep','Costing Prep','Review/Release'];
-const DASHBOARD_STAGE_COLORS = ['#546e7a','#3a5ceb','#12b886','#f5a623','#e64c66','#7c5cf0','#0aa3a3','#d6534f','#2c9c4a','#9c6b2c'];
+const DASHBOARD_STAGE_TYPES = ['Sales Handover','GA For Approval Prep','Detailing/PDF/DXF Prep','Checking','Checking / Release','Production Handover','Cost Analysis','Drawing/BOM Prep','Costing Prep','Review/Release'];
+const DASHBOARD_STAGE_COLORS = ['#546e7a','#3a5ceb','#12b886','#f5a623','#f5a623','#7c5cf0','#0aa3a3','#d6534f','#2c9c4a','#9c6b2c'];
 const DASHBOARD_PIE_COLORS = ['#3a5ceb','#12b886','#f5a623','#e64c66','#7c5cf0','#0aa3a3','#d6534f','#2c9c4a','#9c6b2c','#5c6bc0'];
 
 function fmtShortDate(isoDateStr){
@@ -4102,8 +4096,7 @@ function renderGanttView(){
       <span class="gantt-legend-item"><span class="gantt-legend-swatch" style="background:${stageColorFor('Sales Handover')}"></span>Sales Handover</span>
       <span class="gantt-legend-item"><span class="gantt-legend-swatch" style="background:${stageColorFor('GA For Approval Prep')}"></span>GA</span>
       <span class="gantt-legend-item"><span class="gantt-legend-swatch" style="background:${stageColorFor('Detailing/PDF/DXF Prep')}"></span>Detailing</span>
-      <span class="gantt-legend-item"><span class="gantt-legend-swatch" style="background:${stageColorFor('Checking')}"></span>Checking</span>
-      <span class="gantt-legend-item"><span class="gantt-legend-swatch" style="background:${stageColorFor('Release')}"></span>Release</span>
+      <span class="gantt-legend-item"><span class="gantt-legend-swatch" style="background:${stageColorFor('Checking / Release')}"></span>Checking/Release</span>
       <span class="gantt-legend-item"><span class="gantt-legend-swatch wait"></span>Awaiting Client Approval</span>
       <span class="gantt-legend-item">Faded = Done · Pulsing dot = clocked in now</span>
     </div>
