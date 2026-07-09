@@ -458,6 +458,20 @@
   .subrow-disabled{background:#f7f7f9;}
   .sub-content-disabled{opacity:.55;}
   .sub-disabled-badge{font-size:11px;font-style:italic;color:var(--text-dim);}
+  .subrow-approval{background:#fffaf0;}
+  .subrow-approval:hover{background:#fef3e0;}
+  .approval-inline-status{font-size:12px;font-weight:700;}
+  .approval-inline-status.waiting{color:#a1750a;}
+  .approval-inline-status.approved{color:var(--green);}
+  .approval-inline-status.pending{color:var(--text-dim);font-weight:500;}
+  .approval-inline-actions{display:flex;gap:6px;margin-left:auto;}
+  .btn-ghost-sm{
+    background:white;border:1.5px solid var(--border);border-radius:6px;padding:5px 10px;
+    font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--text);
+  }
+  .btn-ghost-sm:hover{border-color:var(--amber);}
+  .btn-ghost-sm.approve{border-color:var(--green);color:var(--green);}
+  .btn-ghost-sm.approve:hover{background:var(--green);color:white;}
   .sub-draftee{
     font-size:12px;border:1.5px solid var(--border);border-radius:6px;
     padding:4px 8px;font-family:inherit;background:white;width:150px;
@@ -2231,7 +2245,14 @@ function rowHtml(r){
       <select class="move-group-select" onchange="moveToGroup('${r.id}', this.value)">${groupOptions}</select>
     </td>
   </tr>`;
-  const subs = isCollapsed ? '' : (subitemsByParent[r.id] || []).map(s => subRowHtml(s, r.job_type, r.rcd_or_rc)).join('');
+  const subsList = subitemsByParent[r.id] || [];
+  const subs = isCollapsed ? '' : subsList.map((s, idx) => {
+    let html = subRowHtml(s, r.job_type, r.rcd_or_rc);
+    const isLastGaRow = s.subitem_type === 'GA For Approval Prep' &&
+      (idx === subsList.length-1 || subsList[idx+1].subitem_type !== 'GA For Approval Prep');
+    if(isLastGaRow && r.requires_client_approval) html += clientApprovalInlineRowHtml(r);
+    return html;
+  }).join('');
   return mainRow + subs;
 }
 
@@ -2650,6 +2671,72 @@ async function handleInlineTrackClick(e, subitemId){
   if(ok) await loadData();
 }
 
+/* ---------------- STAGE DEPENDENCY CASCADE ---------------- */
+// Verified against the real 10-day rule: GA(3d)->Detailing(5d Class2/8d Class1)->Checking(2d)->Release(same day as Checking).
+// Sales Handover(2d)->GA also cascades for Class 1 jobs. Each link starts the next workday after the
+// previous stage's end, except Release which shares Checking's last day rather than starting a new one.
+const STAGE_DURATIONS_CASCADE = { 'Sales Handover': 2, 'GA For Approval Prep': 3, 'Checking': 2, 'Release': 1 };
+const CASCADE_NEXT = {
+  'Sales Handover': 'GA For Approval Prep',
+  'GA For Approval Prep': 'Detailing/PDF/DXF Prep',
+  'Detailing/PDF/DXF Prep': 'Checking',
+  'Checking': 'Release',
+};
+
+function addWorkdaysJS(dateStr, n){
+  const d = new Date(dateStr+'T00:00:00');
+  let remaining = n;
+  while(remaining > 0){
+    d.setDate(d.getDate()+1);
+    const dow = d.getDay();
+    if(dow !== 0 && dow !== 6) remaining--;
+  }
+  return d.toISOString().slice(0,10);
+}
+function workdaySpanEnd(startDateStr, durationDays){
+  if(durationDays <= 1) return startDateStr;
+  return addWorkdaysJS(startDateStr, durationDays - 1);
+}
+
+async function cascadeScheduleForward(parentId, fromStageType, fromEndDate){
+  const record = rows.find(r => r.id === parentId);
+  if(!record || !fromEndDate) return;
+  let currentType = fromStageType;
+  let currentEnd = fromEndDate;
+
+  while(CASCADE_NEXT[currentType]){
+    const nextType = CASCADE_NEXT[currentType];
+
+    // GA -> Detailing only auto-cascades if this isn't a still-pending (unapproved) Class 1 job —
+    // Detailing genuinely can't be dated until the client's response is known.
+    if(currentType === 'GA For Approval Prep' && record.requires_client_approval && !record.actual_approval_received_date){
+      break;
+    }
+
+    const nextSub = (subitemsByParent[parentId]||[]).find(s => s.subitem_type === nextType);
+    if(!nextSub) break;
+
+    let nextStart, nextEnd;
+    if(nextType === 'Release'){
+      nextStart = currentEnd;
+      nextEnd = currentEnd;
+    } else {
+      const duration = nextType === 'Detailing/PDF/DXF Prep'
+        ? (record.requires_client_approval ? 8 : 5)
+        : (STAGE_DURATIONS_CASCADE[nextType] || 1);
+      nextStart = addWorkdaysJS(currentEnd, 1);
+      nextEnd = workdaySpanEnd(nextStart, duration);
+    }
+
+    await sb.from('so_subitems').update({ schedule_start_date: nextStart, schedule_end_date: nextEnd }).eq('id', nextSub.id);
+    nextSub.schedule_start_date = nextStart;
+    nextSub.schedule_end_date = nextEnd;
+
+    currentType = nextType;
+    currentEnd = nextEnd;
+  }
+}
+
 async function commitSubScheduleDrag(subitemId, newStartDate, newEndDate){
   const allSubs = Object.values(subitemsByParent).flat();
   const sub = allSubs.find(s => s.id === subitemId);
@@ -2678,6 +2765,7 @@ async function commitSubScheduleDrag(subitemId, newStartDate, newEndDate){
   sub.schedule_start_date = newStartDate;
   sub.schedule_end_date = newEndDate;
   await sb.from('so_subitems').update({ schedule_start_date: newStartDate, schedule_end_date: newEndDate }).eq('id', subitemId);
+  await cascadeScheduleForward(sub.parent_id, sub.subitem_type, newEndDate);
   return true;
 }
 
@@ -2885,6 +2973,8 @@ async function confirmGaCheckpoint(){
   const v = gaCheckpointValidation();
   if(!v.complete) return;
   const subitemId = gaCheckpointSubitemId;
+  const allSubs = Object.values(subitemsByParent).flat();
+  const gaSub = allSubs.find(s => s.id === subitemId);
   await sb.from('so_subitems').update({
     status: 'Done',
     ga_checkpoints: gaCheckpointState,
@@ -2892,6 +2982,14 @@ async function confirmGaCheckpoint(){
     on_break: false,
     on_break_auto: false
   }).eq('id', subitemId);
+  if(gaSub){
+    const parentRecord = rows.find(r => r.id === gaSub.parent_id);
+    // Only Class 2 (no approval needed) auto-cascades straight from GA — Class 1 has to wait for
+    // the approval trigger instead, handled separately in markClientApproved.
+    if(parentRecord && !parentRecord.requires_client_approval && gaSub.schedule_end_date){
+      await cascadeScheduleForward(gaSub.parent_id, 'GA For Approval Prep', gaSub.schedule_end_date);
+    }
+  }
   document.getElementById('gaCheckpointModalBackdrop').classList.add('hidden');
   gaCheckpointSubitemId = null;
   gaCheckpointSelectEl = null;
@@ -3119,6 +3217,35 @@ function difotPill(status){
   if(status === 'DIFOT_LATE') return `<span class="pill pill-late">Late ✕</span>`;
   return `<span class="pill pill-ongoing">On-Going</span>`;
 }
+function clientApprovalInlineRowHtml(r){
+  const revisionNote = r.revision_count > 0 ? ` · ${r.revision_count} rev` : '';
+  let statusHtml, actionsHtml = '';
+  if(r.project_status === 'Awaiting Client Approval'){
+    const daysWaiting = r.first_sent_for_approval_date
+      ? Math.floor((new Date() - new Date(r.first_sent_for_approval_date+'T00:00:00')) / 86400000)
+      : null;
+    statusHtml = `<span class="approval-inline-status waiting">⏳ Awaiting Approval${daysWaiting!==null?` — Day ${daysWaiting}`:''}${revisionNote}</span>`;
+    actionsHtml = `
+      <button class="btn-ghost-sm" onclick="event.stopPropagation(); requestRevision('${r.id}')">🔄 Revision</button>
+      <button class="btn-ghost-sm approve" onclick="event.stopPropagation(); markClientApproved('${r.id}')">✓ Approved</button>
+    `;
+  } else if(r.project_status === 'Client Approved - Drafting In Progress' && r.actual_approval_received_date){
+    statusHtml = `<span class="approval-inline-status approved">✓ Approved — ${fmtDate(r.actual_approval_received_date)}${revisionNote}</span>`;
+  } else {
+    statusHtml = `<span class="approval-inline-status pending">Not sent yet</span>`;
+  }
+  return `<tr class="subrow subrow-approval" onclick="event.stopPropagation()">
+    <td colspan="19">
+      <div class="sub-content">
+        <span class="sub-indent-icon">↳</span>
+        <span class="sub-label">Client Approval</span>
+        ${statusHtml}
+        <span class="approval-inline-actions">${actionsHtml}</span>
+      </div>
+    </td>
+  </tr>`;
+}
+
 function approvalStatusBannerHtml(record){
   const revisionNote = record.revision_count > 0 ? ` · ${record.revision_count} revision${record.revision_count===1?'':'s'} so far` : '';
   if(record.project_status === 'Awaiting Client Approval'){
@@ -3165,6 +3292,11 @@ async function requestRevision(parentId){
 async function markClientApproved(parentId){
   if(!confirm("Confirm the client has approved this job? This starts the hard 10-day release clock.")) return;
   await sb.from('so_schedule').update({ project_status: 'Client Approved - Drafting In Progress' }).eq('id', parentId);
+  await loadData(); // refresh so actual_approval_received_date (set server-side by the trigger) is available locally
+  const record = rows.find(r => r.id === parentId);
+  if(record && record.actual_approval_received_date){
+    await cascadeScheduleForward(parentId, 'GA For Approval Prep', record.actual_approval_received_date);
+  }
   closeModal();
   await loadData();
 }
