@@ -490,8 +490,11 @@
   .inline-sched-handle.right{border-radius:0 4px 4px 0;}
   .inline-sched-handle:hover{background:rgba(255,255,255,.75);}
   .inline-sched-hint{font-size:9.5px;color:var(--text-dim);padding-left:6px;pointer-events:none;line-height:24px;position:absolute;}
-  .inline-sched-wrap{display:flex;align-items:center;gap:8px;}
-  .inline-sched-datelabel{font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;min-width:78px;}
+  .inline-sched-wrap{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+  .inline-sched-datelabel{
+    font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;
+    width:118px;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;
+  }
   .sub-draftee-readonly{
     font-size:12px;color:var(--text-dim);background:var(--gray-pill);border-radius:6px;
     padding:5px 10px;min-width:150px;display:inline-block;font-style:italic;
@@ -1707,6 +1710,7 @@ function flashSynced(){
 }
 
 async function silentReload(){
+  if(inlineDragState) return; // never replace the DOM out from under an active drag
   const savedScrollY = window.scrollY;
   const { data, error } = await sb.from('so_schedule_computed').select('*').order('created_at', {ascending:true});
   if(error) return; // stay quiet in the background; the next live event will retry
@@ -2680,6 +2684,7 @@ async function commitSubScheduleDrag(subitemId, newStartDate, newEndDate){
 let inlineDragState = null;
 
 document.addEventListener('pointerdown', (e) => {
+  if(inlineDragState) return; // a drag is already in progress — ignore any additional pointerdown until it resolves
   const handle = e.target.closest('.inline-sched-handle, .inline-sched-body');
   if(!handle) return;
   const barEl = handle.closest('.inline-sched-bar');
@@ -2690,7 +2695,7 @@ document.addEventListener('pointerdown', (e) => {
   e.preventDefault();
   e.stopPropagation();
   inlineDragState = {
-    subitemId, mode: handle.dataset.mode, startX: e.clientX,
+    subitemId, mode: handle.dataset.mode, startX: e.clientX, pointerId: e.pointerId,
     origStart: sub.schedule_start_date, origEnd: sub.schedule_end_date,
     barEl, previewStart: null, previewEnd: null,
   };
@@ -2700,7 +2705,7 @@ document.addEventListener('pointerdown', (e) => {
 });
 
 document.addEventListener('pointermove', (e) => {
-  if(!inlineDragState) return;
+  if(!inlineDragState || e.pointerId !== inlineDragState.pointerId) return;
   const deltaX = e.clientX - inlineDragState.startX;
   const deltaDays = Math.round(deltaX / INLINE_GANTT_DAY_W);
   const windowStart = inlineGanttWindowStart();
@@ -2719,10 +2724,26 @@ document.addEventListener('pointermove', (e) => {
     if(new Date(newEnd) < new Date(newStart)) newEnd = newStart;
   }
 
-  const startOff = inlineGanttDayOff(newStart, windowStart);
-  const endOff = inlineGanttDayOff(newEnd, windowStart) + 1;
-  inlineDragState.barEl.style.left = (startOff * INLINE_GANTT_DAY_W) + 'px';
-  inlineDragState.barEl.style.width = Math.max((endOff-startOff)*INLINE_GANTT_DAY_W, INLINE_GANTT_DAY_W) + 'px';
+  // The bar itself follows the raw pixel delta smoothly (1:1 with the cursor) — only the
+  // committed dates and the text label snap to whole days. Quantizing the bar's visual
+  // position to day-steps (the old behavior) made it feel like it was fighting the cursor.
+  const origStartOff = inlineGanttDayOff(inlineDragState.origStart, windowStart);
+  const origLeftPx = origStartOff * INLINE_GANTT_DAY_W;
+  const origEndOffExclusive = inlineGanttDayOff(inlineDragState.origEnd, windowStart) + 1;
+  const origWidthPx = Math.max((origEndOffExclusive - origStartOff) * INLINE_GANTT_DAY_W, INLINE_GANTT_DAY_W);
+
+  if(inlineDragState.mode === 'move'){
+    inlineDragState.barEl.style.left = (origLeftPx + deltaX) + 'px';
+    inlineDragState.barEl.style.width = origWidthPx + 'px';
+  } else if(inlineDragState.mode === 'resize-start'){
+    const newLeft = Math.min(origLeftPx + deltaX, origLeftPx + origWidthPx - INLINE_GANTT_DAY_W);
+    inlineDragState.barEl.style.left = newLeft + 'px';
+    inlineDragState.barEl.style.width = (origLeftPx + origWidthPx - newLeft) + 'px';
+  } else if(inlineDragState.mode === 'resize-end'){
+    const newWidth = Math.max(origWidthPx + deltaX, INLINE_GANTT_DAY_W);
+    inlineDragState.barEl.style.width = newWidth + 'px';
+  }
+
   inlineDragState.barEl.title = `${fmtDate(newStart)} → ${fmtDate(newEnd)}`;
   const lbl = document.querySelector(`.inline-sched-datelabel[data-subid="${inlineDragState.subitemId}"]`);
   if(lbl) lbl.textContent = shortDateRange(newStart, newEnd);
@@ -2731,7 +2752,7 @@ document.addEventListener('pointermove', (e) => {
 });
 
 document.addEventListener('pointerup', async (e) => {
-  if(!inlineDragState) return;
+  if(!inlineDragState || e.pointerId !== inlineDragState.pointerId) return;
   const { subitemId, barEl, previewStart, previewEnd, origStart, origEnd } = inlineDragState;
   barEl.classList.remove('dragging');
   document.body.style.userSelect = '';
