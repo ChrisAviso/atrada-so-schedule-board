@@ -488,7 +488,7 @@
   .sub-sched-disabled{
     font-size:11.5px;color:var(--text-dim);font-style:italic;background:var(--gray-pill);
     padding:5px 10px;border-radius:6px;border:1px dashed var(--border);
-    width:438px;box-sizing:border-box;flex-shrink:0;
+    width:312px;box-sizing:border-box;flex-shrink:0;
   }
   .sub-sched-hour:disabled{background:var(--gray-pill);color:var(--text-dim);cursor:not-allowed;}
   .inline-sched-track{
@@ -512,6 +512,12 @@
     background:#fff;padding:0 4px;border-radius:4px;border:1px solid var(--red);white-space:nowrap;
   }
   .inline-sched-overdue-label{font-size:10.5px;font-weight:800;color:var(--red);white-space:nowrap;}
+  .inline-sched-duration{
+    width:40px;font-size:11.5px;border:1.5px solid var(--border);border-radius:6px;
+    padding:4px 4px;font-family:inherit;background:white;color:var(--text);text-align:center;flex-shrink:0;
+  }
+  .inline-sched-duration:focus{outline:none;border-color:var(--primary);}
+  .inline-sched-duration:disabled{background:var(--gray-pill);color:var(--text-dim);cursor:not-allowed;}
   .inline-sched-body{flex:1;cursor:grab;min-width:4px;}
   .inline-sched-body:active{cursor:grabbing;}
   .inline-sched-handle{width:7px;cursor:ew-resize;background:rgba(255,255,255,.45);flex-shrink:0;}
@@ -663,6 +669,8 @@
   .gantt-bar{position:absolute;top:1px;height:24px;border-radius:5px;display:flex;align-items:center;padding:0 7px;font-size:9.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.15);}
   .gantt-bar.status-done{opacity:.5;}
   .gantt-bar.status-wait{background:repeating-linear-gradient(45deg,var(--amber),var(--amber) 5px,#c77c00 5px,#c77c00 10px)!important;color:#3a2400;border:1.5px solid #a15e00;}
+  .gantt-bar.status-overdue{background:repeating-linear-gradient(45deg,var(--red),var(--red) 5px,#a8283f 5px,#a8283f 10px);border:1.5px solid #8a1c30;}
+  .gantt-overdue-tag{position:absolute;right:-2px;top:-14px;font-size:8.5px;font-weight:800;color:var(--red);background:#fff;padding:0 4px;border-radius:4px;border:1px solid var(--red);white-space:nowrap;}
   .gantt-live-dot{width:7px;height:7px;border-radius:50%;background:#fff;margin-right:4px;animation:gantt-pulse 1.2s infinite;flex-shrink:0;}
   @keyframes gantt-pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
   .gantt-empty{padding:40px;text-align:center;color:var(--text-dim);font-size:13px;}
@@ -2301,7 +2309,9 @@ function subRowHtml(s, jobType, rcdOrRc, requiresClientApproval){
          <span class="sub-sched-label">Schedule:</span>
          <span class="inline-sched-wrap">
            <span class="sub-sched-disabled" title="Standard product — no reserved slot needed. Marking GA Done schedules Detailing onward automatically.">Not scheduled — standard product</span>
+           <input type="number" class="inline-sched-duration" disabled placeholder="d">
          </span>
+         <span class="inline-sched-datelabel">—</span>
          <select class="sub-sched-hour" disabled>${hourOptionsHtml(null)}</select>
          <span class="sub-sched-arrow">→</span>
          <select class="sub-sched-hour" disabled>${hourOptionsHtml(null)}</select>
@@ -2664,6 +2674,17 @@ function shiftDateStr(dateStr, days){
   d.setDate(d.getDate()+days);
   return d.toISOString().slice(0,10);
 }
+function workdayDurationBetween(startStr, endStr){
+  let count = 0;
+  const d = new Date(startStr+'T00:00:00');
+  const end = new Date(endStr+'T00:00:00');
+  while(d <= end){
+    const dow = d.getDay();
+    if(dow !== 0 && dow !== 6) count++;
+    d.setDate(d.getDate()+1);
+  }
+  return count;
+}
 
 function inlineScheduleBarHtml(s){
   const windowStart = inlineGanttWindowStart();
@@ -2693,12 +2714,18 @@ function inlineScheduleBarHtml(s){
   } else {
     barHtml = `<span class="inline-sched-hint">click to schedule</span>`;
   }
+  const durationVal = s.schedule_start_date && s.schedule_end_date
+    ? workdayDurationBetween(s.schedule_start_date, s.schedule_end_date) : '';
   return `<span class="inline-sched-wrap">
     <div class="inline-sched-track" data-subid="${s.id}" style="width:${totalW}px;"
         onclick="event.stopPropagation(); handleInlineTrackClick(event, '${s.id}')">
       <div class="inline-sched-today" style="left:${todayOff*INLINE_GANTT_DAY_W}px;"></div>
       ${barHtml}
     </div>
+    <input type="number" class="inline-sched-duration" data-subid="${s.id}" min="1" max="60" value="${durationVal}"
+      placeholder="d" title="Days planned — type a number to set the duration directly, or drag the bar above"
+      ${s.schedule_start_date ? '' : 'disabled'}
+      onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleDurationInputChange(this, '${s.id}')">
     <span class="inline-sched-datelabel" data-subid="${s.id}">${s.schedule_start_date ? shortDateRange(s.schedule_start_date, s.schedule_end_date) : '—'}</span>${overdueDays > 0 ? `<span class="inline-sched-overdue-label">⚠ ${overdueDays}d over</span>` : ''}
   </span>`;
 }
@@ -2784,6 +2811,18 @@ async function cascadeScheduleForward(parentId, fromStageType, fromEndDate){
   }
 }
 
+async function handleDurationInputChange(inputEl, subitemId){
+  const allSubs = Object.values(subitemsByParent).flat();
+  const sub = allSubs.find(s => s.id === subitemId);
+  if(!sub || !sub.schedule_start_date){ return; }
+  const newDuration = parseInt(inputEl.value, 10);
+  if(!newDuration || newDuration < 1){ inputEl.value = workdayDurationBetween(sub.schedule_start_date, sub.schedule_end_date); return; }
+  const newEnd = workdaySpanEnd(sub.schedule_start_date, newDuration);
+  const ok = await commitSubScheduleDrag(subitemId, sub.schedule_start_date, newEnd);
+  if(ok) await silentReload();
+  else inputEl.value = workdayDurationBetween(sub.schedule_start_date, sub.schedule_end_date);
+}
+
 async function commitSubScheduleDrag(subitemId, newStartDate, newEndDate){
   const allSubs = Object.values(subitemsByParent).flat();
   const sub = allSubs.find(s => s.id === subitemId);
@@ -2805,8 +2844,8 @@ async function commitSubScheduleDrag(subitemId, newStartDate, newEndDate){
     });
     if(conflicts.length){
       const list = conflicts.map(c => `• ${c.subitem_type} (${fmtDate(c.schedule_start_date)} → ${fmtDate(c.schedule_end_date)})`).join('\n');
-      const proceed = confirm(`Scheduling conflict for ${draftees.join(', ')}:\n${list}\n\nThis overlaps with the schedule you just set. Save anyway?`);
-      if(!proceed) return false;
+      alert(`Can't save — this overlaps with ${draftees.join(', ')}'s existing schedule:\n${list}\n\nOverlapping schedules for the same draftee aren't allowed. Adjust the dates first.`);
+      return false;
     }
   }
   sub.schedule_start_date = newStartDate;
@@ -2889,6 +2928,8 @@ document.addEventListener('pointermove', (e) => {
   inlineDragState.barEl.title = `${fmtDate(newStart)} → ${fmtDate(newEnd)}`;
   const lbl = document.querySelector(`.inline-sched-datelabel[data-subid="${inlineDragState.subitemId}"]`);
   if(lbl) lbl.textContent = shortDateRange(newStart, newEnd);
+  const durInput = document.querySelector(`.inline-sched-duration[data-subid="${inlineDragState.subitemId}"]`);
+  if(durInput) durInput.value = workdayDurationBetween(newStart, newEnd);
   inlineDragState.previewStart = newStart;
   inlineDragState.previewEnd = newEnd;
 });
@@ -3097,8 +3138,9 @@ async function handleSubScheduleChange(inputEl, subitemId, column){
     });
     if(conflicts.length){
       const list = conflicts.map(c => `• ${c.subitem_type} (${fmtDate(c.schedule_start_date)}${c.schedule_start_hour!=null?' '+String(c.schedule_start_hour).padStart(2,'0')+':00':''} → ${fmtDate(c.schedule_end_date)}${c.schedule_end_hour!=null?' '+String(c.schedule_end_hour).padStart(2,'0')+':00':''})`).join('\n');
-      const proceed = confirm(`Scheduling conflict for ${draftees.join(', ')}:\n${list}\n\nThis overlaps with the schedule you just set. Save anyway?`);
-      if(!proceed){ inputEl.value = prevValue; return; }
+      alert(`Can't save — this overlaps with ${draftees.join(', ')}'s existing schedule:\n${list}\n\nOverlapping schedules for the same draftee aren't allowed. Adjust the dates first.`);
+      inputEl.value = prevValue;
+      return;
     }
   }
   sub[column] = newValue;
@@ -3441,10 +3483,13 @@ function renderJobGanttPanel(record){
         const start = dayOff(sub.schedule_start_date);
         const end = dayOff(sub.schedule_end_date) + 1;
         const bg = stageColorFor(type);
-        const cls = sub.status === 'Done' ? 'status-done' : '';
+        const isOverdue = sub.status !== 'Done' && new Date(todayStr+'T00:00:00') > new Date(sub.schedule_end_date+'T00:00:00');
+        const overdueDays = isOverdue ? Math.round((new Date(todayStr+'T00:00:00') - new Date(sub.schedule_end_date+'T00:00:00')) / 86400000) : 0;
+        const cls = sub.status === 'Done' ? 'status-done' : (isOverdue ? 'status-overdue' : '');
         const liveDot = sub.clock_running ? '<span class="gantt-live-dot"></span>' : '';
         const width = Math.max((end - start) * DAY_W - 4, 46);
-        barHtml = `<div class="gantt-bar ${cls}" style="left:${start*DAY_W}px; width:${width}px; background:${bg};">${liveDot}${escapeHtml(label)}</div>`;
+        const overdueTag = isOverdue ? `<span class="gantt-overdue-tag">+${overdueDays}d</span>` : '';
+        barHtml = `<div class="gantt-bar ${cls}" style="left:${start*DAY_W}px; width:${width}px; ${isOverdue?'':'background:'+bg+';'}">${liveDot}${escapeHtml(label)}${overdueTag}</div>`;
       } else {
         barHtml = `<div class="gantt-bar" style="left:${todayOffset*DAY_W}px; width:100px; background:repeating-linear-gradient(45deg,#c3c8d6,#c3c8d6 6px,#dfe2ec 6px,#dfe2ec 12px); color:var(--text-dim); border:1.5px dashed var(--text-dim); box-shadow:none;">Not scheduled</div>`;
       }
@@ -4064,10 +4109,11 @@ function gatherGanttEntries(windowStart, windowEnd){
       const endOffsetRaw = ganttDayOffset(s.schedule_end_date, windowStart);
       const endOffset = Math.min(GANTT_WINDOW_DAYS - 0.2, endOffsetRaw + 1);
       const label = `${parent?.so_number || parent?.item_name || '—'} — ${s.subitem_type}`;
+      const isOverdue = s.status !== 'Done' && today > sEnd;
       names.forEach(n => {
         (byPerson[n] = byPerson[n] || []).push({
           type: 'normal', label, stage: s.subitem_type, startOffset, endOffset,
-          done: s.status === 'Done', live: !!s.clock_running,
+          done: s.status === 'Done', live: !!s.clock_running, overdue: isOverdue,
         });
       });
     });
@@ -4136,9 +4182,10 @@ function renderGanttView(){
       const width = Math.max((e.endOffset - e.startOffset) * GANTT_DAY_WIDTH - 4, 40);
       const top = e.lane * 30;
       const bg = e.type === 'wait' ? '' : stageColorFor(e.stage);
-      const cls = e.type === 'wait' ? 'status-wait' : (e.done ? 'status-done' : '');
+      const cls = e.type === 'wait' ? 'status-wait' : (e.done ? 'status-done' : (e.overdue ? 'status-overdue' : ''));
       const liveDot = e.live ? '<span class="gantt-live-dot"></span>' : '';
-      barsHtml += `<div class="gantt-bar ${cls}" style="left:${left}px; top:${top}px; width:${width}px; ${bg?('background:'+bg+';'):''}" title="${escapeAttr(e.label)}">${liveDot}${escapeHtml(e.label)}</div>`;
+      const bgFinal = e.overdue ? '' : bg;
+      barsHtml += `<div class="gantt-bar ${cls}" style="left:${left}px; top:${top}px; width:${width}px; ${bgFinal?('background:'+bgFinal+';'):''}" title="${escapeAttr(e.label)}">${liveDot}${escapeHtml(e.label)}</div>`;
     });
     html += `
       <div class="gantt-person-row">
