@@ -287,11 +287,10 @@
   .group.collapsed .group-body{display:none;}
 
   .group-body{background:var(--surface);position:relative;}
-  .table-nav{
-    position:sticky;top:64px;z-index:6;display:flex;justify-content:flex-end;gap:6px;
-    padding-right:14px;pointer-events:none;height:0;
+  .global-scroll-nav{
+    position:fixed;top:50%;right:18px;transform:translateY(-50%);z-index:50;
+    display:flex;flex-direction:column;gap:8px;
   }
-  .table-nav .scroll-btn{pointer-events:auto;margin-top:8px;}
   .scroll-btn{
     width:26px;height:26px;border-radius:50%;border:1.5px solid var(--border);
     background:white;color:var(--text-dim);font-size:15px;font-weight:700;cursor:pointer;
@@ -1046,6 +1045,10 @@
     <div id="activePanelRoot"></div>
     <div id="boardRoot"></div>
   </main>
+  <div class="global-scroll-nav">
+    <button class="scroll-btn" onclick="scrollActiveTable(-260)" aria-label="Scroll left" title="Scroll the table left">‹</button>
+    <button class="scroll-btn" onclick="scrollActiveTable(260)" aria-label="Scroll right" title="Scroll the table right">›</button>
+  </div>
 </div>
 
 <!-- ===================== ITEM MODAL ===================== -->
@@ -1968,6 +1971,7 @@ function renderBoard(){
     const g = (r.job_type !== 'OPPTS' && !r.group_name) ? computeCurrentStageGroup(r) : (r.group_name || "(No group)");
     (groups[g] = groups[g] || []).push(r);
   });
+  SO_STAGE_GROUP_ORDER.forEach(g => { if(!groups[g]) groups[g] = []; });
 
   let groupNames = Object.keys(groups);
   groupNames.sort((a,b) => {
@@ -2008,10 +2012,6 @@ function renderBoard(){
         <span class="count">${items.length} item${items.length===1?'':'s'}</span>
       </div>
       <div class="group-body">
-        <div class="table-nav">
-          <button class="scroll-btn" onclick="scrollTable('${scrollId}',-260)" aria-label="Scroll left">‹</button>
-          <button class="scroll-btn" onclick="scrollTable('${scrollId}',260)" aria-label="Scroll right">›</button>
-        </div>
         <div class="table-scroll" id="${scrollId}">
         <table class="board-table">
           <thead><tr>
@@ -2275,6 +2275,23 @@ function onBreakPanelHtml(){
     <div class="break-panel-title"><span class="break-panel-dot"></span>Paused — resume where you left off (${breakEntries.length})</div>
     ${rowsHtml}
   </div>`;
+}
+
+function getVisibleTableScroll(){
+  const allScrolls = document.querySelectorAll('.table-scroll');
+  let best = null, bestOverlap = 0;
+  const viewportH = window.innerHeight;
+  allScrolls.forEach(el => {
+    const rect = el.getBoundingClientRect();
+    const overlap = Math.min(rect.bottom, viewportH) - Math.max(rect.top, 0);
+    if(overlap > bestOverlap){ bestOverlap = overlap; best = el; }
+  });
+  return best;
+}
+
+function scrollActiveTable(deltaX){
+  const el = getVisibleTableScroll();
+  if(el) el.scrollBy({left: deltaX, behavior:'smooth'});
 }
 
 function scrollTable(id, deltaX){
