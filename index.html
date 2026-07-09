@@ -161,12 +161,13 @@
   }
   .break-panel-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--amber);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
   .break-panel-dot{width:8px;height:8px;border-radius:50%;background:var(--amber);}
+  .break-panel-entry{border-bottom:1px solid rgba(224,146,26,.18);}
+  .break-panel-entry:last-child{border-bottom:none;}
   .break-panel-row{
     display:grid;grid-template-columns:180px 1fr 1.4fr 150px 130px 150px 90px;gap:14px;align-items:center;
-    padding:6px 0;font-size:13px;border-bottom:1px solid rgba(224,146,26,.18);cursor:pointer;
+    padding:6px 0;font-size:13px;cursor:pointer;
   }
   .break-panel-row:hover{background:rgba(224,146,26,.08);}
-  .break-panel-row:last-child{border-bottom:none;}
   .break-panel-item{font-weight:600;color:var(--text);}
   .break-panel-company{color:var(--text-dim);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .break-panel-itemname{color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -178,6 +179,12 @@
     border-radius:6px;padding:4px 8px;cursor:pointer;white-space:nowrap;
   }
   .break-panel-resume-btn:hover{background:var(--amber);color:white;}
+  .break-panel-meta{display:flex;flex-wrap:wrap;gap:8px;padding:0 0 8px;font-size:11.5px;color:var(--text-dim);}
+  .break-panel-auto-tag{
+    background:#fff1d6;color:#8a5a00;border:1px solid rgba(224,146,26,.4);border-radius:5px;
+    padding:2px 6px;font-weight:600;white-space:nowrap;
+  }
+  .break-panel-note-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;}
 
   .not-clocked-panel{
     background:linear-gradient(135deg,#fff4e5,#ffe9d6);border:2px solid var(--amber);
@@ -1987,16 +1994,30 @@ function onBreakPanelHtml(){
   });
   if(breakEntries.length === 0) return '';
   breakEntries.sort((a,b) => new Date(b.loggedOutAt||0) - new Date(a.loggedOutAt||0));
-  const rowsHtml = breakEntries.map(({sub,parent,loggedOutAt}) => `
-    <div class="break-panel-row" ${parent ? `onclick="scrollToItem('${parent.id}')" title="Jump to this item"` : ''}>
-      <span class="break-panel-item">${escapeHtml(parent?.so_number || '—')}</span>
-      <span class="break-panel-company">${escapeHtml(parent?.company_name || '—')}</span>
-      <span class="break-panel-itemname">${escapeHtml(parent?.item_name || '—')}</span>
-      <span class="break-panel-stage">${escapeHtml(sub.subitem_type)}</span>
-      <span class="break-panel-who">${escapeHtml(sub.draftee||'—')}</span>
-      <span class="break-panel-loggedout">${loggedOutAt ? fmtLogTime(loggedOutAt) : '—'}</span>
-      <button class="break-panel-resume-btn" onclick="event.stopPropagation(); toggleClock('${sub.id}')" title="Resume where you left off">▶ Resume</button>
-    </div>`).join('');
+  const rowsHtml = breakEntries.map(({sub,parent,loggedOutAt}) => {
+    const metaParts = [];
+    if(sub.on_break_auto){
+      metaParts.push(`<span class="break-panel-auto-tag" title="No response within 5 minutes — clocked off automatically">⏱ Auto-stopped, no response</span>`);
+    }
+    if(sub.remarks){
+      const preview = sub.remarks.length > 160 ? sub.remarks.slice(0, 160) + '…' : sub.remarks;
+      metaParts.push(`<span class="break-panel-note-text">📝 Last note: ${escapeHtml(preview)}</span>`);
+    }
+    const metaHtml = metaParts.length ? `<div class="break-panel-meta">${metaParts.join('')}</div>` : '';
+    return `
+    <div class="break-panel-entry">
+      <div class="break-panel-row" ${parent ? `onclick="scrollToItem('${parent.id}')" title="Jump to this item"` : ''}>
+        <span class="break-panel-item">${escapeHtml(parent?.so_number || '—')}</span>
+        <span class="break-panel-company">${escapeHtml(parent?.company_name || '—')}</span>
+        <span class="break-panel-itemname">${escapeHtml(parent?.item_name || '—')}</span>
+        <span class="break-panel-stage">${escapeHtml(sub.subitem_type)}</span>
+        <span class="break-panel-who">${escapeHtml(sub.draftee||'—')}</span>
+        <span class="break-panel-loggedout">${loggedOutAt ? fmtLogTime(loggedOutAt) : '—'}</span>
+        <button class="break-panel-resume-btn" onclick="event.stopPropagation(); toggleClock('${sub.id}')" title="Resume where you left off">▶ Resume</button>
+      </div>
+      ${metaHtml}
+    </div>`;
+  }).join('');
   return `<div class="break-panel">
     <div class="break-panel-title"><span class="break-panel-dot"></span>On Break — resume where you left off (${breakEntries.length})</div>
     ${rowsHtml}
@@ -2235,7 +2256,7 @@ async function toggleClock(subitemId){
     await sb.from('so_subitems').update({ clock_running:false, clock_started_at:null, total_seconds: totalSeconds }).eq('id', subitemId);
   } else {
     await sb.from('so_time_logs').insert({ subitem_id: subitemId, started_at: nowIso });
-    const updatePayload = { clock_running:true, clock_started_at: nowIso, on_break: false };
+    const updatePayload = { clock_running:true, clock_started_at: nowIso, on_break: false, on_break_auto: false };
     if(sub.status === 'Not Started') updatePayload.status = 'In Progress';
     await sb.from('so_subitems').update(updatePayload).eq('id', subitemId);
   }
@@ -2293,21 +2314,21 @@ function showBreakPrompt(runningSubs, timeLabel){
     updateCountdown();
     if(secondsLeft <= 0){
       clearInterval(breakAutoOffTimer);
-      resolveBreakPrompt(true, runningSubs);
+      resolveBreakPrompt(true, runningSubs, true);
     }
   }, 1000);
-  document.getElementById('breakYesBtn').onclick = () => resolveBreakPrompt(true, runningSubs);
-  document.getElementById('breakNoBtn').onclick = () => resolveBreakPrompt(false, runningSubs);
+  document.getElementById('breakYesBtn').onclick = () => resolveBreakPrompt(true, runningSubs, false);
+  document.getElementById('breakNoBtn').onclick = () => resolveBreakPrompt(false, runningSubs, false);
 }
 
-async function resolveBreakPrompt(stopClock, runningSubs){
+async function resolveBreakPrompt(stopClock, runningSubs, isAutoTimeout){
   clearInterval(breakAutoOffTimer);
   document.getElementById('breakModalBackdrop').classList.add('hidden');
   breakPromptActive = false;
   if(stopClock){
     for(const sub of runningSubs){
       await toggleClock(sub.id);
-      await sb.from('so_subitems').update({ on_break: true }).eq('id', sub.id);
+      await sb.from('so_subitems').update({ on_break: true, on_break_auto: !!isAutoTimeout }).eq('id', sub.id);
     }
     await loadData();
   }
@@ -2418,7 +2439,7 @@ async function updateSubStatus(subitemId, status, selectEl){
       }
     }
   }
-  await sb.from('so_subitems').update({ status, on_break: false }).eq('id', subitemId);
+  await sb.from('so_subitems').update({ status, on_break: false, on_break_auto: false }).eq('id', subitemId);
 }
 
 async function updateSubDraftee(subitemId, draftee){
@@ -2554,7 +2575,8 @@ async function confirmGaCheckpoint(){
     status: 'Done',
     ga_checkpoints: gaCheckpointState,
     ga_checkpoints_verified_at: new Date().toISOString(),
-    on_break: false
+    on_break: false,
+    on_break_auto: false
   }).eq('id', subitemId);
   document.getElementById('gaCheckpointModalBackdrop').classList.add('hidden');
   gaCheckpointSubitemId = null;
