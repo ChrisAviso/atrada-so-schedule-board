@@ -3095,7 +3095,11 @@ async function commitSubScheduleDrag(subitemId, newStartDate, newEndDate){
       return aStart <= bEnd && aEnd >= bStart;
     });
     if(conflicts.length){
-      const list = conflicts.map(c => `• ${c.subitem_type} (${fmtDate(c.schedule_start_date)} → ${fmtDate(c.schedule_end_date)})`).join('\n');
+      const list = conflicts.map(c => {
+        const parent = rows.find(r => r.id === c.parent_id);
+        const jobBits = parent ? [parent.so_number, parent.company_name, parent.item_name].filter(Boolean).join(' — ') : 'another job';
+        return `• ${jobBits}: ${c.subitem_type} (${fmtDate(c.schedule_start_date)} → ${fmtDate(c.schedule_end_date)})`;
+      }).join('\n');
       alert(`Can't save — this overlaps with ${draftees.join(', ')}'s existing schedule:\n${list}\n\nOverlapping schedules for the same draftee aren't allowed. Adjust the dates first.`);
       return false;
     }
@@ -3392,7 +3396,11 @@ async function handleSubScheduleChange(inputEl, subitemId, column){
       return aStart <= bEnd && aEnd >= bStart;
     });
     if(conflicts.length){
-      const list = conflicts.map(c => `• ${c.subitem_type} (${fmtDate(c.schedule_start_date)}${c.schedule_start_hour!=null?' '+String(c.schedule_start_hour).padStart(2,'0')+':00':''} → ${fmtDate(c.schedule_end_date)}${c.schedule_end_hour!=null?' '+String(c.schedule_end_hour).padStart(2,'0')+':00':''})`).join('\n');
+      const list = conflicts.map(c => {
+        const parent = rows.find(r => r.id === c.parent_id);
+        const jobBits = parent ? [parent.so_number, parent.company_name, parent.item_name].filter(Boolean).join(' — ') : 'another job';
+        return `• ${jobBits}: ${c.subitem_type} (${fmtDate(c.schedule_start_date)}${c.schedule_start_hour!=null?' '+String(c.schedule_start_hour).padStart(2,'0')+':00':''} → ${fmtDate(c.schedule_end_date)}${c.schedule_end_hour!=null?' '+String(c.schedule_end_hour).padStart(2,'0')+':00':''})`;
+      }).join('\n');
       alert(`Can't save — this overlaps with ${draftees.join(', ')}'s existing schedule:\n${list}\n\nOverlapping schedules for the same draftee aren't allowed. Adjust the dates first.`);
       inputEl.value = prevValue;
       return;
