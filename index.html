@@ -2991,6 +2991,46 @@ function workdaySpanEnd(startDateStr, durationDays){
   return addWorkdaysJS(startDateStr, durationDays - 1);
 }
 
+// Finds the next slot of `durationWorkdays` for these draftees that doesn't overlap anything
+// they're already scheduled on (any job, any stage, not just this one) — reuses the exact same
+// conflict-detection convention as the manual drag/drop hard-block, so "auto-scheduled" and
+// "manually scheduled" always agree on what counts as a conflict. This is what lets the cascade
+// respect that a draftee moves on to a different job's drawings after finishing GA, rather than
+// blindly assuming they're sitting idle waiting for the next stage to start.
+function findNextFreeSlot(draftees, earliestStartDate, durationWorkdays, excludeSubitemId){
+  const allSubs = Object.values(subitemsByParent).flat();
+  const busyIntervals = allSubs
+    .filter(s => s.id !== excludeSubitemId && s.status !== 'Done' && s.schedule_start_date && s.schedule_end_date)
+    .filter(s => {
+      const oDraftees = (s.draftee || '').split(',').map(x => x.trim());
+      return draftees.some(d => oDraftees.includes(d));
+    })
+    .map(s => ({
+      start: schedDateTime(s.schedule_start_date, s.schedule_start_hour, false),
+      end: schedDateTime(s.schedule_end_date, s.schedule_end_hour, true),
+    }))
+    .sort((a,b) => a.start - b.start);
+
+  let candidateStart = earliestStartDate;
+  let iterations = 0;
+  while(iterations < 200){
+    iterations++;
+    const candidateEnd = workdaySpanEnd(candidateStart, durationWorkdays);
+    const aStart = schedDateTime(candidateStart, null, false);
+    const aEnd = schedDateTime(candidateEnd, null, true);
+    const conflict = busyIntervals.find(b => aStart <= b.end && aEnd >= b.start);
+    if(!conflict) return { start: candidateStart, end: candidateEnd };
+
+    // Jump past this conflict's end, then forward to the next workday, and try again.
+    const conflictEndDate = new Date(conflict.end);
+    const next = new Date(conflictEndDate.getFullYear(), conflictEndDate.getMonth(), conflictEndDate.getDate());
+    next.setDate(next.getDate() + 1);
+    while(next.getDay() === 0 || next.getDay() === 6){ next.setDate(next.getDate() + 1); }
+    candidateStart = toLocalISODate(next);
+  }
+  return { start: candidateStart, end: workdaySpanEnd(candidateStart, durationWorkdays) }; // safety fallback
+}
+
 async function cascadeScheduleForward(parentId, fromStageType, fromEndDate){
   const record = rows.find(r => r.id === parentId);
   if(!record || !fromEndDate) return;
@@ -3010,8 +3050,18 @@ async function cascadeScheduleForward(parentId, fromStageType, fromEndDate){
     if(!nextSub) break;
 
     const duration = STAGE_DURATIONS_CASCADE[nextType] || 1;
-    const nextStart = addWorkdaysJS(currentEnd, 1);
-    const nextEnd = workdaySpanEnd(nextStart, duration);
+    const earliestStart = addWorkdaysJS(currentEnd, 1);
+    const draftees = (nextSub.draftee || '').split(',').map(x => x.trim()).filter(Boolean);
+
+    let nextStart, nextEnd;
+    if(draftees.length > 0){
+      const slot = findNextFreeSlot(draftees, earliestStart, duration, nextSub.id);
+      nextStart = slot.start;
+      nextEnd = slot.end;
+    } else {
+      nextStart = earliestStart;
+      nextEnd = workdaySpanEnd(nextStart, duration);
+    }
 
     await sb.from('so_subitems').update({ schedule_start_date: nextStart, schedule_end_date: nextEnd }).eq('id', nextSub.id);
     nextSub.schedule_start_date = nextStart;
@@ -3039,8 +3089,26 @@ async function applyDraftingTransferAutoSchedule(parentId, force){
     if(!sub) continue;
     if(!force && (sub.schedule_start_date || sub.status !== 'Not Started')) continue; // already scheduled/touched — leave it alone unless forced
 
-    const startDate = addWorkdaysJS(record.drafting_transfer_date, stage.startDay);
-    const endDate = addWorkdaysJS(record.drafting_transfer_date, stage.endDay);
+    // Earliest desired start is the plan's fixed offset from drafting_transfer_date, UNLESS an
+    // earlier stage in this same pass got pushed out by a conflict — in which case this stage
+    // starts the day after wherever that one actually landed, so a delay correctly cascades
+    // forward instead of every stage independently re-anchoring to its theoretical day-offset.
+    const plannedStart = addWorkdaysJS(record.drafting_transfer_date, stage.startDay);
+    const afterPrevious = lastEnd ? addWorkdaysJS(lastEnd, 1) : plannedStart;
+    const effectiveStart = new Date(afterPrevious) > new Date(plannedStart) ? afterPrevious : plannedStart;
+    const duration = stage.endDay - stage.startDay + 1;
+
+    const draftees = (sub.draftee || '').split(',').map(x => x.trim()).filter(Boolean);
+    let startDate, endDate;
+    if(draftees.length > 0){
+      const slot = findNextFreeSlot(draftees, effectiveStart, duration, sub.id);
+      startDate = slot.start;
+      endDate = slot.end;
+    } else {
+      startDate = effectiveStart;
+      endDate = workdaySpanEnd(startDate, duration);
+    }
+
     await sb.from('so_subitems').update({ schedule_start_date: startDate, schedule_end_date: endDate }).eq('id', sub.id);
     sub.schedule_start_date = startDate;
     sub.schedule_end_date = endDate;
