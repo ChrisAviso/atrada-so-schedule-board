@@ -709,7 +709,16 @@
     position:absolute;top:1px;bottom:1px;border:1.5px dashed rgba(58,92,235,.5);border-radius:5px;
     pointer-events:auto;z-index:0;cursor:help;
   }
-  .gantt-plan-legend{font-size:10.5px;color:var(--text-dim);margin-bottom:6px;}
+  .gantt-baseline1-bar{
+    position:absolute;bottom:1px;height:4px;background:#7c5cf0;opacity:.7;border-radius:2px;
+    pointer-events:auto;z-index:0;cursor:help;
+  }
+  .gantt-plan-legend{
+    font-size:10.5px;color:var(--text-dim);margin-bottom:6px;display:flex;align-items:center;flex-wrap:wrap;gap:4px;
+  }
+  .gantt-legend-swatch-ghost{display:inline-block;width:12px;height:8px;border:1.5px dashed rgba(58,92,235,.6);border-radius:3px;vertical-align:middle;}
+  .gantt-legend-swatch-baseline{display:inline-block;width:12px;height:4px;background:#7c5cf0;border-radius:2px;vertical-align:middle;}
+  .gantt-save-baseline-btn{margin-left:auto;font-size:10.5px;padding:4px 9px;}
   .gantt-live-dot{width:7px;height:7px;border-radius:50%;background:#fff;margin-right:4px;animation:gantt-pulse 1.2s infinite;flex-shrink:0;}
   @keyframes gantt-pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
   .gantt-empty{padding:40px;text-align:center;color:var(--text-dim);font-size:13px;}
@@ -3850,10 +3859,45 @@ function computePlannedStages(record){
   return planned;
 }
 
+let jobBaselinesCache = {};
+
+async function loadJobBaseline1(parentId){
+  if(jobBaselinesCache[parentId] !== undefined) return jobBaselinesCache[parentId];
+  const { data } = await sb.from('so_schedule_baselines').select('stages').eq('parent_id', parentId).eq('baseline_number', 1).maybeSingle();
+  jobBaselinesCache[parentId] = data ? data.stages : null;
+  return jobBaselinesCache[parentId];
+}
+
+async function saveNewBaseline(parentId){
+  if(!confirm("Save the current plan as a new baseline? This freezes today's projection as a permanent historical reference — it can't be edited or removed afterward.")) return;
+  const record = rows.find(r => r.id === parentId);
+  if(!record) return;
+  const subs = subitemsByParent[parentId] || [];
+  const planned = computePlannedStages(record);
+  const stageTypes = record.requires_client_approval
+    ? ['Sales Handover','GA For Approval Prep','Detailing/PDF/DXF Prep','Checking / Release','Production Handover','Cost Analysis']
+    : subs.map(s => s.subitem_type);
+  const stages = {};
+  stageTypes.forEach(type => {
+    const sub = subs.find(s => s.subitem_type === type);
+    if(sub && sub.schedule_start_date && sub.schedule_end_date){
+      stages[type] = { start: sub.schedule_start_date, end: sub.schedule_end_date };
+    } else if(planned[type]){
+      stages[type] = { start: planned[type].start, end: planned[type].end };
+    }
+  });
+  const { data: existing } = await sb.from('so_schedule_baselines').select('baseline_number').eq('parent_id', parentId).order('baseline_number', {ascending:false}).limit(1);
+  const nextNumber = existing && existing.length ? existing[0].baseline_number + 1 : 1;
+  await sb.from('so_schedule_baselines').insert({ parent_id: parentId, baseline_number: nextNumber, stages });
+  alert(`Saved as Baseline ${nextNumber}.`);
+  await silentReload();
+}
+
 function renderJobGanttPanel(record){
   const subs = (subitemsByParent[record.id] || []);
   if(subs.length === 0) return `<div class="gantt-empty">No sub-processes on this job yet.</div>`;
   const plannedStages = computePlannedStages(record);
+  const baseline1 = jobBaselinesCache[record.id];
 
   const stageOrder = record.requires_client_approval
     ? ['Sales Handover','GA For Approval Prep','__CLIENT_APPROVAL__','Detailing/PDF/DXF Prep','Checking / Release','Production Handover','Cost Analysis']
@@ -3886,6 +3930,7 @@ function renderJobGanttPanel(record){
   maybeExtend(record.actual_approval_received_date);
   maybeExtend(record.target_release_date);
   Object.values(plannedStages).forEach(p => { maybeExtend(p.start); maybeExtend(p.end); });
+  if(baseline1) Object.values(baseline1).forEach(p => { maybeExtend(p.start); maybeExtend(p.end); });
 
   const totalDays = Math.max(Math.round((windowEnd - windowStart)/86400000) + 3, 12);
   const DAY_W = 68;
@@ -3944,6 +3989,12 @@ function renderJobGanttPanel(record){
         <div class="gantt-person-label" style="height:33px;">${escapeHtml(label)}</div>
         <div class="gantt-timeline-cell" style="height:33px;">
           ${(todayOffset>=0 && todayOffset<totalDays) ? `<div class="gantt-today-line" style="left:${todayOffset*DAY_W}px;"></div>` : ''}
+          ${baseline1 && baseline1[type] ? (() => {
+            const bStart = dayOff(baseline1[type].start);
+            const bEnd = dayOff(baseline1[type].end) + 1;
+            const bWidth = Math.max((bEnd - bStart) * DAY_W - 4, 40);
+            return `<div class="gantt-baseline1-bar" style="left:${bStart*DAY_W}px; width:${bWidth}px;" title="Baseline 1 (original committed ETA): ${fmtDate(baseline1[type].start)} → ${fmtDate(baseline1[type].end)}"></div>`;
+          })() : ''}
           ${plannedStages[type] && !hasRealSchedule ? (() => {
             const pStart = dayOff(plannedStages[type].start);
             const pEnd = dayOff(plannedStages[type].end) + 1;
@@ -3956,7 +4007,11 @@ function renderJobGanttPanel(record){
     `;
   });
 
-  return `<div class="gantt-plan-legend">┄ Planned — projected from the last real milestone using the standard rule, not a commitment</div>
+  return `<div class="gantt-plan-legend">
+      <span class="gantt-legend-swatch-ghost"></span> Planned (projected from the last real milestone) &nbsp;&nbsp;
+      <span class="gantt-legend-swatch-baseline"></span> Baseline 1 (original committed ETA)
+      <button class="btn-ghost-sm gantt-save-baseline-btn" onclick="saveNewBaseline('${record.id}')">💾 Save current plan as new baseline</button>
+    </div>
   <div class="gantt-shell" data-today-scroll="${scrollToPx}"><div class="gantt-grid-table" style="grid-template-columns:130px 1fr;">
     <div class="gantt-grid-head"><div>Stage</div><div class="gantt-timeline-head">${headerHtml}</div></div>
     ${rowsHtml}
@@ -4178,6 +4233,17 @@ function openModal(id, presetGroup, presetJobType){
   if(record) loadActivityLog(record.id);
   const jgShell = modalBody.querySelector('.gantt-shell[data-today-scroll]');
   if(jgShell) jgShell.scrollLeft = parseInt(jgShell.dataset.todayScroll, 10) || 0;
+
+  if(record){
+    loadJobBaseline1(record.id).then(() => {
+      const jgBody = document.getElementById('jobGanttBody');
+      if(jgBody){
+        jgBody.innerHTML = renderJobGanttPanel(record);
+        const shell = jgBody.querySelector('.gantt-shell[data-today-scroll]');
+        if(shell) shell.scrollLeft = parseInt(shell.dataset.todayScroll, 10) || 0;
+      }
+    });
+  }
 }
 
 function toggleActivityLog(){
