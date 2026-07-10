@@ -2123,12 +2123,12 @@ function openJobsSummaryHtml(jobType, title){
 
     const sentDate = r.first_sent_for_approval_date || r.actual_sent_for_approval;
     const statusLower = (r.project_status || '').toLowerCase();
-    const isCurrentlyAwaiting = r.requires_client_approval
-      ? r.project_status === 'Awaiting Client Approval'
-      : statusLower.includes('awaiting client approval');
     const isApproved = r.requires_client_approval
       ? (r.project_status === 'Client Approved - Drafting In Progress' && r.actual_approval_received_date)
       : (statusLower.includes('client approved') && r.actual_approval_received_date);
+    const isCurrentlyAwaiting = r.requires_client_approval
+      ? (r.project_status === 'Awaiting Client Approval' || (!!sentDate && !isApproved))
+      : statusLower.includes('awaiting client approval');
 
     // Two distinct, non-overlapping metrics: how long has it been waiting (only while still
     // waiting), versus how long ago it got the green light (only once approved).
@@ -3468,6 +3468,9 @@ function clientApprovalInlineRowHtml(r){
     `;
   } else if(r.project_status === 'Client Approved - Drafting In Progress' && r.actual_approval_received_date){
     statusHtml = `<span class="approval-inline-status approved">✓ Approved — ${fmtDate(r.actual_approval_received_date)}${revisionNote}</span>`;
+  } else if(r.first_sent_for_approval_date || r.actual_sent_for_approval){
+    const sentDate = r.first_sent_for_approval_date || r.actual_sent_for_approval;
+    statusHtml = `<span class="approval-inline-status waiting">Sent — ${fmtDate(sentDate)}${revisionNote}</span>`;
   } else {
     statusHtml = `<span class="approval-inline-status pending">Not sent yet</span>`;
   }
@@ -3505,6 +3508,13 @@ function approvalStatusBannerHtml(record){
     return `<div class="approval-banner approval-approved">
       <div class="approval-banner-title">✓ Client Approved — ${fmtDate(record.actual_approval_received_date)}</div>
       <div class="approval-banner-sub">${waitDays !== null ? `Took ${waitDays} day${waitDays===1?'':'s'} waiting on the client${revisionNote}. ` : ''}Hard 10-day release deadline: <b>${fmtDate(record.target_release_date)}</b>.</div>
+    </div>`;
+  }
+  if(record.actual_sent_for_approval || record.first_sent_for_approval_date){
+    const sentDate = record.first_sent_for_approval_date || record.actual_sent_for_approval;
+    return `<div class="approval-banner approval-waiting">
+      <div class="approval-banner-title">Sent — ${fmtDate(sentDate)}${revisionNote}</div>
+      <div class="approval-banner-sub">Project Status dropdown hasn't been set to "Awaiting Client Approval" yet, so this won't move groups or start the wait-day counter until that's updated.</div>
     </div>`;
   }
   return `<div class="approval-banner approval-pending">
