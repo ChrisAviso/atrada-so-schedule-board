@@ -3827,10 +3827,15 @@ function computePlannedStages(record){
     }
 
     const sub = subs.find(s => s.subitem_type === type);
-    if(sub && sub.status === 'Done' && sub.schedule_end_date){
+    // Any stage with a real schedule already set (typed, dragged, or marked Done) is solid
+    // ground to build forward from — not only ones marked Done. Since schedules can now be
+    // set independently of sequence/status, a manually-dated stage is just as real an anchor,
+    // and this lets a later stage's real date recover the chain even after an earlier gap
+    // (like an unresolved approval wait) would otherwise block it.
+    if(sub && sub.schedule_end_date){
       anchorEnd = sub.schedule_end_date;
       anchorIsReal = true;
-      return; // already real — nothing to project for a finished stage
+      return; // has its own real date — nothing to project for this stage itself
     }
 
     if(!anchorIsReal) return;
