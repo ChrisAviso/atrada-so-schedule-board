@@ -529,6 +529,12 @@
     background:#fff;padding:0 4px;border-radius:4px;border:1px solid var(--red);white-space:nowrap;
   }
   .inline-sched-overdue-label{font-size:10.5px;font-weight:800;color:var(--red);white-space:nowrap;}
+  .inline-sched-clamp-tag{
+    position:absolute;top:1px;bottom:1px;display:flex;align-items:center;font-size:10px;font-weight:800;
+    color:#fff;padding:0 2px;pointer-events:none;
+  }
+  .inline-sched-clamp-tag.before{left:-1px;}
+  .inline-sched-clamp-tag.after{right:-1px;}
   .inline-sched-duration{
     width:40px;font-size:11.5px;border:1.5px solid var(--border);border-radius:6px;
     padding:4px 4px;font-family:inherit;background:white;color:var(--text);text-align:center;flex-shrink:0;
@@ -719,6 +725,12 @@
   .mini-stat{font-size:11.5px;color:var(--text-dim);min-width:80px;}
   .mini-stat b{color:var(--text);font-size:13.5px;font-weight:700;display:block;margin-bottom:2px;}
   .mini-stat-wide{min-width:200px;}
+
+  .recalc-schedule-row{
+    margin-top:12px;padding:10px 12px;border:1px dashed var(--border);border-radius:var(--radius);
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  }
+  .recalc-schedule-hint{font-size:11px;color:var(--text-dim);}
 
   .job-gantt-card{
     margin-top:18px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;
@@ -2810,6 +2822,26 @@ function inlineGanttWindowStart(){
 function inlineGanttDayOff(dateStr, windowStart){
   return Math.round((new Date(dateStr+'T00:00:00') - windowStart) / 86400000);
 }
+// Shared by rendering and the drag handler so both agree on where a bar sits. A bar whose real dates
+// fall partly or wholly outside the visible window used to compute a huge negative/positive left —
+// invisible under the track's overflow:hidden, AND it broke dragging (the clamp math in pointermove
+// assumed origLeftPx was already within [0, trackWidth], so a drag on an off-window bar always
+// snapped to a fixed spot instead of tracking the mouse). Clamping each edge into the visible window
+// here fixes both: the bar shows as a sliver pinned to the near edge, and drags now start from that
+// sane clamped position instead of the wild real one.
+function inlineBarClampedRect(startDateStr, endDateStr, windowStart){
+  let startOff = inlineGanttDayOff(startDateStr, windowStart);
+  let endOffExclusive = inlineGanttDayOff(endDateStr, windowStart) + 1;
+  const clampedBefore = endOffExclusive <= 0;
+  const clampedAfter = startOff >= INLINE_GANTT_WINDOW_DAYS;
+  startOff = Math.max(0, Math.min(startOff, INLINE_GANTT_WINDOW_DAYS - 1));
+  endOffExclusive = Math.max(startOff + 1, Math.min(endOffExclusive, INLINE_GANTT_WINDOW_DAYS));
+  return {
+    left: startOff * INLINE_GANTT_DAY_W,
+    width: Math.max((endOffExclusive - startOff) * INLINE_GANTT_DAY_W, INLINE_GANTT_DAY_W),
+    clampedBefore, clampedAfter,
+  };
+}
 function shiftDateStr(dateStr, days){
   const d = new Date(dateStr+'T00:00:00');
   d.setDate(d.getDate()+days);
@@ -2839,17 +2871,20 @@ function inlineScheduleBarHtml(s){
     if(isOverdue){
       overdueDays = Math.round((new Date(todayStr+'T00:00:00') - new Date(s.schedule_end_date+'T00:00:00')) / 86400000);
     }
-    const startOff = inlineGanttDayOff(s.schedule_start_date, windowStart);
-    const endOff = inlineGanttDayOff(s.schedule_end_date, windowStart) + 1;
-    const left = startOff * INLINE_GANTT_DAY_W;
-    const width = Math.max((endOff - startOff) * INLINE_GANTT_DAY_W, INLINE_GANTT_DAY_W);
+    const rect = inlineBarClampedRect(s.schedule_start_date, s.schedule_end_date, windowStart);
+    const { left, width, clampedBefore, clampedAfter } = rect;
     const barCls = s.status==='Done' ? 'done' : (isOverdue ? 'overdue' : '');
     const titleSuffix = isOverdue ? ` — ${overdueDays}d overdue` : '';
+    const offWindowTitle = (clampedBefore || clampedAfter)
+      ? ` (actual dates outside the visible window — drag or use Recalculate to bring it in range)` : '';
+    const clampTag = clampedBefore ? `<span class="inline-sched-clamp-tag before">«</span>`
+      : clampedAfter ? `<span class="inline-sched-clamp-tag after">»</span>` : '';
     barHtml = `<div class="inline-sched-bar ${barCls}" style="left:${left}px; width:${width}px;" data-subid="${s.id}"
-        title="${fmtDate(s.schedule_start_date)} → ${fmtDate(s.schedule_end_date)}${titleSuffix}">
+        title="${fmtDate(s.schedule_start_date)} → ${fmtDate(s.schedule_end_date)}${titleSuffix}${offWindowTitle}">
       <div class="inline-sched-handle left" data-mode="resize-start"></div>
       <div class="inline-sched-body" data-mode="move"></div>
       <div class="inline-sched-handle right" data-mode="resize-end"></div>
+      ${clampTag}
       ${isOverdue ? `<span class="inline-sched-overdue-tag">+${overdueDays}d</span>` : ''}
     </div>`;
   } else {
@@ -2971,7 +3006,7 @@ async function cascadeScheduleForward(parentId, fromStageType, fromEndDate){
 // stages that are still blank and untouched (no schedule_start_date, status still 'Not Started') —
 // so it never fights a manual drag/edit someone already made. Class 2 hands off to the existing
 // cascade chain from Production Handover onward so Cost Analysis still gets picked up.
-async function applyDraftingTransferAutoSchedule(parentId){
+async function applyDraftingTransferAutoSchedule(parentId, force){
   const record = rows.find(r => r.id === parentId);
   if(!record || !record.drafting_transfer_date) return;
   const subs = subitemsByParent[parentId] || [];
@@ -2981,7 +3016,7 @@ async function applyDraftingTransferAutoSchedule(parentId){
   for(const stage of plan){
     const sub = subs.find(s => s.subitem_type === stage.type);
     if(!sub) continue;
-    if(sub.schedule_start_date || sub.status !== 'Not Started') continue; // already scheduled/touched — leave it alone
+    if(!force && (sub.schedule_start_date || sub.status !== 'Not Started')) continue; // already scheduled/touched — leave it alone unless forced
 
     const startDate = addWorkdaysJS(record.drafting_transfer_date, stage.startDay);
     const endDate = addWorkdaysJS(record.drafting_transfer_date, stage.endDay);
@@ -2994,6 +3029,17 @@ async function applyDraftingTransferAutoSchedule(parentId){
   if(!record.requires_client_approval && lastEnd){
     await cascadeScheduleForward(parentId, 'Production Handover', lastEnd);
   }
+}
+
+// Manual, explicit re-application for jobs whose schedule predates this rule (or was set some other
+// way) — e.g. legacy jobs sitting months overdue with dates that don't match the +1/+2 workday rule.
+// Requires confirmation since, unlike the on-save path, this overwrites stages even if already set.
+async function recalcDraftingTransferSchedule(parentId){
+  const record = rows.find(r => r.id === parentId);
+  if(!record || !record.drafting_transfer_date){ alert("Set a Drafting transfer date first."); return; }
+  if(!confirm("Recalculate this job's schedule from its Drafting Transfer Date using the standard rule?\n\nThis overwrites the current dates on the relevant stages (Sales Handover/GA for Class 1, or Detailing/Checking-Release/Production Handover for Class 2), even if they were already scheduled.")) return;
+  await applyDraftingTransferAutoSchedule(parentId, true);
+  await silentReload();
 }
 
 async function handleDurationInputChange(inputEl, subitemId){
@@ -3069,10 +3115,13 @@ document.addEventListener('pointermove', (e) => {
   const windowStart = inlineGanttWindowStart();
   const trackWidthPx = INLINE_GANTT_WINDOW_DAYS * INLINE_GANTT_DAY_W;
 
-  const origStartOff = inlineGanttDayOff(inlineDragState.origStart, windowStart);
-  const origLeftPx = origStartOff * INLINE_GANTT_DAY_W;
-  const origEndOffExclusive = inlineGanttDayOff(inlineDragState.origEnd, windowStart) + 1;
-  const origWidthPx = Math.max((origEndOffExclusive - origStartOff) * INLINE_GANTT_DAY_W, INLINE_GANTT_DAY_W);
+  // Use the SAME clamped rect the bar was rendered with (see inlineBarClampedRect) as the drag's
+  // reference frame. Previously this recomputed the raw (possibly huge negative/positive) offset
+  // directly, so dragging a bar whose real dates sit outside the visible window always snapped to a
+  // fixed nonsense position instead of tracking the mouse.
+  const origRect = inlineBarClampedRect(inlineDragState.origStart, inlineDragState.origEnd, windowStart);
+  const origLeftPx = origRect.left;
+  const origWidthPx = origRect.width;
 
   // Clamp the pixel delta to the track's visible bounds FIRST — both the bar's visual position
   // and the resulting committed dates are derived from this SAME clamped value, so the two can
@@ -3841,6 +3890,10 @@ function openModal(id, presetGroup, presetJobType){
         </div>
       </div>
       ${record.requires_client_approval ? approvalStatusBannerHtml(record) : ''}
+      ${record.drafting_transfer_date ? `<div class="recalc-schedule-row">
+        <button class="btn-ghost-sm" onclick="recalcDraftingTransferSchedule('${record.id}')">🔁 Recalculate schedule from Drafting Transfer Date</button>
+        <span class="recalc-schedule-hint">Overwrites the relevant stages' dates with the standard +workday rule — use this for legacy jobs whose dates predate the rule or drifted from it.</span>
+      </div>` : ''}
       <div class="job-gantt-card">
         <div class="job-gantt-header" onclick="toggleJobGantt()">
           <span>📅 Job Timeline</span>
