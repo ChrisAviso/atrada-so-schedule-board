@@ -705,6 +705,11 @@
   .gantt-bar.status-wait{background:repeating-linear-gradient(45deg,var(--amber),var(--amber) 5px,#c77c00 5px,#c77c00 10px)!important;color:#3a2400;border:1.5px solid #a15e00;}
   .gantt-bar.status-overdue{background:repeating-linear-gradient(45deg,var(--red),var(--red) 5px,#a8283f 5px,#a8283f 10px);border:1.5px solid #8a1c30;}
   .gantt-overdue-tag{position:absolute;right:-2px;top:-14px;font-size:8.5px;font-weight:800;color:var(--red);background:#fff;padding:0 4px;border-radius:4px;border:1px solid var(--red);white-space:nowrap;}
+  .gantt-plan-ghost{
+    position:absolute;top:1px;bottom:1px;border:1.5px dashed rgba(58,92,235,.5);border-radius:5px;
+    pointer-events:auto;z-index:0;cursor:help;
+  }
+  .gantt-plan-legend{font-size:10.5px;color:var(--text-dim);margin-bottom:6px;}
   .gantt-live-dot{width:7px;height:7px;border-radius:50%;background:#fff;margin-right:4px;animation:gantt-pulse 1.2s infinite;flex-shrink:0;}
   @keyframes gantt-pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
   .gantt-empty{padding:40px;text-align:center;color:var(--text-dim);font-size:13px;}
@@ -3793,9 +3798,57 @@ const JOB_GANTT_STAGE_LABELS = {
   'Review/Release': 'Review/Release',
 };
 
+// Pure display-only projection — never written anywhere, purely a reference overlay. Walks the
+// same stage sequence and day-budgets as the real cascade, but resets its anchor from whichever
+// milestone is MOST RECENTLY REAL (a stage actually marked Done, or a real approval date) rather
+// than the job's original day-1 offset — so it always answers "given where things actually stand
+// right now, where would the rest land on the standard rule," not "where was this supposed to be
+// on day one." Stops projecting entirely through an unresolved approval wait, since there's no
+// reliable anchor to build forward from until the client actually responds.
+function computePlannedStages(record){
+  const subs = subitemsByParent[record.id] || [];
+  const stageOrder = record.requires_client_approval
+    ? ['Sales Handover','GA For Approval Prep','__CLIENT_APPROVAL__','Detailing/PDF/DXF Prep','Checking / Release','Production Handover','Cost Analysis']
+    : ['GA For Approval Prep','Detailing/PDF/DXF Prep','Checking / Release','Production Handover','Cost Analysis'];
+
+  const planned = {};
+  let anchorEnd = record.drafting_transfer_date;
+  let anchorIsReal = !!record.drafting_transfer_date;
+
+  stageOrder.forEach(type => {
+    if(type === '__CLIENT_APPROVAL__'){
+      if(record.actual_approval_received_date){
+        anchorEnd = record.actual_approval_received_date;
+        anchorIsReal = true;
+      } else {
+        anchorIsReal = false; // genuinely unknown until the client responds — can't project past this
+      }
+      return;
+    }
+
+    const sub = subs.find(s => s.subitem_type === type);
+    if(sub && sub.status === 'Done' && sub.schedule_end_date){
+      anchorEnd = sub.schedule_end_date;
+      anchorIsReal = true;
+      return; // already real — nothing to project for a finished stage
+    }
+
+    if(!anchorIsReal) return;
+
+    const duration = STAGE_DURATIONS_CASCADE[type] || 1;
+    const plannedStart = addWorkdaysJS(anchorEnd, 1);
+    const plannedEnd = workdaySpanEnd(plannedStart, duration);
+    planned[type] = { start: plannedStart, end: plannedEnd };
+    anchorEnd = plannedEnd;
+  });
+
+  return planned;
+}
+
 function renderJobGanttPanel(record){
   const subs = (subitemsByParent[record.id] || []);
   if(subs.length === 0) return `<div class="gantt-empty">No sub-processes on this job yet.</div>`;
+  const plannedStages = computePlannedStages(record);
 
   const stageOrder = record.requires_client_approval
     ? ['Sales Handover','GA For Approval Prep','__CLIENT_APPROVAL__','Detailing/PDF/DXF Prep','Checking / Release','Production Handover','Cost Analysis']
@@ -3827,6 +3880,7 @@ function renderJobGanttPanel(record){
   maybeExtend(record.first_sent_for_approval_date);
   maybeExtend(record.actual_approval_received_date);
   maybeExtend(record.target_release_date);
+  Object.values(plannedStages).forEach(p => { maybeExtend(p.start); maybeExtend(p.end); });
 
   const totalDays = Math.max(Math.round((windowEnd - windowStart)/86400000) + 3, 12);
   const DAY_W = 68;
@@ -3847,6 +3901,7 @@ function renderJobGanttPanel(record){
   let rowsHtml = '';
   stageOrder.forEach(type => {
     let label, barHtml = '';
+    let hasRealSchedule = false;
     if(type === '__CLIENT_APPROVAL__'){
       label = 'Client Approval';
       if(record.project_status === 'Awaiting Client Approval' && (record.first_sent_for_approval_date || record.actual_sent_for_approval)){
@@ -3864,6 +3919,7 @@ function renderJobGanttPanel(record){
       const sub = subs.find(s => s.subitem_type === type);
       label = JOB_GANTT_STAGE_LABELS[type] || type;
       if(sub && sub.schedule_start_date && sub.schedule_end_date){
+        hasRealSchedule = true;
         const start = dayOff(sub.schedule_start_date);
         const end = dayOff(sub.schedule_end_date) + 1;
         const bg = stageColorFor(type);
@@ -3883,13 +3939,20 @@ function renderJobGanttPanel(record){
         <div class="gantt-person-label" style="height:33px;">${escapeHtml(label)}</div>
         <div class="gantt-timeline-cell" style="height:33px;">
           ${(todayOffset>=0 && todayOffset<totalDays) ? `<div class="gantt-today-line" style="left:${todayOffset*DAY_W}px;"></div>` : ''}
+          ${plannedStages[type] && !hasRealSchedule ? (() => {
+            const pStart = dayOff(plannedStages[type].start);
+            const pEnd = dayOff(plannedStages[type].end) + 1;
+            const pWidth = Math.max((pEnd - pStart) * DAY_W - 4, 40);
+            return `<div class="gantt-plan-ghost" style="left:${pStart*DAY_W}px; width:${pWidth}px;" title="Planned: ${fmtDate(plannedStages[type].start)} → ${fmtDate(plannedStages[type].end)} (projected from the last real milestone, not a commitment)"></div>`;
+          })() : ''}
           ${barHtml}
         </div>
       </div>
     `;
   });
 
-  return `<div class="gantt-shell" data-today-scroll="${scrollToPx}"><div class="gantt-grid-table" style="grid-template-columns:130px 1fr;">
+  return `<div class="gantt-plan-legend">┄ Planned — projected from the last real milestone using the standard rule, not a commitment</div>
+  <div class="gantt-shell" data-today-scroll="${scrollToPx}"><div class="gantt-grid-table" style="grid-template-columns:130px 1fr;">
     <div class="gantt-grid-head"><div>Stage</div><div class="gantt-timeline-head">${headerHtml}</div></div>
     ${rowsHtml}
   </div></div>`;
