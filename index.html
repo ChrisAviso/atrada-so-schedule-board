@@ -2142,10 +2142,15 @@ function openJobsSummaryHtml(jobType, title){
       ? (r.project_status === 'Awaiting Client Approval' || (!!sentDate && !isApproved))
       : statusLower.includes('awaiting client approval');
 
-    // Two distinct, non-overlapping metrics: how long has it been waiting (only while still
-    // waiting), versus how long ago it got the green light (only once approved).
+    // Awaiting shows the live, still-counting wait while a job is genuinely pending, but once it's
+    // approved the wait is over — freeze the figure at however many days it actually took (sentDate
+    // to actual_approval_received_date) instead of blanking it out, styled the same green as "done"
+    // so it reads as a completed wait rather than an ongoing one.
     let awaitingCell = `<span class="open-so-approval dim">—</span>`;
-    if(isCurrentlyAwaiting && sentDate){
+    if(isApproved && sentDate && r.actual_approval_received_date){
+      const frozenWaitDays = Math.round((new Date(r.actual_approval_received_date+'T00:00:00') - new Date(sentDate+'T00:00:00')) / 86400000);
+      awaitingCell = `<span class="open-so-approval done" title="Waited ${frozenWaitDays}d for approval before it came through">${frozenWaitDays}d</span>`;
+    } else if(isCurrentlyAwaiting && sentDate){
       const waitDays = Math.round((todayD - new Date(sentDate+'T00:00:00')) / 86400000);
       awaitingCell = `<span class="open-so-approval waiting" title="Still waiting on the client">${waitDays}d</span>`;
     }
