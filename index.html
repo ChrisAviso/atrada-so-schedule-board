@@ -541,6 +541,17 @@
   }
   .inline-sched-duration:focus{outline:none;border-color:var(--primary);}
   .inline-sched-duration:disabled{background:var(--gray-pill);color:var(--text-dim);cursor:not-allowed;}
+  .inline-sched-typed-date{
+    width:126px;font-size:11px;border:1.5px solid var(--border);border-radius:6px;
+    padding:4px 5px;font-family:inherit;background:white;color:var(--text);flex-shrink:0;
+  }
+  .inline-sched-typed-date:focus{outline:none;border-color:var(--primary);}
+  .inline-sched-clear{
+    width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border);background:white;
+    color:var(--text-dim);font-size:11px;cursor:pointer;flex-shrink:0;line-height:1;padding:0;
+  }
+  .inline-sched-clear:hover{border-color:var(--red);color:var(--red);}
+  .inline-sched-clear-spacer{width:22px;flex-shrink:0;display:inline-block;}
   .inline-sched-body{flex:1;cursor:grab;min-width:4px;}
   .inline-sched-body:active{cursor:grabbing;}
   .inline-sched-handle{width:7px;cursor:ew-resize;background:rgba(255,255,255,.45);flex-shrink:0;}
@@ -2469,6 +2480,10 @@ function subRowHtml(s, jobType, rcdOrRc, requiresClientApproval){
            <span class="sub-sched-disabled" title="Standard product — no reserved slot needed. Marking GA Done schedules Detailing onward automatically.">Not scheduled — standard product</span>
            <input type="number" class="inline-sched-duration" disabled placeholder="d">
          </span>
+         <input type="date" class="inline-sched-typed-date" disabled>
+         <span class="sub-sched-arrow">→</span>
+         <input type="date" class="inline-sched-typed-date" disabled>
+         <span class="inline-sched-clear-spacer"></span>
          <span class="inline-sched-datelabel">—</span>
          <select class="sub-sched-hour" disabled>${hourOptionsHtml(null)}</select>
          <span class="sub-sched-arrow">→</span>
@@ -2923,6 +2938,12 @@ function inlineScheduleBarHtml(s){
       placeholder="d" title="Days planned — type a number to set the duration directly, or drag the bar above"
       ${s.schedule_start_date ? '' : 'disabled'}
       onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleDurationInputChange(this, '${s.id}')">
+    <input type="date" class="inline-sched-typed-date" value="${s.schedule_start_date||''}" title="Type the start date directly"
+      onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleTypedDateChange(this, '${s.id}', 'start')">
+    <span class="sub-sched-arrow">→</span>
+    <input type="date" class="inline-sched-typed-date" value="${s.schedule_end_date||''}" title="Type the end date directly"
+      onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleTypedDateChange(this, '${s.id}', 'end')">
+    ${s.schedule_start_date ? `<button class="inline-sched-clear" title="Clear this schedule" onclick="event.stopPropagation(); clearSubSchedule('${s.id}')">✕</button>` : `<span class="inline-sched-clear-spacer"></span>`}
     <span class="inline-sched-datelabel" data-subid="${s.id}">${s.schedule_start_date ? shortDateRange(s.schedule_start_date, s.schedule_end_date) : '—'}</span>${overdueDays > 0 ? `<span class="inline-sched-overdue-label">⚠ ${overdueDays}d over</span>` : ''}
   </span>`;
 }
@@ -3143,6 +3164,30 @@ async function handleDurationInputChange(inputEl, subitemId){
   else inputEl.value = workdayDurationBetween(sub.schedule_start_date, sub.schedule_end_date);
 }
 
+async function handleTypedDateChange(inputEl, subitemId, which){
+  const allSubs = Object.values(subitemsByParent).flat();
+  const sub = allSubs.find(s => s.id === subitemId);
+  if(!sub) return;
+  const newValue = inputEl.value;
+  if(!newValue){ inputEl.value = which === 'start' ? (sub.schedule_start_date||'') : (sub.schedule_end_date||''); return; }
+  const newStart = which === 'start' ? newValue : (sub.schedule_start_date || newValue);
+  const newEnd = which === 'end' ? newValue : (sub.schedule_end_date || newValue);
+  if(new Date(newStart) > new Date(newEnd)){
+    alert("The start date can't be after the end date.");
+    inputEl.value = which === 'start' ? (sub.schedule_start_date||'') : (sub.schedule_end_date||'');
+    return;
+  }
+  const ok = await commitSubScheduleDrag(subitemId, newStart, newEnd);
+  if(ok) await silentReload();
+  else inputEl.value = which === 'start' ? (sub.schedule_start_date||'') : (sub.schedule_end_date||'');
+}
+
+async function clearSubSchedule(subitemId){
+  if(!confirm("Clear this schedule? This removes its start and end dates entirely.")) return;
+  await sb.from('so_subitems').update({ schedule_start_date: null, schedule_end_date: null }).eq('id', subitemId);
+  await silentReload();
+}
+
 async function commitSubScheduleDrag(subitemId, newStartDate, newEndDate){
   const allSubs = Object.values(subitemsByParent).flat();
   const sub = allSubs.find(s => s.id === subitemId);
@@ -3168,14 +3213,13 @@ async function commitSubScheduleDrag(subitemId, newStartDate, newEndDate){
         const jobBits = parent ? [parent.so_number, parent.company_name, parent.item_name].filter(Boolean).join(' — ') : 'another job';
         return `• ${jobBits}: ${c.subitem_type} (${fmtDate(c.schedule_start_date)} → ${fmtDate(c.schedule_end_date)})`;
       }).join('\n');
-      alert(`Can't save — this overlaps with ${draftees.join(', ')}'s existing schedule:\n${list}\n\nOverlapping schedules for the same draftee aren't allowed. Adjust the dates first.`);
-      return false;
+      const proceed = confirm(`Heads up — this overlaps with ${draftees.join(', ')}'s existing schedule:\n${list}\n\nSave anyway?`);
+      if(!proceed) return false;
     }
   }
   sub.schedule_start_date = newStartDate;
   sub.schedule_end_date = newEndDate;
   await sb.from('so_subitems').update({ schedule_start_date: newStartDate, schedule_end_date: newEndDate }).eq('id', subitemId);
-  await cascadeScheduleForward(sub.parent_id, sub.subitem_type, newEndDate);
   return true;
 }
 
@@ -3469,9 +3513,8 @@ async function handleSubScheduleChange(inputEl, subitemId, column){
         const jobBits = parent ? [parent.so_number, parent.company_name, parent.item_name].filter(Boolean).join(' — ') : 'another job';
         return `• ${jobBits}: ${c.subitem_type} (${fmtDate(c.schedule_start_date)}${c.schedule_start_hour!=null?' '+String(c.schedule_start_hour).padStart(2,'0')+':00':''} → ${fmtDate(c.schedule_end_date)}${c.schedule_end_hour!=null?' '+String(c.schedule_end_hour).padStart(2,'0')+':00':''})`;
       }).join('\n');
-      alert(`Can't save — this overlaps with ${draftees.join(', ')}'s existing schedule:\n${list}\n\nOverlapping schedules for the same draftee aren't allowed. Adjust the dates first.`);
-      inputEl.value = prevValue;
-      return;
+      const proceed = confirm(`Heads up — this overlaps with ${draftees.join(', ')}'s existing schedule:\n${list}\n\nSave anyway?`);
+      if(!proceed){ inputEl.value = prevValue; return; }
     }
   }
   sub[column] = newValue;
