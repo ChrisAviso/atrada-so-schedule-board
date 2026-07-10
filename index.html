@@ -2892,16 +2892,32 @@ async function handleInlineTrackClick(e, subitemId){
 }
 
 /* ---------------- STAGE DEPENDENCY CASCADE ---------------- */
-// Verified against the real 10-day rule: GA(3d)->Detailing(5d Class2/8d Class1)->Checking(2d)->Release(same day as Checking).
+// Verified against the real 10-day rule: GA(3d)->Detailing(8d both classes)->Checking(2d)->Release(same day as Checking).
 // Sales Handover(2d)->GA also cascades for Class 1 jobs. Each link starts the next workday after the
 // previous stage's end, except Release which shares Checking's last day rather than starting a new one.
-const STAGE_DURATIONS_CASCADE = { 'Sales Handover': 2, 'GA For Approval Prep': 3, 'Checking / Release': 2, 'Production Handover': 1, 'Cost Analysis': 1 };
+// Drafting-transfer-date anchored rule (set 2026-07-10, Chris can freely override afterwards):
+//   Class 1: Sales Handover = day 1-2, GA For Approval Prep = day 3-5 after drafting_transfer_date.
+//   Class 2: Detailing/PDF/DXF Prep = day 1-8, Checking / Release = day 9-10, Production Handover = day 11.
+// See DTD_ANCHORED_STAGES / applyDraftingTransferAutoSchedule() below. Only fills in stages that are
+// still blank/untouched — never overwrites a stage someone has already scheduled or started.
+const STAGE_DURATIONS_CASCADE = { 'Sales Handover': 2, 'GA For Approval Prep': 3, 'Detailing/PDF/DXF Prep': 8, 'Checking / Release': 2, 'Production Handover': 1, 'Cost Analysis': 1 };
 const CASCADE_NEXT = {
   'Sales Handover': 'GA For Approval Prep',
   'GA For Approval Prep': 'Detailing/PDF/DXF Prep',
   'Detailing/PDF/DXF Prep': 'Checking / Release',
   'Checking / Release': 'Production Handover',
   'Production Handover': 'Cost Analysis',
+};
+const DTD_ANCHORED_STAGES = {
+  class1: [
+    { type: 'Sales Handover', startDay: 1, endDay: 2 },
+    { type: 'GA For Approval Prep', startDay: 3, endDay: 5 },
+  ],
+  class2: [
+    { type: 'Detailing/PDF/DXF Prep', startDay: 1, endDay: 8 },
+    { type: 'Checking / Release', startDay: 9, endDay: 10 },
+    { type: 'Production Handover', startDay: 11, endDay: 11 },
+  ],
 };
 
 function addWorkdaysJS(dateStr, n){
@@ -2937,9 +2953,7 @@ async function cascadeScheduleForward(parentId, fromStageType, fromEndDate){
     const nextSub = (subitemsByParent[parentId]||[]).find(s => s.subitem_type === nextType);
     if(!nextSub) break;
 
-    const duration = nextType === 'Detailing/PDF/DXF Prep'
-      ? (record.requires_client_approval ? 8 : 5)
-      : (STAGE_DURATIONS_CASCADE[nextType] || 1);
+    const duration = STAGE_DURATIONS_CASCADE[nextType] || 1;
     const nextStart = addWorkdaysJS(currentEnd, 1);
     const nextEnd = workdaySpanEnd(nextStart, duration);
 
@@ -2949,6 +2963,36 @@ async function cascadeScheduleForward(parentId, fromStageType, fromEndDate){
 
     currentType = nextType;
     currentEnd = nextEnd;
+  }
+}
+
+// Drafting-transfer-date anchored auto-scheduler. Fills in the first stage(s) off
+// drafting_transfer_date using the same workday-aware math as cascadeScheduleForward, but only for
+// stages that are still blank and untouched (no schedule_start_date, status still 'Not Started') —
+// so it never fights a manual drag/edit someone already made. Class 2 hands off to the existing
+// cascade chain from Production Handover onward so Cost Analysis still gets picked up.
+async function applyDraftingTransferAutoSchedule(parentId){
+  const record = rows.find(r => r.id === parentId);
+  if(!record || !record.drafting_transfer_date) return;
+  const subs = subitemsByParent[parentId] || [];
+  const plan = record.requires_client_approval ? DTD_ANCHORED_STAGES.class1 : DTD_ANCHORED_STAGES.class2;
+  let lastEnd = null;
+
+  for(const stage of plan){
+    const sub = subs.find(s => s.subitem_type === stage.type);
+    if(!sub) continue;
+    if(sub.schedule_start_date || sub.status !== 'Not Started') continue; // already scheduled/touched — leave it alone
+
+    const startDate = addWorkdaysJS(record.drafting_transfer_date, stage.startDay);
+    const endDate = addWorkdaysJS(record.drafting_transfer_date, stage.endDay);
+    await sb.from('so_subitems').update({ schedule_start_date: startDate, schedule_end_date: endDate }).eq('id', sub.id);
+    sub.schedule_start_date = startDate;
+    sub.schedule_end_date = endDate;
+    lastEnd = endDate;
+  }
+
+  if(!record.requires_client_approval && lastEnd){
+    await cascadeScheduleForward(parentId, 'Production Handover', lastEnd);
   }
 }
 
@@ -3956,15 +4000,23 @@ document.getElementById('saveBtn').onclick = async () => {
   const saveBtn = document.getElementById('saveBtn');
   saveBtn.disabled = true; saveBtn.textContent = "Saving…";
   try{
-    let error;
+    let error, savedId = editingId;
     if(editingId){
       ({ error } = await sb.from('so_schedule').update(payload).eq('id', editingId));
     } else {
-      ({ error } = await sb.from('so_schedule').insert(payload));
+      const insertRes = await sb.from('so_schedule').insert(payload).select('id').single();
+      error = insertRes.error;
+      savedId = insertRes.data ? insertRes.data.id : null;
     }
     if(error){ alert("Couldn't save: " + error.message); return; }
     closeModal();
     await loadData();
+    // Drafting-transfer-date anchored auto-schedule: only fires when that date is actually set,
+    // and only fills in stages still blank/untouched (see applyDraftingTransferAutoSchedule).
+    if(payload.drafting_transfer_date && savedId){
+      await applyDraftingTransferAutoSchedule(savedId);
+      await silentReload();
+    }
   } finally {
     saveBtn.disabled = false; saveBtn.textContent = "Save";
   }
