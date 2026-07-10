@@ -1732,7 +1732,7 @@ async function loadData(){
   }
   populateFilterDropdowns();
 
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayLocalISO();
   const { data: absenteeData } = await sb.from('so_absentees').select('draftee_name').eq('absent_date', todayStr);
   const nowHour = new Date().getHours();
   absentToday = nowHour < 17 ? new Set((absenteeData||[]).map(a => a.draftee_name)) : new Set();
@@ -1841,7 +1841,7 @@ async function silentReload(){
   }
   populateFilterDropdowns();
 
-  const todayStr2 = new Date().toISOString().slice(0,10);
+  const todayStr2 = todayLocalISO();
   const { data: absenteeData } = await sb.from('so_absentees').select('draftee_name').eq('absent_date', todayStr2);
   const nowHour2 = new Date().getHours();
   absentToday = nowHour2 < 17 ? new Set((absenteeData||[]).map(a => a.draftee_name)) : new Set();
@@ -2246,7 +2246,7 @@ function notClockedInHtml(){
 
 async function toggleAbsentToday(name){
   if(!isSupervisor()){ alert("Only authorized admins can mark someone as absent."); return; }
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayLocalISO();
   if(absentToday.has(name)){
     await sb.from('so_absentees').delete().eq('draftee_name', name).eq('absent_date', todayStr);
   } else {
@@ -2632,7 +2632,7 @@ function checkBreakTime(){
   const isFivePm = (hh === 17 && mm === 0);
   if(!isNoon && !isFivePm) return;
 
-  const dateKey = now.toISOString().slice(0,10);
+  const dateKey = toLocalISODate(now);
   const slot = isNoon ? 'noon' : 'five';
   const storageKey = `breakAsked_${dateKey}_${slot}`;
   if(localStorage.getItem(storageKey)) return;
@@ -2791,7 +2791,7 @@ async function updateSubStatus(subitemId, status, selectEl){
         // Class 2 — GA has no schedule of its own and no checklist gate; marking it Done directly
         // triggers the cascade (Detailing/Checking/Release) starting from today.
         await sb.from('so_subitems').update({ status, on_break: false, on_break_auto: false }).eq('id', subitemId);
-        const todayStr = new Date().toISOString().slice(0,10);
+        const todayStr = todayLocalISO();
         await cascadeScheduleForward(sub.parent_id, 'GA For Approval Prep', todayStr);
         await loadData();
         return;
@@ -2822,6 +2822,22 @@ function inlineGanttWindowStart(){
 function inlineGanttDayOff(dateStr, windowStart){
   return Math.round((new Date(dateStr+'T00:00:00') - windowStart) / 86400000);
 }
+// Local-calendar-date-safe helpers. `.toISOString().slice(0,10)` converts through UTC, which silently
+// shifts a date back by one day in any timezone ahead of UTC (e.g. all of Australia) whenever you
+// construct/mutate a Date using LOCAL components (new Date(str+'T00:00:00'), setDate, etc.) and then
+// read it back this way. That was happening throughout this file's date math (addWorkdaysJS,
+// shiftDateStr, "today" for overdue/gantt calcs, hour-log bucketing, the CSV filename...) — every one
+// of those could come out a day early depending on the browser's timezone. These two always read the
+// LOCAL calendar date instead, no UTC round-trip.
+function toLocalISODate(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function todayLocalISO(){
+  return toLocalISODate(new Date());
+}
 // Shared by rendering and the drag handler so both agree on where a bar sits. A bar whose real dates
 // fall partly or wholly outside the visible window used to compute a huge negative/positive left —
 // invisible under the track's overflow:hidden, AND it broke dragging (the clamp math in pointermove
@@ -2845,7 +2861,7 @@ function inlineBarClampedRect(startDateStr, endDateStr, windowStart){
 function shiftDateStr(dateStr, days){
   const d = new Date(dateStr+'T00:00:00');
   d.setDate(d.getDate()+days);
-  return d.toISOString().slice(0,10);
+  return toLocalISODate(d);
 }
 function workdayDurationBetween(startStr, endStr){
   let count = 0;
@@ -2862,7 +2878,7 @@ function workdayDurationBetween(startStr, endStr){
 function inlineScheduleBarHtml(s){
   const windowStart = inlineGanttWindowStart();
   const totalW = INLINE_GANTT_WINDOW_DAYS * INLINE_GANTT_DAY_W;
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayLocalISO();
   const todayOff = inlineGanttDayOff(todayStr, windowStart);
   let barHtml = '';
   let overdueDays = 0;
@@ -2921,7 +2937,7 @@ async function handleInlineTrackClick(e, subitemId){
   const dayIndex = Math.floor((e.clientX - rect.left) / INLINE_GANTT_DAY_W);
   const windowStart = inlineGanttWindowStart();
   const clicked = new Date(windowStart); clicked.setDate(clicked.getDate()+dayIndex);
-  const dateStr = clicked.toISOString().slice(0,10);
+  const dateStr = toLocalISODate(clicked);
   const ok = await commitSubScheduleDrag(subitemId, dateStr, dateStr);
   if(ok) await silentReload();
 }
@@ -2963,7 +2979,7 @@ function addWorkdaysJS(dateStr, n){
     const dow = d.getDay();
     if(dow !== 0 && dow !== 6) remaining--;
   }
-  return d.toISOString().slice(0,10);
+  return toLocalISODate(d);
 }
 function workdaySpanEnd(startDateStr, durationDays){
   if(durationDays <= 1) return startDateStr;
@@ -3535,7 +3551,7 @@ function exportCsv(){
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `so_schedule_export_${new Date().toISOString().slice(0,10)}.csv`;
+  a.download = `so_schedule_export_${todayLocalISO()}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -3661,7 +3677,7 @@ function renderJobGanttPanel(record){
     ? ['Sales Handover','GA For Approval Prep','__CLIENT_APPROVAL__','Detailing/PDF/DXF Prep','Checking / Release','Production Handover','Cost Analysis']
     : subs.slice().sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).map(s=>s.subitem_type);
 
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayLocalISO();
   // Base window strictly on today + real schedule dates first — these are actual scheduled work,
   // always worth showing in full even if stale.
   const scheduleDates = [todayStr];
@@ -3698,7 +3714,7 @@ function renderJobGanttPanel(record){
   let headerHtml = '<div class="gantt-day-header-row">';
   for(let i=0;i<totalDays;i++){
     const d = new Date(windowStart); d.setDate(d.getDate()+i);
-    const isToday = d.toISOString().slice(0,10) === todayStr;
+    const isToday = toLocalISODate(d) === todayStr;
     const dow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
     headerHtml += `<div class="gantt-day-cell ${isToday?'today':''}"><span class="gdow">${dow}</span>${d.getDate()}/${d.getMonth()+1}</div>`;
   }
@@ -4122,7 +4138,7 @@ function buildTeamDailyHoursTrend(){
   for(let i = 29; i >= 0; i--){
     const d = new Date(today); d.setDate(d.getDate() - i);
     if(!isWeekday(d)) continue;
-    const key = d.toISOString().slice(0,10);
+    const key = toLocalISODate(d);
     days.push(key);
     totals[key] = 0;
   }
@@ -4130,7 +4146,7 @@ function buildTeamDailyHoursTrend(){
     const started = new Date(l.started_at);
     const dur = l.duration_seconds != null ? l.duration_seconds :
       (l.ended_at ? Math.max(0, Math.floor((new Date(l.ended_at) - started)/1000)) : 0);
-    const key = started.toISOString().slice(0,10);
+    const key = toLocalISODate(started);
     if(totals.hasOwnProperty(key)) totals[key] += dur;
   });
   return { labels: days.map(fmtShortDate), data: days.map(k => +(totals[k]/3600).toFixed(2)) };
@@ -4141,7 +4157,7 @@ function buildJobsCompletedPerWeek(){
   const thisMonday = getMonday(new Date());
   for(let i = 7; i >= 0; i--){
     const monday = new Date(thisMonday); monday.setDate(monday.getDate() - i*7);
-    buckets.push({ label: fmtShortDate(monday.toISOString().slice(0,10)), weekStart: monday.getTime(), count: 0 });
+    buckets.push({ label: fmtShortDate(toLocalISODate(monday)), weekStart: monday.getTime(), count: 0 });
   }
   rows.forEach(r => {
     if(!r.actual_release_to_prodn_date) return;
@@ -4390,7 +4406,7 @@ function gatherGanttEntries(windowStart, windowEnd){
     const anchor = new Date(anchorDateStr + 'T00:00:00');
     if(today < anchor) return;
     const startOffsetRaw = ganttDayOffset(anchorDateStr, windowStart);
-    const todayOffsetRaw = ganttDayOffset(today.toISOString().slice(0,10), windowStart);
+    const todayOffsetRaw = ganttDayOffset(toLocalISODate(today), windowStart);
     if(todayOffsetRaw < 0 || startOffsetRaw > GANTT_WINDOW_DAYS) return;
     const startOffset = Math.max(0, startOffsetRaw);
     const endOffset = Math.min(GANTT_WINDOW_DAYS - 0.2, todayOffsetRaw + 1);
@@ -4432,7 +4448,7 @@ function renderGanttView(){
       <div class="gantt-grid-head"><div>Draftee</div><div class="gantt-timeline-head">${buildGanttDayHeader(windowStart)}</div></div>
   `;
 
-  const todayOffset = ganttDayOffset(new Date().toISOString().slice(0,10), windowStart);
+  const todayOffset = ganttDayOffset(todayLocalISO(), windowStart);
 
   names.forEach(name => {
     const { entries, laneCount } = ganttAssignLanes(byPerson[name]);
