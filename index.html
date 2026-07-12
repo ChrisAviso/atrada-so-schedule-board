@@ -2942,7 +2942,6 @@ function openMyAttendanceReconciliation(){
   const myName = getMyDrafteeName();
   if(!myName){ alert("No draftee profile matched to your login."); return; }
   individualWindowViewedName = null;
-  attendanceSelections = {};
   document.getElementById('attendanceReconTitle').textContent = 'Attendance & Leave Reconciliation';
   renderAttendanceReconBody();
   document.getElementById('attendanceReconModalBackdrop').classList.remove('hidden');
@@ -2950,11 +2949,18 @@ function openMyAttendanceReconciliation(){
 
 function openDrafteeIndividualWindow(drafteeName){
   if(!isSupervisor()){ return; }
+  document.getElementById('attendanceSupervisorModalBackdrop').classList.add('hidden');
   individualWindowViewedName = drafteeName;
-  attendanceSelections = {};
   document.getElementById('attendanceReconTitle').textContent = `Attendance & Leave Reconciliation — ${drafteeName} (supervisor view)`;
   renderAttendanceReconBody();
   document.getElementById('attendanceReconModalBackdrop').classList.remove('hidden');
+}
+
+function backToSupervisorTable(){
+  document.getElementById('attendanceReconModalBackdrop').classList.add('hidden');
+  individualWindowViewedName = null;
+  renderSupervisorReviewBody();
+  document.getElementById('attendanceSupervisorModalBackdrop').classList.remove('hidden');
 }
 
 function closeAttendanceRecon(){
@@ -3003,7 +3009,7 @@ function renderAttendanceReconBody(){
   }).join('');
 
   document.getElementById('attendanceReconBody').innerHTML = `
-    ${supervisorViewing ? '' : `<div class="attendance-deadline-banner">⏰ Please confirm by end of day Thursday (day before payday). If you haven't chosen by then, a supervisor will fill it in for you.</div>`}
+    ${supervisorViewing ? `<div style="margin-bottom:12px;"><span class="attendance-draftee-link" onclick="backToSupervisorTable()">← Back to team view</span></div>` : `<div class="attendance-deadline-banner">⏰ Please confirm by end of day Thursday (day before payday). If you haven't chosen by then, a supervisor will fill it in for you.</div>`}
     <table class="attendance-table">
       <thead><tr><th>Date</th><th>${supervisorViewing ? 'Choice' : 'Your Choice'}</th><th></th></tr></thead>
       <tbody>${rowsHtml}</tbody>
@@ -3043,7 +3049,6 @@ let supervisorEditingId = null;
 function openSupervisorAttendanceReview(){
   if(!isSupervisor()){ alert("Only supervisors can view the team's attendance review."); return; }
   supervisorEditingId = null;
-  attendanceSelections = {};
   renderSupervisorReviewBody();
   document.getElementById('attendanceSupervisorModalBackdrop').classList.remove('hidden');
 }
