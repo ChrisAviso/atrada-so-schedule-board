@@ -3015,6 +3015,7 @@ async function submitAttendanceDecision(decisionId, isSupervisorFill){
     p_is_supervisor_fill: !!isSupervisorFill
   });
   if(error){ alert('Could not save: ' + error.message); return; }
+  if(isSupervisorFill){ supervisorEditingId = null; }
   await loadData();
   if(isSupervisorFill){ renderSupervisorReviewBody(); }
   else { renderAttendanceReconBody(getMyDrafteeName()); }
