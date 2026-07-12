@@ -213,6 +213,71 @@
   }
   .break-panel-note-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;}
 
+  /* ---- Fortnight attendance & leave decisions ---- */
+  .attendance-strip{
+    background:#eef2ff;border:1px solid var(--primary);border-radius:10px;padding:12px 16px;margin-bottom:18px;
+    display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  }
+  .attendance-strip-left{font-size:13px;color:var(--text);}
+  .attendance-badge{
+    display:inline-block;font-size:11px;font-weight:700;background:var(--red);color:#fff;
+    border-radius:10px;padding:2px 9px;margin-left:8px;
+  }
+  .attendance-badge-clear{background:var(--green);}
+  .attendance-strip-btn{
+    font-size:12.5px;font-weight:700;color:#fff;background:var(--primary);border:none;
+    border-radius:7px;padding:8px 16px;cursor:pointer;white-space:nowrap;
+  }
+  .attendance-strip-btn:hover{background:var(--primary-dark);}
+
+  .attendance-modal{max-width:720px;}
+  .attendance-modal-wide{max-width:1040px;}
+  .attendance-deadline-banner{
+    background:#fff8ed;color:#8a5a00;border:1px solid var(--amber);border-radius:8px;
+    padding:9px 13px;font-size:12.5px;font-weight:600;margin-bottom:14px;
+  }
+  .attendance-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .attendance-table thead th{
+    background:var(--topbar-bg);color:#fff;text-align:left;padding:8px;font-size:11px;
+    text-transform:uppercase;letter-spacing:.03em;
+  }
+  .attendance-table tbody td{padding:9px 8px;border-bottom:1px solid var(--border);vertical-align:top;}
+  .attendance-table tbody tr:nth-child(even){background:#f7f8fc;}
+  .attendance-choice-group{display:flex;gap:6px;flex-wrap:wrap;}
+  .attendance-choice{
+    border:1.5px solid var(--border);border-radius:6px;padding:5px 9px;font-size:11.5px;
+    background:#fff;cursor:pointer;
+  }
+  .attendance-choice.selected{border-color:var(--primary);background:#eef2ff;color:var(--primary);font-weight:700;}
+  .attendance-choice.selected.sick{border-color:var(--red);background:#fdeaea;color:var(--red);}
+  .attendance-choice.selected.owe{border-color:var(--text-dim);background:var(--gray-pill);color:var(--text-dim);}
+  .attendance-preview{font-size:11px;color:var(--text-dim);margin-top:5px;}
+  .attendance-status-pill{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;}
+  .attendance-status-pill.submitted{background:#e3f7ee;color:var(--green);}
+  .attendance-status-pill.pending{background:#fff1d6;color:#8a5a00;}
+  .attendance-status-pill.supervisor_filled{background:#eef2ff;color:var(--primary-dark);}
+  .attendance-edit-btn{
+    font-size:11px;font-weight:700;color:var(--primary);border:1px solid var(--primary);
+    border-radius:5px;padding:4px 10px;cursor:pointer;background:#fff;
+  }
+  .attendance-summary-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
+  .attendance-summary-card{
+    flex:1;min-width:150px;background:#f7f8fc;border:1px solid var(--border);border-left:4px solid var(--primary);
+    border-radius:6px;padding:10px 13px;
+  }
+  .attendance-summary-card .label{font-size:10.5px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.03em;}
+  .attendance-summary-card .value{font-size:19px;font-weight:700;color:var(--text);}
+
+  /* ---- Daily 4:50pm check-in popup ---- */
+  .daily-checkin-modal{max-width:400px;}
+  .daily-checkin-bar-track{background:var(--gray-pill);border-radius:5px;height:9px;overflow:hidden;margin:10px 0;}
+  .daily-checkin-bar-fill{height:100%;border-radius:5px;background:var(--primary);}
+  .daily-checkin-bar-fill.over{background:var(--amber);}
+  .daily-checkin-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;}
+  .daily-checkin-sub{font-size:12.5px;color:var(--text-dim);line-height:1.5;}
+  .daily-checkin-btn-row{display:flex;gap:8px;margin-top:14px;}
+  .daily-checkin-btn-row .btn-secondary, .daily-checkin-btn-row .btn-primary-sm{flex:1;text-align:center;}
+
   .not-clocked-panel{
     background:linear-gradient(135deg,#fff4e5,#ffe9d6);border:2px solid var(--amber);
     border-radius:12px;padding:14px 18px;margin-bottom:16px;box-shadow:0 4px 16px rgba(245,166,35,.28);
@@ -1194,6 +1259,38 @@
   </div>
 </div>
 
+<div class="modal-backdrop hidden" id="attendanceReconModalBackdrop">
+  <div class="modal attendance-modal">
+    <div class="modal-head">
+      <h2>Attendance &amp; Leave Reconciliation</h2>
+      <button class="modal-close" id="attendanceReconCloseBtn">✕</button>
+    </div>
+    <div class="modal-body" id="attendanceReconBody">
+      <!-- filled by JS -->
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop hidden" id="attendanceSupervisorModalBackdrop">
+  <div class="modal attendance-modal attendance-modal-wide">
+    <div class="modal-head">
+      <h2>Fortnight Attendance Review — All Draftees</h2>
+      <button class="modal-close" id="attendanceSupervisorCloseBtn">✕</button>
+    </div>
+    <div class="modal-body" id="attendanceSupervisorBody">
+      <!-- filled by JS -->
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop hidden" id="dailyCheckinModalBackdrop">
+  <div class="modal daily-checkin-modal">
+    <div class="modal-body" id="dailyCheckinBody">
+      <!-- filled by JS -->
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop hidden" id="ganttModalBackdrop">
   <div class="modal gantt-modal">
     <div class="modal-head">
@@ -1408,6 +1505,13 @@ let hasLoadedOnce = false;
 let editingId = null; // null = new item
 let currentPresetJobType = 'SO';
 let tickerStarted = false;
+
+/* ---- Fortnight hours bank / sick leave / attendance decisions ---- */
+const FORTNIGHT_ANCHOR = '2026-07-02'; // first day of the first fortnight under this system
+let attendanceDecisions = [];   // rows from so_attendance_decisions, current + previous fortnight
+let hoursBankBalance = {};      // { drafteeName: balanceHours }
+let sickLeaveYtd = {};          // { drafteeName: { used, remaining, fyStart } }
+let dailyAttendancePopupShown = false;
 
 /* ---------------- AUTH ---------------- */
 const authTitle = document.getElementById('authTitle');
@@ -1787,6 +1891,17 @@ async function loadData(){
   const { data: absenteeData } = await sb.from('so_absentees').select('draftee_name').eq('absent_date', todayStr);
   const nowHour = new Date().getHours();
   absentToday = nowHour < 17 ? new Set((absenteeData||[]).map(a => a.draftee_name)) : new Set();
+
+  const { data: decisionData } = await sb.from('so_attendance_decisions').select('*').order('work_date', {ascending:false});
+  attendanceDecisions = decisionData || [];
+
+  const { data: bankData } = await sb.from('so_hours_bank_balance').select('*');
+  hoursBankBalance = {};
+  (bankData||[]).forEach(b => { hoursBankBalance[b.draftee_name] = Number(b.balance_hours); });
+
+  const { data: sickData } = await sb.from('so_sick_leave_ytd').select('*');
+  sickLeaveYtd = {};
+  (sickData||[]).forEach(s => { sickLeaveYtd[s.draftee_name] = { used: s.days_used, remaining: s.days_remaining, fyStart: s.fiscal_year_start }; });
 
   renderBoard();
   startTicker();
@@ -2662,7 +2777,17 @@ async function toggleClock(subitemId){
     const totalSeconds = (allLogs||[]).reduce((sum,l) => sum + (l.duration_seconds||0), 0);
     await sb.from('so_subitems').update({ clock_running:false, clock_started_at:null, total_seconds: totalSeconds }).eq('id', subitemId);
   } else {
-    await sb.from('so_time_logs').insert({ subitem_id: subitemId, started_at: nowIso });
+    let clockedByName = myName;
+    if(supervisorOverride && !subDraftees.includes(myName)){
+      if(subDraftees.length === 1){
+        clockedByName = subDraftees[0];
+      } else if(subDraftees.length > 1){
+        const picked = prompt(`This sub-process is jointly assigned to: ${subDraftees.join(', ')}. Who is actually clocking in right now?`, subDraftees[0]);
+        if(!picked || !subDraftees.includes(picked.trim())){ alert('Clock-in cancelled — enter one of the assigned names exactly.'); return; }
+        clockedByName = picked.trim();
+      }
+    }
+    await sb.from('so_time_logs').insert({ subitem_id: subitemId, started_at: nowIso, clocked_by: clockedByName });
     const updatePayload = { clock_running:true, clock_started_at: nowIso, on_break: false, on_break_auto: false };
     if(sub.status === 'Not Started') updatePayload.status = 'In Progress';
     await sb.from('so_subitems').update(updatePayload).eq('id', subitemId);
@@ -2674,12 +2799,13 @@ let breakPromptActive = false;
 let breakAutoOffTimer = null;
 
 function refreshTopPanels(){
-  document.getElementById('activePanelRoot').innerHTML = notClockedInHtml() + activePanelHtml() + onBreakPanelHtml() + openSoSummaryHtml();
+  document.getElementById('activePanelRoot').innerHTML = attendancePanelHtml() + notClockedInHtml() + activePanelHtml() + onBreakPanelHtml() + openSoSummaryHtml();
 }
 
 function startBreakScheduler(){
   setInterval(checkBreakTime, 20000);
   setInterval(refreshTopPanels, 20000);
+  setInterval(checkDailyAttendancePopup, 20000);
 }
 
 function checkBreakTime(){
@@ -2739,6 +2865,259 @@ async function resolveBreakPrompt(stopClock, runningSubs, isAutoTimeout){
     }
     await loadData();
   }
+}
+
+/* ================================================================
+   FORTNIGHT HOURS BANK / SICK LEAVE / ATTENDANCE RECONCILIATION
+   ================================================================ */
+
+function currentFortnightStart(){
+  const anchor = new Date(FORTNIGHT_ANCHOR + 'T00:00:00');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diffDays = Math.floor((today - anchor) / 86400000);
+  const cycle = Math.floor(diffDays / 14);
+  const start = new Date(anchor); start.setDate(start.getDate() + cycle*14);
+  return toLocalISODate(start);
+}
+
+function fortnightLabel(startStr){
+  const start = new Date(startStr+'T00:00:00');
+  const end = new Date(start); end.setDate(end.getDate()+13);
+  const fmt = d => d.toLocaleDateString('en-AU', {day:'numeric', month:'short'});
+  return `${fmt(start)} – ${fmt(end)}`;
+}
+
+function fmtDateShort(dateStr){
+  return new Date(dateStr+'T00:00:00').toLocaleDateString('en-AU', {weekday:'short', day:'numeric', month:'short'});
+}
+
+// Hours worked TODAY, attributed only via clocked_by (unambiguous, forward-looking).
+function getTodaysWorkedHours(myName){
+  if(!myName) return 0;
+  const todayStr = todayLocalISO();
+  let totalSeconds = 0;
+  Object.values(logsBySubitem).flat().forEach(l => {
+    if(!l.started_at || l.clocked_by !== myName) return;
+    if(toLocalISODate(new Date(l.started_at)) !== todayStr) return;
+    if(l.duration_seconds != null){
+      totalSeconds += l.duration_seconds;
+    } else if(!l.ended_at){
+      totalSeconds += Math.max(0, Math.floor((Date.now() - new Date(l.started_at).getTime())/1000));
+    }
+  });
+  return totalSeconds / 3600;
+}
+
+/* ---- Board strip ---- */
+function attendancePanelHtml(){
+  const fnStart = currentFortnightStart();
+  const relevant = attendanceDecisions.filter(d => d.fortnight_start === fnStart);
+  const myName = getMyDrafteeName();
+  const supervisor = isSupervisor();
+  const pending = relevant.filter(d => d.status === 'pending');
+  const myPending = myName ? pending.filter(d => d.draftee_name === myName) : [];
+
+  if(!supervisor && myPending.length === 0) return ''; // nothing for this draftee to do
+  if(supervisor && relevant.length === 0) return ''; // nothing at all logged yet this fortnight
+
+  const openFn = supervisor ? 'openSupervisorAttendanceReview()' : 'openMyAttendanceReconciliation()';
+  const badge = supervisor
+    ? (pending.length > 0
+        ? `<span class="attendance-badge">${pending.length} pending across the team</span>`
+        : `<span class="attendance-badge attendance-badge-clear">All caught up</span>`)
+    : `<span class="attendance-badge">${myPending.length} day${myPending.length===1?'':'s'} need${myPending.length===1?'s':''} your decision</span>`;
+
+  return `<div class="attendance-strip">
+    <div class="attendance-strip-left">📋 <b>Fortnight Attendance &amp; Leave Decisions</b> — ${fortnightLabel(fnStart)} ${badge}</div>
+    <button class="attendance-strip-btn" onclick="${openFn}">Open Reconciliation →</button>
+  </div>`;
+}
+
+/* ---- Draftee-facing reconciliation modal ---- */
+let attendanceSelections = {}; // { decisionId: 'bank'|'sick_leave'|'owe_hours' }
+
+function openMyAttendanceReconciliation(){
+  const myName = getMyDrafteeName();
+  if(!myName){ alert("No draftee profile matched to your login."); return; }
+  attendanceSelections = {};
+  renderAttendanceReconBody(myName);
+  document.getElementById('attendanceReconModalBackdrop').classList.remove('hidden');
+}
+
+function closeAttendanceRecon(){
+  document.getElementById('attendanceReconModalBackdrop').classList.add('hidden');
+}
+
+function renderAttendanceReconBody(myName){
+  const fnStart = currentFortnightStart();
+  const myDecisions = attendanceDecisions.filter(d => d.draftee_name === myName && d.fortnight_start === fnStart);
+  const bank = hoursBankBalance[myName] || 0;
+  const sick = sickLeaveYtd[myName] || { used: 0, remaining: 10 };
+
+  if(myDecisions.length === 0){
+    document.getElementById('attendanceReconBody').innerHTML = `<p style="color:var(--text-dim);font-size:13px;">No shortfall days this fortnight — nothing to confirm. 🎉</p>`;
+    return;
+  }
+
+  const rowsHtml = myDecisions.map(d => {
+    const sel = attendanceSelections[d.id] || d.decision || null;
+    const resolved = d.status !== 'pending';
+    const choice = (val, label, cls) => `<div class="attendance-choice ${sel===val?('selected '+cls):''}" ${resolved?'':`onclick="selectAttendanceChoice('${d.id}','${val}')"`}>${label}</div>`;
+    let preview = '';
+    if(sel === 'bank') preview = `Bank: ${bank.toFixed(2)} → ${(bank - d.shortfall_hours).toFixed(2)} hrs. Sick leave unaffected.`;
+    else if(sel === 'sick_leave') preview = `Sick leave: ${sick.remaining} → ${sick.remaining - 1} day${(sick.remaining-1)===1?'':'s'} remaining. Bank unaffected.`;
+    else if(sel === 'owe_hours') preview = `Bank: ${bank.toFixed(2)} → ${(bank - d.shortfall_hours).toFixed(2)} hrs (owed). Still paid today — your next overtime pays this down.`;
+
+    return `<tr>
+      <td>${fmtDateShort(d.work_date)}<br><span style="color:var(--text-dim);">Shortfall: ${d.shortfall_hours} hrs</span></td>
+      <td>
+        <div class="attendance-choice-group">
+          ${choice('bank', `Use Bank (${bank.toFixed(2)} available)`, '')}
+          ${choice('sick_leave', `Use Sick Leave (${sick.remaining}/10 left)`, 'sick')}
+          ${choice('owe_hours', 'Owe Hours (Work It Off)', 'owe')}
+        </div>
+        <div class="attendance-preview">${preview}</div>
+      </td>
+      <td>
+        ${resolved
+          ? `<span class="attendance-status-pill ${d.status}">${d.status === 'supervisor_filled' ? 'Filled in by ' + escapeHtml(d.decided_by||'supervisor') : 'Submitted'}</span>`
+          : `<button class="btn-primary-sm" ${sel?'':'disabled'} onclick="submitAttendanceDecision('${d.id}', false)">Confirm</button>`}
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('attendanceReconBody').innerHTML = `
+    <div class="attendance-deadline-banner">⏰ Please confirm by end of day Thursday (day before payday). If you haven't chosen by then, a supervisor will fill it in for you.</div>
+    <table class="attendance-table">
+      <thead><tr><th>Date</th><th>Your Choice</th><th></th></tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>`;
+}
+
+function selectAttendanceChoice(decisionId, choice){
+  attendanceSelections[decisionId] = choice;
+  renderAttendanceReconBody(getMyDrafteeName());
+}
+
+async function submitAttendanceDecision(decisionId, isSupervisorFill){
+  const choice = attendanceSelections[decisionId];
+  if(!choice) return;
+  const resolvedBy = isSupervisorFill ? getFriendlyName(session.user.email) : getMyDrafteeName();
+  const { error } = await sb.rpc('so_resolve_attendance_decision', {
+    p_decision_id: decisionId,
+    p_decision: choice,
+    p_resolved_by: resolvedBy,
+    p_is_supervisor_fill: !!isSupervisorFill
+  });
+  if(error){ alert('Could not save: ' + error.message); return; }
+  await loadData();
+  if(isSupervisorFill){ renderSupervisorReviewBody(); }
+  else { renderAttendanceReconBody(getMyDrafteeName()); }
+}
+
+/* ---- Supervisor-facing review modal ---- */
+let supervisorEditingId = null;
+
+function openSupervisorAttendanceReview(){
+  if(!isSupervisor()){ alert("Only supervisors can view the team's attendance review."); return; }
+  supervisorEditingId = null;
+  attendanceSelections = {};
+  renderSupervisorReviewBody();
+  document.getElementById('attendanceSupervisorModalBackdrop').classList.remove('hidden');
+}
+
+function closeSupervisorReview(){
+  document.getElementById('attendanceSupervisorModalBackdrop').classList.add('hidden');
+}
+
+function renderSupervisorReviewBody(){
+  const fnStart = currentFortnightStart();
+  const relevant = attendanceDecisions.filter(d => d.fortnight_start === fnStart);
+  if(relevant.length === 0){
+    document.getElementById('attendanceSupervisorBody').innerHTML = `<p style="color:var(--text-dim);font-size:13px;">No shortfall days flagged yet this fortnight.</p>`;
+    return;
+  }
+  const byDraftee = {};
+  relevant.forEach(d => { (byDraftee[d.draftee_name] = byDraftee[d.draftee_name] || []).push(d); });
+
+  const rowsHtml = Object.keys(byDraftee).sort().map(name => {
+    const decisions = byDraftee[name];
+    const bank = hoursBankBalance[name] || 0;
+    const sick = sickLeaveYtd[name] || { used: 0, remaining: 10 };
+    return decisions.map(d => {
+      const editing = supervisorEditingId === d.id;
+      const sel = attendanceSelections[d.id] || d.decision || null;
+      const choice = (val, label, cls) => `<div class="attendance-choice ${sel===val?('selected '+cls):''}" onclick="selectAttendanceChoice('${d.id}','${val}')">${label}</div>`;
+      const decisionLabel = { bank: 'Bank Hours', sick_leave: 'Sick Leave', owe_hours: 'Owe Hours' }[d.decision] || '—';
+      const statusPill = `<span class="attendance-status-pill ${d.status}">${
+        d.status === 'pending' ? 'Pending' : d.status === 'supervisor_filled' ? 'Filled in by ' + escapeHtml(d.decided_by||'') : 'Submitted'
+      }</span>`;
+      return `<tr>
+        <td>${escapeHtml(name)}</td>
+        <td>${fmtDateShort(d.work_date)} (${d.shortfall_hours} hrs)</td>
+        <td>${editing
+          ? `<div class="attendance-choice-group">
+               ${choice('bank', `Bank (${bank.toFixed(2)})`, '')}
+               ${choice('sick_leave', `Sick (${sick.remaining}/10)`, 'sick')}
+               ${choice('owe_hours', 'Owe Hours', 'owe')}
+             </div>`
+          : decisionLabel}
+        </td>
+        <td>${statusPill}</td>
+        <td>${editing
+          ? `<button class="btn-primary-sm" ${sel?'':'disabled'} onclick="submitAttendanceDecision('${d.id}', true)">Save</button>
+             <button class="btn-secondary" onclick="supervisorEditingId=null; renderSupervisorReviewBody();">Cancel</button>`
+          : `<button class="attendance-edit-btn" onclick="supervisorEditingId='${d.id}'; attendanceSelections['${d.id}']=null; renderSupervisorReviewBody();">Edit</button>`}
+        </td>
+      </tr>`;
+    }).join('');
+  }).join('');
+
+  document.getElementById('attendanceSupervisorBody').innerHTML = `
+    <div class="attendance-deadline-banner">⏰ Fortnight ${fortnightLabel(fnStart)} — locks for payroll ahead of Friday's pay run.</div>
+    <table class="attendance-table">
+      <thead><tr><th>Draftee</th><th>Flagged Day</th><th>Choice</th><th>Status</th><th></th></tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>`;
+}
+
+/* ---- Daily 4:50pm check-in popup (heads-up only, fixed company-wide time) ---- */
+function checkDailyAttendancePopup(){
+  const myName = getMyDrafteeName();
+  if(!myName) return;
+  const now = new Date();
+  if(now.getHours() !== 16 || now.getMinutes() !== 50) return;
+
+  const dateKey = todayLocalISO();
+  const storageKey = `dailyCheckinShown_${dateKey}`;
+  if(localStorage.getItem(storageKey)) return;
+  localStorage.setItem(storageKey, '1');
+
+  const hoursToday = getTodaysWorkedHours(myName);
+  if(hoursToday <= 0) return; // nothing logged today, nothing useful to show
+  showDailyCheckinPopup(myName, hoursToday);
+}
+
+function showDailyCheckinPopup(myName, hoursToday){
+  const over = hoursToday >= 8;
+  const pct = Math.min(100, (hoursToday/8)*100);
+  const body = over
+    ? `<div class="daily-checkin-title">4:50 PM Check-In — Extended Hours</div>
+       <div class="daily-checkin-sub">Today's hours so far: <b>${hoursToday.toFixed(2)} / 8.00</b></div>
+       <div class="daily-checkin-bar-track"><div class="daily-checkin-bar-fill over" style="width:${pct}%;"></div></div>
+       <div class="daily-checkin-sub">You've completed your 8 hrs — you're now in <b>Extended Hours</b>. Everything from here (+${(hoursToday-8).toFixed(2)} hrs so far) goes to your Bank.</div>
+       <div class="daily-checkin-btn-row"><button class="btn-secondary" onclick="closeDailyCheckin()">Dismiss</button></div>`
+    : `<div class="daily-checkin-title">4:50 PM Check-In</div>
+       <div class="daily-checkin-sub">Today's hours so far: <b>${hoursToday.toFixed(2)} / 8.00</b></div>
+       <div class="daily-checkin-bar-track"><div class="daily-checkin-bar-fill" style="width:${pct}%;"></div></div>
+       <div class="daily-checkin-sub">You're <b>${(8-hoursToday).toFixed(2)} hrs</b> away from a full day. Just a heads-up as the day winds down.</div>
+       <div class="daily-checkin-btn-row"><button class="btn-secondary" onclick="closeDailyCheckin()">Dismiss</button></div>`;
+  document.getElementById('dailyCheckinBody').innerHTML = body;
+  document.getElementById('dailyCheckinModalBackdrop').classList.remove('hidden');
+}
+
+function closeDailyCheckin(){
+  document.getElementById('dailyCheckinModalBackdrop').classList.add('hidden');
 }
 
 let logEditSubitemId = null;
@@ -4605,6 +4984,15 @@ document.getElementById('dashboardBtn').onclick = openDashboardModal;
 document.getElementById('dashboardCloseBtn').onclick = closeDashboardModal;
 document.getElementById('dashboardModalBackdrop').addEventListener('click', e => {
   if(e.target.id === 'dashboardModalBackdrop') closeDashboardModal();
+});
+
+document.getElementById('attendanceReconCloseBtn').onclick = closeAttendanceRecon;
+document.getElementById('attendanceReconModalBackdrop').addEventListener('click', e => {
+  if(e.target.id === 'attendanceReconModalBackdrop') closeAttendanceRecon();
+});
+document.getElementById('attendanceSupervisorCloseBtn').onclick = closeSupervisorReview;
+document.getElementById('attendanceSupervisorModalBackdrop').addEventListener('click', e => {
+  if(e.target.id === 'attendanceSupervisorModalBackdrop') closeSupervisorReview();
 });
 
 /* ---------------- TEAM GANTT ---------------- */
