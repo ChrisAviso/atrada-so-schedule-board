@@ -260,6 +260,7 @@
     font-size:11px;font-weight:700;color:var(--primary);border:1px solid var(--primary);
     border-radius:5px;padding:4px 10px;cursor:pointer;background:#fff;
   }
+  .attendance-draftee-link{color:var(--primary);text-decoration:underline;cursor:pointer;}
   .attendance-summary-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
   .attendance-summary-card{
     flex:1;min-width:150px;background:#f7f8fc;border:1px solid var(--border);border-left:4px solid var(--primary);
@@ -1262,7 +1263,7 @@
 <div class="modal-backdrop hidden" id="attendanceReconModalBackdrop">
   <div class="modal attendance-modal">
     <div class="modal-head">
-      <h2>Attendance &amp; Leave Reconciliation</h2>
+      <h2 id="attendanceReconTitle">Attendance &amp; Leave Reconciliation</h2>
       <button class="modal-close" id="attendanceReconCloseBtn">✕</button>
     </div>
     <div class="modal-body" id="attendanceReconBody">
@@ -1512,6 +1513,7 @@ let attendanceDecisions = [];   // rows from so_attendance_decisions, current + 
 let hoursBankBalance = {};      // { drafteeName: balanceHours }
 let sickLeaveYtd = {};          // { drafteeName: { used, remaining, fyStart } }
 let dailyAttendancePopupShown = false;
+let individualWindowViewedName = null; // non-null when a supervisor is viewing a specific draftee's own window
 
 /* ---------------- AUTH ---------------- */
 const authTitle = document.getElementById('authTitle');
@@ -2939,23 +2941,37 @@ let attendanceSelections = {}; // { decisionId: 'bank'|'sick_leave'|'owe_hours' 
 function openMyAttendanceReconciliation(){
   const myName = getMyDrafteeName();
   if(!myName){ alert("No draftee profile matched to your login."); return; }
+  individualWindowViewedName = null;
   attendanceSelections = {};
-  renderAttendanceReconBody(myName);
+  document.getElementById('attendanceReconTitle').textContent = 'Attendance & Leave Reconciliation';
+  renderAttendanceReconBody();
+  document.getElementById('attendanceReconModalBackdrop').classList.remove('hidden');
+}
+
+function openDrafteeIndividualWindow(drafteeName){
+  if(!isSupervisor()){ return; }
+  individualWindowViewedName = drafteeName;
+  attendanceSelections = {};
+  document.getElementById('attendanceReconTitle').textContent = `Attendance & Leave Reconciliation — ${drafteeName} (supervisor view)`;
+  renderAttendanceReconBody();
   document.getElementById('attendanceReconModalBackdrop').classList.remove('hidden');
 }
 
 function closeAttendanceRecon(){
   document.getElementById('attendanceReconModalBackdrop').classList.add('hidden');
+  individualWindowViewedName = null;
 }
 
-function renderAttendanceReconBody(myName){
+function renderAttendanceReconBody(){
+  const viewedName = individualWindowViewedName || getMyDrafteeName();
+  const supervisorViewing = !!individualWindowViewedName;
   const fnStart = currentFortnightStart();
-  const myDecisions = attendanceDecisions.filter(d => d.draftee_name === myName && d.fortnight_start === fnStart);
-  const bank = hoursBankBalance[myName] || 0;
-  const sick = sickLeaveYtd[myName] || { used: 0, remaining: 10 };
+  const myDecisions = attendanceDecisions.filter(d => d.draftee_name === viewedName && d.fortnight_start === fnStart);
+  const bank = hoursBankBalance[viewedName] || 0;
+  const sick = sickLeaveYtd[viewedName] || { used: 0, remaining: 10 };
 
   if(myDecisions.length === 0){
-    document.getElementById('attendanceReconBody').innerHTML = `<p style="color:var(--text-dim);font-size:13px;">No shortfall days this fortnight — nothing to confirm. 🎉</p>`;
+    document.getElementById('attendanceReconBody').innerHTML = `<p style="color:var(--text-dim);font-size:13px;">No shortfall days this fortnight${supervisorViewing ? ` for ${escapeHtml(viewedName)}` : ''} — nothing to confirm. 🎉</p>`;
     return;
   }
 
@@ -2981,27 +2997,25 @@ function renderAttendanceReconBody(myName){
       <td>
         ${resolved
           ? `<span class="attendance-status-pill ${d.status}">${d.status === 'supervisor_filled' ? 'Filled in by ' + escapeHtml(d.decided_by||'supervisor') : 'Submitted'}</span>`
-          : `<button class="btn-primary-sm" ${sel?'':'disabled'} onclick="submitAttendanceDecision('${d.id}', false)">Confirm</button>`}
+          : `<button class="btn-primary-sm" ${sel?'':'disabled'} onclick="submitAttendanceDecision('${d.id}', ${supervisorViewing})">Confirm</button>`}
       </td>
     </tr>`;
   }).join('');
 
   document.getElementById('attendanceReconBody').innerHTML = `
-    <div class="attendance-deadline-banner">⏰ Please confirm by end of day Thursday (day before payday). If you haven't chosen by then, a supervisor will fill it in for you.</div>
+    ${supervisorViewing ? '' : `<div class="attendance-deadline-banner">⏰ Please confirm by end of day Thursday (day before payday). If you haven't chosen by then, a supervisor will fill it in for you.</div>`}
     <table class="attendance-table">
-      <thead><tr><th>Date</th><th>Your Choice</th><th></th></tr></thead>
+      <thead><tr><th>Date</th><th>${supervisorViewing ? 'Choice' : 'Your Choice'}</th><th></th></tr></thead>
       <tbody>${rowsHtml}</tbody>
     </table>`;
 }
 
 function selectAttendanceChoice(decisionId, choice){
   attendanceSelections[decisionId] = choice;
-  const supervisorModalOpen = !document.getElementById('attendanceSupervisorModalBackdrop').classList.contains('hidden');
-  if(supervisorModalOpen){
-    renderSupervisorReviewBody();
-  } else {
-    renderAttendanceReconBody(getMyDrafteeName());
-  }
+  const supervisorTableOpen = !document.getElementById('attendanceSupervisorModalBackdrop').classList.contains('hidden');
+  const individualOpen = !document.getElementById('attendanceReconModalBackdrop').classList.contains('hidden');
+  if(supervisorTableOpen){ renderSupervisorReviewBody(); }
+  if(individualOpen){ renderAttendanceReconBody(); }
 }
 
 async function submitAttendanceDecision(decisionId, isSupervisorFill){
@@ -3017,8 +3031,10 @@ async function submitAttendanceDecision(decisionId, isSupervisorFill){
   if(error){ alert('Could not save: ' + error.message); return; }
   if(isSupervisorFill){ supervisorEditingId = null; }
   await loadData();
-  if(isSupervisorFill){ renderSupervisorReviewBody(); }
-  else { renderAttendanceReconBody(getMyDrafteeName()); }
+  const supervisorTableOpen = !document.getElementById('attendanceSupervisorModalBackdrop').classList.contains('hidden');
+  const individualOpen = !document.getElementById('attendanceReconModalBackdrop').classList.contains('hidden');
+  if(supervisorTableOpen){ renderSupervisorReviewBody(); }
+  if(individualOpen){ renderAttendanceReconBody(); }
 }
 
 /* ---- Supervisor-facing review modal ---- */
@@ -3059,7 +3075,7 @@ function renderSupervisorReviewBody(){
         d.status === 'pending' ? 'Pending' : d.status === 'supervisor_filled' ? 'Filled in by ' + escapeHtml(d.decided_by||'') : 'Submitted'
       }</span>`;
       return `<tr>
-        <td>${escapeHtml(name)}</td>
+        <td><span class="attendance-draftee-link" onclick="openDrafteeIndividualWindow('${name}')">${escapeHtml(name)}</span></td>
         <td>${fmtDateShort(d.work_date)} (${d.shortfall_hours} hrs)</td>
         <td>${editing
           ? `<div class="attendance-choice-group">
