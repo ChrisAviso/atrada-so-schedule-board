@@ -3039,16 +3039,30 @@ async function submitAttendanceDecision(decisionId, isSupervisorFill){
   await loadData();
   const supervisorTableOpen = !document.getElementById('attendanceSupervisorModalBackdrop').classList.contains('hidden');
   const individualOpen = !document.getElementById('attendanceReconModalBackdrop').classList.contains('hidden');
-  if(supervisorTableOpen){ renderSupervisorReviewBody(); }
+  if(supervisorTableOpen){ await refreshFortnightHoursSummary(); renderSupervisorReviewBody(); }
   if(individualOpen){ renderAttendanceReconBody(); }
 }
 
 /* ---- Supervisor-facing review modal ---- */
 let supervisorEditingId = null;
 
-function openSupervisorAttendanceReview(){
+let fortnightHoursSummary = {}; // { drafteeName: totalHoursWorkedThisFortnight }
+
+async function refreshFortnightHoursSummary(){
+  const fnStart = currentFortnightStart();
+  const fnEndDate = new Date(fnStart+'T00:00:00'); fnEndDate.setDate(fnEndDate.getDate()+13);
+  const fnEndStr = toLocalISODate(fnEndDate);
+  const { data } = await sb.from('so_daily_hours').select('draftee_name, hours_worked')
+    .gte('work_date', fnStart).lte('work_date', fnEndStr);
+  const totals = {};
+  (data||[]).forEach(r => { totals[r.draftee_name] = (totals[r.draftee_name]||0) + Number(r.hours_worked); });
+  fortnightHoursSummary = totals;
+}
+
+async function openSupervisorAttendanceReview(){
   if(!isSupervisor()){ alert("Only supervisors can view the team's attendance review."); return; }
   supervisorEditingId = null;
+  await refreshFortnightHoursSummary();
   renderSupervisorReviewBody();
   document.getElementById('attendanceSupervisorModalBackdrop').classList.remove('hidden');
 }
@@ -3057,11 +3071,48 @@ function closeSupervisorReview(){
   document.getElementById('attendanceSupervisorModalBackdrop').classList.add('hidden');
 }
 
+function renderTeamSummaryHtml(fnStart, relevant){
+  const namesSet = new Set([
+    ...relevant.map(d => d.draftee_name),
+    ...Object.keys(hoursBankBalance),
+    ...Object.keys(sickLeaveYtd),
+    ...Object.keys(fortnightHoursSummary)
+  ]);
+  const allNames = Array.from(namesSet).sort();
+  if(allNames.length === 0) return '';
+
+  const rows = allNames.map(name => {
+    const bank = hoursBankBalance[name] || 0;
+    const sick = sickLeaveYtd[name] || { used: 0, remaining: 10 };
+    const hrs = fortnightHoursSummary[name] || 0;
+    const decisionsForName = relevant.filter(d => d.draftee_name === name);
+    const pendingCount = decisionsForName.filter(d => d.status === 'pending').length;
+    const resolvedCount = decisionsForName.length - pendingCount;
+    return `<tr>
+      <td><span class="attendance-draftee-link" onclick="openDrafteeIndividualWindow('${name}')">${escapeHtml(name)}</span></td>
+      <td style="text-align:right;">${hrs.toFixed(2)}</td>
+      <td style="text-align:right;${bank<0?'color:var(--red);font-weight:700;':''}">${bank.toFixed(2)}</td>
+      <td style="text-align:right;">${sick.used}/10</td>
+      <td style="text-align:right;">${pendingCount>0?`<span class="attendance-status-pill pending">${pendingCount}</span>`:'0'}</td>
+      <td style="text-align:right;">${resolvedCount}</td>
+    </tr>`;
+  }).join('');
+
+  return `<div style="margin-bottom:20px;">
+    <div class="attendance-deadline-banner" style="background:#eef2ff;color:var(--primary-dark);border-color:var(--primary);">📊 Team summary at a glance — ${fortnightLabel(fnStart)}</div>
+    <table class="attendance-table">
+      <thead><tr><th>Draftee</th><th style="text-align:right;">Hrs Worked</th><th style="text-align:right;">Bank Bal.</th><th style="text-align:right;">Sick Used</th><th style="text-align:right;">Pending</th><th style="text-align:right;">Resolved</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
+
 function renderSupervisorReviewBody(){
   const fnStart = currentFortnightStart();
   const relevant = attendanceDecisions.filter(d => d.fortnight_start === fnStart);
+  const summaryHtml = renderTeamSummaryHtml(fnStart, relevant);
   if(relevant.length === 0){
-    document.getElementById('attendanceSupervisorBody').innerHTML = `<p style="color:var(--text-dim);font-size:13px;">No shortfall days flagged yet this fortnight.</p>`;
+    document.getElementById('attendanceSupervisorBody').innerHTML = summaryHtml + `<p style="color:var(--text-dim);font-size:13px;">No shortfall days flagged yet this fortnight.</p>`;
     return;
   }
   const byDraftee = {};
@@ -3100,7 +3151,7 @@ function renderSupervisorReviewBody(){
     }).join('');
   }).join('');
 
-  document.getElementById('attendanceSupervisorBody').innerHTML = `
+  document.getElementById('attendanceSupervisorBody').innerHTML = summaryHtml + `
     <div class="attendance-deadline-banner">⏰ Fortnight ${fortnightLabel(fnStart)} — locks for payroll ahead of Friday's pay run.</div>
     <table class="attendance-table">
       <thead><tr><th>Draftee</th><th>Flagged Day</th><th>Choice</th><th>Status</th><th></th></tr></thead>
