@@ -2996,7 +2996,12 @@ function renderAttendanceReconBody(myName){
 
 function selectAttendanceChoice(decisionId, choice){
   attendanceSelections[decisionId] = choice;
-  renderAttendanceReconBody(getMyDrafteeName());
+  const supervisorModalOpen = !document.getElementById('attendanceSupervisorModalBackdrop').classList.contains('hidden');
+  if(supervisorModalOpen){
+    renderSupervisorReviewBody();
+  } else {
+    renderAttendanceReconBody(getMyDrafteeName());
+  }
 }
 
 async function submitAttendanceDecision(decisionId, isSupervisorFill){
