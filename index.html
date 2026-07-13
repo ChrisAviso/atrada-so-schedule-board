@@ -1641,7 +1641,10 @@ async function checkSession(){
     showSetPasswordForm();
     return;
   }
-  if(data.session){ session = data.session; enterApp(); }
+  if(data.session){ session = data.session; enterApp(); return; }
+  if(!isInviteOrRecovery){
+    window.location.href = 'https://chrisaviso.github.io/atrada-hub/';
+  }
 }
 
 function enterApp(){
