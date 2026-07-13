@@ -3262,13 +3262,23 @@ function toggleDailyBreakdown(name){
 
 // Per-day, per-job breakdown of a draftee's worked hours: which SO/subitem contributed
 // how much, so the daily total can be inspected on hover instead of taken on faith.
+// A log belongs to this draftee if clocked_by says so directly, or — for older
+// entries logged before clocked_by existed — if this subitem only ever had one
+// assignee, matching the same prefer-clocked_by-fallback-to-single-assignee rule
+// the so_daily_hours view itself uses (see handover notes on so_time_logs.clocked_by).
+function logBelongsToDraftee(log, sub, name){
+  if(log.clocked_by) return log.clocked_by === name;
+  const assignees = (sub.draftee || '').split(',').map(s => s.trim()).filter(Boolean);
+  return assignees.length === 1 && assignees[0] === name;
+}
+
 function getDailyJobBreakdown(name, dateStr){
   const breakdown = [];
   Object.values(subitemsByParent).flat().forEach(sub => {
     const logs = logsBySubitem[sub.id] || [];
     let seconds = 0;
     logs.forEach(l => {
-      if(!l.started_at || l.clocked_by !== name) return;
+      if(!l.started_at || !logBelongsToDraftee(l, sub, name)) return;
       if(toLocalISODate(new Date(l.started_at)) !== dateStr) return;
       if(l.duration_seconds != null){
         seconds += l.duration_seconds;
