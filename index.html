@@ -1339,7 +1339,11 @@ const OPPTS_GROUP_ORDER = [
   "Done OPPTS/PROJTS - Cost Sheet Prep",
   "Done OPPTS/PROJTS - Reviewed/Release"
 ];
-const GROUP_ORDER = [...SO_STAGE_GROUP_ORDER, ...OPPTS_GROUP_ORDER];
+const INTERNAL_GROUP_ORDER = [
+  "Internal / Non-Project",
+  "Done - Internal / Non-Project"
+];
+const GROUP_ORDER = [...SO_STAGE_GROUP_ORDER, ...OPPTS_GROUP_ORDER, ...INTERNAL_GROUP_ORDER];
 const GROUP_COLORS = ["#546e7a","#3a5ceb","#e0921a","#12b886","#f5a623","#7c5cf0","#0aa3a3","#0da374","#2c9c4a","#9c6b2c","#5c6bc0"];
 const NEW_ITEM_GROUP = null;
 const NEW_OPPTS_GROUP = "OPPTS/PROJTS Cost Sheet Prep";
@@ -2559,8 +2563,8 @@ function rowHtml(r){
   const subToggle = hasSubs
     ? `<span class="subtoggle" onclick="event.stopPropagation(); toggleSubitems('${r.id}')" title="${isCollapsed?'Show':'Hide'} sub-processes">${isCollapsed ? '▸' : '▾'}</span>`
     : `<span class="subtoggle subtoggle-empty"></span>`;
-  const relevantGroupList = r.job_type === 'OPPTS' ? OPPTS_GROUP_ORDER : SO_STAGE_GROUP_ORDER;
-  const autoOption = r.job_type !== 'OPPTS'
+  const relevantGroupList = r.is_internal ? INTERNAL_GROUP_ORDER : (r.job_type === 'OPPTS' ? OPPTS_GROUP_ORDER : SO_STAGE_GROUP_ORDER);
+  const autoOption = (!r.is_internal && r.job_type !== 'OPPTS')
     ? `<option value="" ${!r.group_name?'selected':''}>Auto (current stage: ${escapeHtml(computeCurrentStageGroup(r))})</option>` : '';
   const groupOptions = autoOption + relevantGroupList.map(g =>
     `<option value="${escapeAttr(g)}" ${g===r.group_name?'selected':''}>${escapeHtml(g)}</option>`
