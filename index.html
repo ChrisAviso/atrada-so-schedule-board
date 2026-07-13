@@ -506,6 +506,33 @@
   .board-table tbody tr:not(.subrow) td:nth-child(18){
     text-align:right;font-variant-numeric:tabular-nums;
   }
+  /* Consolidated Sales Orders has Aging + Group inserted after Item, shifting later columns by 2 —
+     override alignment for its actual column positions (higher specificity beats the rules above). */
+  .board-table.consolidated-layout thead th:nth-child(8),
+  .board-table.consolidated-layout thead th:nth-child(11),.board-table.consolidated-layout thead th:nth-child(12){
+    text-align:left;
+  }
+  .board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(8),
+  .board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(11),.board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(12){
+    text-align:left;font-variant-numeric:normal;
+  }
+  .board-table.consolidated-layout thead th:nth-child(5),.board-table.consolidated-layout thead th:nth-child(10),
+  .board-table.consolidated-layout thead th:nth-child(13),.board-table.consolidated-layout thead th:nth-child(14),
+  .board-table.consolidated-layout thead th:nth-child(15),.board-table.consolidated-layout thead th:nth-child(16),
+  .board-table.consolidated-layout thead th:nth-child(17),.board-table.consolidated-layout thead th:nth-child(18),
+  .board-table.consolidated-layout thead th:nth-child(19){
+    text-align:right;
+  }
+  .board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(5),.board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(10),
+  .board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(13),.board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(14),
+  .board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(15),.board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(16),
+  .board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(17),.board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(18),
+  .board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(19){
+    text-align:right;font-variant-numeric:tabular-nums;
+  }
+  .consolidated-group-pill{
+    display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;color:white;white-space:nowrap;
+  }
   tbody td{padding:11px 14px;white-space:nowrap;}
   td.item-name{font-weight:600;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   td.so-number-cell{width:180px;min-width:180px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}
@@ -2361,15 +2388,29 @@ function renderBoard(){
       </div>
       <div class="group-body">
         <div class="table-scroll" id="${scrollId}">
-        <table class="board-table">
+        <table class="board-table${isConsolidated ? ' consolidated-layout' : ''}">
           <thead><tr>
-            <th class="so-number-cell" style="width:180px;">SO Number</th><th></th><th>Company</th><th>Item</th><th>Draftee</th><th>Sales Person</th><th>DIFOT</th><th>DIFOT Days</th><th>Class</th><th>RCD/RC</th>
-            <th>Drafting Transfer</th><th>Target Start</th><th>Target Release</th><th>Actual Release to Prodn</th><th>Project Sales</th><th>Aging</th><th>Actual Hrs</th><th>O/A Excess</th><th>Move to Group</th>
+            ${isConsolidated
+              ? `<th class="so-number-cell" style="width:180px;">SO Number</th><th></th><th>Company</th><th>Item</th><th>Aging</th><th>Group</th><th>Draftee</th><th>Sales Person</th><th>DIFOT</th><th>DIFOT Days</th><th>Class</th><th>RCD/RC</th>
+                 <th>Drafting Transfer</th><th>Target Start</th><th>Target Release</th><th>Actual Release to Prodn</th><th>Project Sales</th><th>Actual Hrs</th><th>O/A Excess</th><th>Move to Group</th>`
+              : `<th class="so-number-cell" style="width:180px;">SO Number</th><th></th><th>Company</th><th>Item</th><th>Draftee</th><th>Sales Person</th><th>DIFOT</th><th>DIFOT Days</th><th>Class</th><th>RCD/RC</th>
+                 <th>Drafting Transfer</th><th>Target Start</th><th>Target Release</th><th>Actual Release to Prodn</th><th>Project Sales</th><th>Aging</th><th>Actual Hrs</th><th>O/A Excess</th><th>Move to Group</th>`}
           </tr></thead>
           <tbody>
-            ${items.map(rowHtml).join('')}
+            ${items.map(r => rowHtml(r, { consolidated: isConsolidated })).join('')}
           </tbody>
           <tfoot>
+            ${isConsolidated ? `
+            <tr class="group-foot">
+              <td colspan="16">Group totals</td>
+              <td>${fmtMoney(totalSales)}</td>
+              <td colspan="3"></td>
+            </tr>
+            <tr class="group-foot">
+              <td colspan="9">Average DIFOT days</td>
+              <td>${avgDifot !== null ? avgDifot.toFixed(1) : '—'}</td>
+              <td colspan="10"></td>
+            </tr>` : `
             <tr class="group-foot">
               <td colspan="14">Group totals</td>
               <td>${fmtMoney(totalSales)}</td>
@@ -2379,7 +2420,7 @@ function renderBoard(){
               <td colspan="7">Average DIFOT days</td>
               <td>${avgDifot !== null ? avgDifot.toFixed(1) : '—'}</td>
               <td colspan="11"></td>
-            </tr>
+            </tr>`}
           </tfoot>
         </table>
         </div>
@@ -2751,7 +2792,8 @@ function getScheduleStatus(r){
   return 'ontrack';
 }
 
-function rowHtml(r){
+function rowHtml(r, opts){
+  const isConsolidatedRow = !!(opts && opts.consolidated);
   const difot = difotPill(r.computed_difot_status);
   const classColors = {Container:'pill-class-container', Standard:'pill-class-standard', Lubestation:'pill-class-lubestation', Custom:'pill-class-custom'};
   const std = r.product_class
@@ -2786,29 +2828,43 @@ function rowHtml(r){
   const drafteeSeqBadge = rowSeq ? `<span class="draftee-seq-badge" title="${escapeHtml(r.draftee)}'s job queue position, by scheduled date">Job ${rowSeq.seq}/${rowSeq.total}</span>` : '';
   const isUntouched = subsForFill.length > 0 && filledSubs === 0;
   const newItemBadge = isUntouched ? `<span class="new-item-badge" title="No draftee or schedule set on any sub-process yet">NEW</span>` : '';
-  const mainRow = `<tr id="row_${r.id}" class="${scheduleClass}" onclick="openModal('${r.id}')">
-    <td class="so-number-cell">${escapeHtml(r.so_number||'—')}</td>
-    <td class="subtoggle-col" onclick="event.stopPropagation()">${subToggle}${newItemBadge}${schedFillBadge}</td>
-    <td>${escapeHtml(r.company_name||'—')}</td>
-    <td class="item-name">${escapeHtml(r.item_name||'(untitled)')}</td>
-    <td>${escapeHtml(r.draftee||'—')}${drafteeSeqBadge}</td>
-    <td>${escapeHtml(r.sales_person||'—')}</td>
-    <td>${difot}</td>
-    <td class="dim">${r.computed_difot_10days ?? '—'}</td>
-    <td>${std}</td>
-    <td>${rcdRc}</td>
-    <td class="dim">${fmtDate(r.drafting_transfer_date)}</td>
-    <td class="dim">${fmtDate(r.target_start_date)}</td>
-    <td class="dim">${fmtDate(r.target_release_date)}</td>
-    <td class="dim">${fmtDate(r.actual_release_to_prodn_date)}</td>
-    <td class="dim">${fmtMoney(r.project_sales)}</td>
-    <td class="dim">${r.computed_aging_days ?? '—'}</td>
-    <td class="dim">${(r.computed_actual_hrs ?? 0).toFixed(1)}h</td>
-    <td>${excess}</td>
-    <td onclick="event.stopPropagation()">
-      <select class="move-group-select" onchange="moveToGroup('${r.id}', this.value)">${groupOptions}</select>
-    </td>
-  </tr>`;
+
+  const cellSoNumber = `<td class="so-number-cell">${escapeHtml(r.so_number||'—')}</td>`;
+  const cellSubtoggle = `<td class="subtoggle-col" onclick="event.stopPropagation()">${subToggle}${newItemBadge}${schedFillBadge}</td>`;
+  const cellCompany = `<td>${escapeHtml(r.company_name||'—')}</td>`;
+  const cellItem = `<td class="item-name">${escapeHtml(r.item_name||'(untitled)')}</td>`;
+  const cellDraftee = `<td>${escapeHtml(r.draftee||'—')}${drafteeSeqBadge}</td>`;
+  const cellSalesPerson = `<td>${escapeHtml(r.sales_person||'—')}</td>`;
+  const cellDifot = `<td>${difot}</td>`;
+  const cellDifotDays = `<td class="dim">${r.computed_difot_10days ?? '—'}</td>`;
+  const cellClass = `<td>${std}</td>`;
+  const cellRcdRc = `<td>${rcdRc}</td>`;
+  const cellDraftingTransfer = `<td class="dim">${fmtDate(r.drafting_transfer_date)}</td>`;
+  const cellTargetStart = `<td class="dim">${fmtDate(r.target_start_date)}</td>`;
+  const cellTargetRelease = `<td class="dim">${fmtDate(r.target_release_date)}</td>`;
+  const cellActualRelease = `<td class="dim">${fmtDate(r.actual_release_to_prodn_date)}</td>`;
+  const cellProjectSales = `<td class="dim">${fmtMoney(r.project_sales)}</td>`;
+  const cellAging = `<td class="dim">${r.computed_aging_days ?? '—'}</td>`;
+  const cellActualHrs = `<td class="dim">${(r.computed_actual_hrs ?? 0).toFixed(1)}h</td>`;
+  const cellExcess = `<td>${excess}</td>`;
+  const cellMoveGroup = `<td onclick="event.stopPropagation()"><select class="move-group-select" onchange="moveToGroup('${r.id}', this.value)">${groupOptions}</select></td>`;
+
+  let bodyCells;
+  if(isConsolidatedRow){
+    const rowGroupLabel = (r.job_type !== 'OPPTS' && !r.group_name) ? computeCurrentStageGroup(r) : (r.group_name || 'No group');
+    const groupColorIdx = GROUP_ORDER.indexOf(rowGroupLabel);
+    const groupColor = groupColorIdx >= 0 ? GROUP_COLORS[groupColorIdx % GROUP_COLORS.length] : '#8a8fb0';
+    const cellGroup = `<td><span class="consolidated-group-pill" style="background:${groupColor}">${escapeHtml(rowGroupLabel)}</span></td>`;
+    bodyCells = [cellSoNumber, cellSubtoggle, cellCompany, cellItem, cellAging, cellGroup, cellDraftee, cellSalesPerson,
+      cellDifot, cellDifotDays, cellClass, cellRcdRc, cellDraftingTransfer, cellTargetStart, cellTargetRelease,
+      cellActualRelease, cellProjectSales, cellActualHrs, cellExcess, cellMoveGroup];
+  } else {
+    bodyCells = [cellSoNumber, cellSubtoggle, cellCompany, cellItem, cellDraftee, cellSalesPerson,
+      cellDifot, cellDifotDays, cellClass, cellRcdRc, cellDraftingTransfer, cellTargetStart, cellTargetRelease,
+      cellActualRelease, cellProjectSales, cellAging, cellActualHrs, cellExcess, cellMoveGroup];
+  }
+
+  const mainRow = `<tr id="row_${r.id}" class="${scheduleClass}" onclick="openModal('${r.id}')">${bodyCells.join('')}</tr>`;
   const subsList = subitemsByParent[r.id] || [];
   const subs = isCollapsed ? '' : subsList.map((s, idx) => {
     let html = subRowHtml(s, r.job_type, r.rcd_or_rc, r.requires_client_approval);
