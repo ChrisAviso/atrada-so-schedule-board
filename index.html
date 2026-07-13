@@ -256,6 +256,14 @@
   .attendance-status-pill.submitted{background:#e3f7ee;color:var(--green);}
   .attendance-status-pill.pending{background:#fff1d6;color:#8a5a00;}
   .attendance-status-pill.supervisor_filled{background:#eef2ff;color:var(--primary-dark);}
+  .attendance-status-pill.ok{background:#e3f7ee;color:var(--green);}
+  .attendance-status-pill.none{background:var(--gray-pill);color:var(--text-dim);}
+  .expand-toggle{cursor:pointer;display:inline-block;width:16px;color:var(--text-dim);font-size:11px;user-select:none;}
+  .expand-toggle:hover{color:var(--primary);}
+  tr.daily-breakdown-row td{padding:0 8px 14px 8px;border-bottom:1px solid var(--border);background:#fbfbfd;}
+  .daily-breakdown-table{font-size:11.5px;margin-top:4px;box-shadow:none;}
+  .daily-breakdown-table thead th{background:#eef0f7;color:var(--text-dim);font-size:10px;}
+  .daily-breakdown-table tbody td{padding:6px 8px;}
   .attendance-edit-btn{
     font-size:11px;font-weight:700;color:var(--primary);border:1px solid var(--primary);
     border-radius:5px;padding:4px 10px;cursor:pointer;background:#fff;
@@ -1548,6 +1556,9 @@ let hoursBankBalance = {};      // { drafteeName: balanceHours }
 let sickLeaveYtd = {};          // { drafteeName: { used, remaining, fyStart } }
 let dailyAttendancePopupShown = false;
 let individualWindowViewedName = null; // non-null when a supervisor is viewing a specific draftee's own window
+let expandedDrafteeDailyRows = new Set(); // names currently expanded in the supervisor team summary
+let dailyWorkedByDraftee = {};  // { drafteeName: { 'YYYY-MM-DD': hoursWorked } }
+let dailyInternalByDraftee = {}; // { drafteeName: { 'YYYY-MM-DD': internalHoursWorked } }
 const ESTIMATOR_NAMES = ['Jessica Visca', 'Jochelle Paet'];
 
 /* ---------------- AUTH ---------------- */
@@ -3188,17 +3199,29 @@ async function refreshFortnightHoursSummary(){
   const fnStart = currentFortnightStart();
   const fnEndDate = new Date(fnStart+'T00:00:00'); fnEndDate.setDate(fnEndDate.getDate()+13);
   const fnEndStr = toLocalISODate(fnEndDate);
-  const { data } = await sb.from('so_daily_hours').select('draftee_name, hours_worked')
+  const { data } = await sb.from('so_daily_hours').select('draftee_name, work_date, hours_worked')
     .gte('work_date', fnStart).lte('work_date', fnEndStr);
   const totals = {};
-  (data||[]).forEach(r => { totals[r.draftee_name] = (totals[r.draftee_name]||0) + Number(r.hours_worked); });
+  const dailyWorked = {};
+  (data||[]).forEach(r => {
+    totals[r.draftee_name] = (totals[r.draftee_name]||0) + Number(r.hours_worked);
+    dailyWorked[r.draftee_name] = dailyWorked[r.draftee_name] || {};
+    dailyWorked[r.draftee_name][r.work_date] = (dailyWorked[r.draftee_name][r.work_date]||0) + Number(r.hours_worked);
+  });
   fortnightHoursSummary = totals;
+  dailyWorkedByDraftee = dailyWorked;
 
-  const { data: internalData } = await sb.from('so_internal_hours_by_day').select('draftee_name, hours_worked')
+  const { data: internalData } = await sb.from('so_internal_hours_by_day').select('draftee_name, work_date, hours_worked')
     .gte('work_date', fnStart).lte('work_date', fnEndStr);
   const internalTotals = {};
-  (internalData||[]).forEach(r => { internalTotals[r.draftee_name] = (internalTotals[r.draftee_name]||0) + Number(r.hours_worked); });
+  const dailyInternal = {};
+  (internalData||[]).forEach(r => {
+    internalTotals[r.draftee_name] = (internalTotals[r.draftee_name]||0) + Number(r.hours_worked);
+    dailyInternal[r.draftee_name] = dailyInternal[r.draftee_name] || {};
+    dailyInternal[r.draftee_name][r.work_date] = (dailyInternal[r.draftee_name][r.work_date]||0) + Number(r.hours_worked);
+  });
   internalHoursSummary = internalTotals;
+  dailyInternalByDraftee = dailyInternal;
 }
 
 async function openSupervisorAttendanceReview(){
@@ -3211,6 +3234,61 @@ async function openSupervisorAttendanceReview(){
 
 function closeSupervisorReview(){
   document.getElementById('attendanceSupervisorModalBackdrop').classList.add('hidden');
+}
+
+function toggleDailyBreakdown(name){
+  if(expandedDrafteeDailyRows.has(name)) expandedDrafteeDailyRows.delete(name);
+  else expandedDrafteeDailyRows.add(name);
+  renderSupervisorReviewBody();
+}
+
+// Builds the per-day rows for one draftee across the current fortnight (weekdays only,
+// matching the Mon–Fri assumption used elsewhere e.g. computeTotalBillableHours).
+function renderDailyBreakdownRows(name, fnStart){
+  const start = new Date(fnStart+'T00:00:00');
+  const decisionsByDate = {};
+  attendanceDecisions
+    .filter(d => d.draftee_name === name && d.fortnight_start === fnStart)
+    .forEach(d => { decisionsByDate[d.work_date] = d; });
+
+  const decisionLabel = { bank: 'Bank Hours', sick_leave: 'Sick Leave', owe_hours: 'Owe Hours' };
+  let rows = '';
+  for(let i=0;i<14;i++){
+    const day = new Date(start); day.setDate(day.getDate()+i);
+    if(day.getDay() === 0 || day.getDay() === 6) continue; // skip weekends
+    const dateStr = toLocalISODate(day);
+    const worked = (dailyWorkedByDraftee[name]||{})[dateStr] || 0;
+    const internal = (dailyInternalByDraftee[name]||{})[dateStr] || 0;
+    const decision = decisionsByDate[dateStr];
+
+    let statusHtml, bankDeltaHtml, sickHtml;
+    if(decision){
+      const resolved = decision.status !== 'pending';
+      const label = decisionLabel[decision.decision] || '—';
+      statusHtml = `<span class="attendance-status-pill ${decision.status}">${
+        decision.status === 'pending' ? 'Pending' : (resolved ? label + (decision.status === 'supervisor_filled' ? ' (supervisor)' : '') : label)
+      }</span>`;
+      const affectsBank = resolved && (decision.decision === 'bank' || decision.decision === 'owe_hours');
+      bankDeltaHtml = affectsBank
+        ? `<span style="color:var(--red);font-weight:700;">-${Number(decision.shortfall_hours).toFixed(2)}</span>`
+        : (resolved ? '0.00' : '<span style="color:var(--text-dim);">pending</span>');
+      sickHtml = (resolved && decision.decision === 'sick_leave') ? '1' : '0';
+    } else {
+      statusHtml = worked > 0 ? `<span class="attendance-status-pill ok">OK</span>` : `<span class="attendance-status-pill none">—</span>`;
+      bankDeltaHtml = '0.00';
+      sickHtml = '0';
+    }
+
+    rows += `<tr>
+      <td>${fmtDateShort(dateStr)}</td>
+      <td style="text-align:right;">${worked.toFixed(2)}</td>
+      <td style="text-align:right;color:var(--text-dim);">${internal.toFixed(2)}</td>
+      <td style="text-align:right;">${bankDeltaHtml}</td>
+      <td style="text-align:right;">${sickHtml}</td>
+      <td>${statusHtml}</td>
+    </tr>`;
+  }
+  return rows;
 }
 
 function renderTeamSummaryHtml(fnStart, relevant){
@@ -3231,7 +3309,9 @@ function renderTeamSummaryHtml(fnStart, relevant){
     const decisionsForName = relevant.filter(d => d.draftee_name === name);
     const pendingCount = decisionsForName.filter(d => d.status === 'pending').length;
     const resolvedCount = decisionsForName.length - pendingCount;
-    return `<tr>
+    const expanded = expandedDrafteeDailyRows.has(name);
+    const mainRow = `<tr>
+      <td><span class="expand-toggle" onclick="toggleDailyBreakdown('${name}')" title="${expanded?'Hide':'Show'} daily breakdown">${expanded?'▾':'▸'}</span></td>
       <td><span class="attendance-draftee-link" onclick="openDrafteeIndividualWindow('${name}')">${escapeHtml(name)}</span></td>
       <td style="text-align:right;">${hrs.toFixed(2)}</td>
       <td style="text-align:right;color:var(--text-dim);">${internalHrs.toFixed(2)}</td>
@@ -3240,12 +3320,21 @@ function renderTeamSummaryHtml(fnStart, relevant){
       <td style="text-align:right;">${pendingCount>0?`<span class="attendance-status-pill pending">${pendingCount}</span>`:'0'}</td>
       <td style="text-align:right;">${resolvedCount}</td>
     </tr>`;
+    const dailyRow = expanded ? `<tr class="daily-breakdown-row">
+      <td colspan="8">
+        <table class="attendance-table daily-breakdown-table">
+          <thead><tr><th>Date</th><th style="text-align:right;">Worked</th><th style="text-align:right;">Internal</th><th style="text-align:right;">Bank Δ</th><th style="text-align:right;">Sick</th><th>Status</th></tr></thead>
+          <tbody>${renderDailyBreakdownRows(name, fnStart)}</tbody>
+        </table>
+      </td>
+    </tr>` : '';
+    return mainRow + dailyRow;
   }).join('');
 
   return `<div style="margin-bottom:20px;">
     <div class="attendance-deadline-banner" style="background:#eef2ff;color:var(--primary-dark);border-color:var(--primary);">📊 Team summary at a glance — ${fortnightLabel(fnStart)}</div>
     <table class="attendance-table">
-      <thead><tr><th>Draftee</th><th style="text-align:right;">Hrs Worked</th><th style="text-align:right;">Internal Hrs</th><th style="text-align:right;">Bank Bal.</th><th style="text-align:right;">Sick Used</th><th style="text-align:right;">Pending</th><th style="text-align:right;">Resolved</th></tr></thead>
+      <thead><tr><th></th><th>Draftee</th><th style="text-align:right;">Hrs Worked</th><th style="text-align:right;">Internal Hrs</th><th style="text-align:right;">Bank Bal.</th><th style="text-align:right;">Sick Used</th><th style="text-align:right;">Pending</th><th style="text-align:right;">Resolved</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
   </div>`;
