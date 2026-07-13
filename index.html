@@ -791,6 +791,41 @@
   .dashboard-card-title{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-dim);margin-bottom:10px;}
   .dashboard-card canvas{max-height:220px;}
   .dashboard-card-empty{font-size:12.5px;color:var(--text-dim);padding:20px 0;text-align:center;}
+
+  .taskboard-modal{max-width:1260px;}
+  .taskboard-pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;}
+  .taskboard-pill{
+    padding:6px 13px;border-radius:20px;font-size:12.5px;font-weight:600;
+    border:1.5px solid var(--border);color:var(--text-dim);cursor:pointer;background:white;
+    transition:border-color .12s,color .12s,background .12s;
+  }
+  .taskboard-pill:hover{border-color:var(--primary);color:var(--primary);}
+  .taskboard-pill.active{background:var(--primary);border-color:var(--primary);color:white;}
+  .taskboard-columns{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;align-items:start;}
+  .taskboard-col{background:#fafbff;border:1px solid var(--border);border-radius:12px;min-width:0;}
+  .taskboard-col-header{
+    padding:12px 14px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+    color:var(--text-dim);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;
+  }
+  .taskboard-count{background:var(--gray-pill);color:var(--text-dim);border-radius:10px;padding:1px 8px;font-size:11px;font-weight:700;}
+  .taskboard-col-body{padding:10px;display:flex;flex-direction:column;gap:8px;max-height:58vh;overflow-y:auto;}
+  .taskboard-card{
+    background:white;border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;
+    transition:box-shadow .12s,border-color .12s;
+  }
+  .taskboard-card:hover{box-shadow:var(--shadow);border-color:var(--primary);}
+  .taskboard-card-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px;line-height:1.3;}
+  .taskboard-card-sub{font-size:12px;color:var(--text-dim);}
+  .taskboard-card-meta{display:flex;justify-content:flex-end;align-items:center;margin-top:7px;min-height:1px;}
+  .taskboard-assignee{font-size:11px;font-weight:700;color:var(--primary);background:#eef2ff;border-radius:8px;padding:2px 8px;}
+  .taskboard-tag-internal{
+    font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;
+    color:var(--green);background:#e8f9f2;border-radius:6px;padding:1px 6px;margin-right:5px;
+  }
+  .taskboard-overdue{border-left:3px solid var(--red);}
+  .taskboard-empty{font-size:12px;color:var(--text-dim);text-align:center;padding:24px 8px;}
+  @media (max-width: 900px){ .taskboard-columns{grid-template-columns:repeat(2,1fr);} }
+
   .dashboard-owner-divider{grid-column:1/-1;margin-top:4px;padding-top:14px;border-top:1.5px dashed var(--border);display:flex;align-items:center;gap:8px;}
   .dashboard-owner-label{font-size:11px;font-weight:800;color:var(--primary-dark);text-transform:uppercase;letter-spacing:.05em;}
   .foot-right{display:flex;gap:10px;}
@@ -1114,6 +1149,7 @@
       <input class="search-box" id="searchBox" placeholder="Search item name or SO number…">
       <div class="toolbar-actions">
         <button class="icon-btn" id="dashboardBtn">📊 Dashboard</button>
+        <button class="icon-btn" id="taskBoardBtn">🗂 Task Board</button>
         <button class="icon-btn" id="ganttBtn">📅 Gantt</button>
         <button class="icon-btn" id="exportCsvBtn">⬇ Export CSV</button>
         <button class="icon-btn" id="printViewBtn">🖨 Print View</button>
@@ -1291,6 +1327,18 @@
       <button class="modal-close" id="dashboardCloseBtn">✕</button>
     </div>
     <div class="modal-body" id="dashboardBody">
+      <!-- filled by JS -->
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop hidden" id="taskBoardModalBackdrop">
+  <div class="modal taskboard-modal">
+    <div class="modal-head">
+      <h2 id="taskBoardTitle">Task Board</h2>
+      <button class="modal-close" id="taskBoardCloseBtn">✕</button>
+    </div>
+    <div class="modal-body" id="taskBoardBody">
       <!-- filled by JS -->
     </div>
   </div>
@@ -5539,6 +5587,96 @@ document.getElementById('dashboardBtn').onclick = openDashboardModal;
 document.getElementById('dashboardCloseBtn').onclick = closeDashboardModal;
 document.getElementById('dashboardModalBackdrop').addEventListener('click', e => {
   if(e.target.id === 'dashboardModalBackdrop') closeDashboardModal();
+});
+
+/* ---------------- TASK BOARD ---------------- */
+let taskBoardFilterName = null; // null = "All Draftees" (supervisor only)
+
+function taskAssigneeNames(sub){
+  return (sub.draftee||'').split(',').map(x=>x.trim()).filter(Boolean);
+}
+
+function getAllTaskAssignments(){
+  const list = [];
+  (rows||[]).forEach(r => {
+    (subitemsByParent[r.id]||[]).forEach(s => {
+      if(taskAssigneeNames(s).length) list.push({ sub: s, job: r });
+    });
+  });
+  return list;
+}
+
+function taskCardHtml(item, showAssignee){
+  const { sub, job } = item;
+  const todayStr = todayLocalISO();
+  const overdue = !job.is_internal && sub.status !== 'Done' && sub.schedule_end_date && sub.schedule_end_date < todayStr;
+  const titleHtml = job.is_internal
+    ? `<span class="taskboard-tag-internal">Internal</span>${escapeHtml(job.item_name||'—')}`
+    : `${escapeHtml(job.so_number || '—')} — ${escapeHtml(job.company_name || job.item_name || '')}`;
+  const subLabel = sub.subitem_type === 'Internal Time' ? 'Time log' : sub.subitem_type;
+  const assignee = showAssignee ? `<span class="taskboard-assignee">${escapeHtml(sub.draftee||'—')}</span>` : '';
+  return `<div class="taskboard-card ${overdue?'taskboard-overdue':''}" onclick="closeTaskBoard(); openModal('${job.id}');">
+    <div class="taskboard-card-title">${titleHtml}</div>
+    <div class="taskboard-card-sub">${escapeHtml(subLabel)}</div>
+    <div class="taskboard-card-meta">${assignee}</div>
+  </div>`;
+}
+
+function renderTaskBoard(){
+  const supervisor = isSupervisor();
+  const myName = getMyDrafteeName();
+  const all = getAllTaskAssignments();
+
+  document.getElementById('taskBoardTitle').textContent = supervisor
+    ? (taskBoardFilterName ? `Task Board — ${taskBoardFilterName}` : 'Task Board — All Draftees')
+    : 'My Task Board';
+
+  let filterRowHtml = '';
+  if(supervisor){
+    const names = (drafteeOptions && drafteeOptions.length) ? drafteeOptions : Object.values(AUTHORIZED_DRAFTEES);
+    const pills = [`<span class="taskboard-pill ${!taskBoardFilterName?'active':''}" onclick="setTaskBoardFilter(null)">All Draftees</span>`]
+      .concat(names.map(n => `<span class="taskboard-pill ${taskBoardFilterName===n?'active':''}" onclick="setTaskBoardFilter('${escapeAttr(n)}')">${escapeHtml(n)}</span>`));
+    filterRowHtml = `<div class="taskboard-pills">${pills.join('')}</div>`;
+  }
+
+  const scoped = taskBoardFilterName
+    ? all.filter(t => taskAssigneeNames(t.sub).includes(taskBoardFilterName))
+    : (supervisor ? all : all.filter(t => taskAssigneeNames(t.sub).includes(myName)));
+
+  const showAssignee = supervisor && !taskBoardFilterName;
+  const statuses = ['Not Started','In Progress','On-Hold','Done'];
+  const cols = statuses.map(st => {
+    const items = scoped.filter(t => (t.sub.status||'Not Started') === st)
+      .sort((a,b) => (a.sub.schedule_end_date||'9999-99-99').localeCompare(b.sub.schedule_end_date||'9999-99-99'));
+    const cards = items.map(t => taskCardHtml(t, showAssignee)).join('') || `<div class="taskboard-empty">Nothing here</div>`;
+    return `<div class="taskboard-col">
+      <div class="taskboard-col-header"><span>${st}</span><span class="taskboard-count">${items.length}</span></div>
+      <div class="taskboard-col-body">${cards}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('taskBoardBody').innerHTML = filterRowHtml + `<div class="taskboard-columns">${cols}</div>`;
+}
+
+function setTaskBoardFilter(name){
+  taskBoardFilterName = name;
+  renderTaskBoard();
+}
+
+function openTaskBoard(){
+  taskBoardFilterName = isSupervisor() ? null : getMyDrafteeName();
+  document.getElementById('taskBoardModalBackdrop').classList.remove('hidden');
+  renderTaskBoard();
+}
+
+function closeTaskBoard(){
+  document.getElementById('taskBoardModalBackdrop').classList.add('hidden');
+}
+
+document.getElementById('taskBoardBtn').onclick = openTaskBoard;
+document.getElementById('taskBoardCloseBtn').onclick = closeTaskBoard;
+document.getElementById('taskBoardModalBackdrop').addEventListener('click', e => {
+  if(e.target.id === 'taskBoardModalBackdrop') closeTaskBoard();
 });
 
 document.getElementById('attendanceReconCloseBtn').onclick = closeAttendanceRecon;
