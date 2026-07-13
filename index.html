@@ -2341,7 +2341,7 @@ function finalSummaryHtml(totalSales, avgDifot, filtered){
 }
 
 function openJobsSummaryHtml(jobType, title){
-  const openItems = rows.filter(r => !r.actual_release_to_prodn_date && (r.job_type||'SO') === jobType);
+  const openItems = rows.filter(r => !r.actual_release_to_prodn_date && !r.is_internal && (r.job_type||'SO') === jobType);
   if(openItems.length === 0) return '';
   const categorized = openItems.map(r => ({ r, status: getScheduleStatus(r), diff: scheduleDiffDays(r) }));
   const counts = { behind: 0, approaching: 0, ontrack: 0 };
