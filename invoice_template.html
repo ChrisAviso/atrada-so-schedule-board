@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Fortnightly Hours Summary — __DRAFTEE_NAME__</title>
+<style>
+  :root{
+    --primary:#0b5cff; --primary-dark:#0847cc; --green:#0da374; --red:#d63d57; --amber:#e0921a;
+    --topbar-bg:#1d2233; --border:#d5d9e6; --text:#22242f; --text-dim:#585d73; --bg:#e7e9f1;
+  }
+  *{box-sizing:border-box;}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);margin:0;padding:24px;}
+  .mockup-banner{
+    background:var(--amber);color:#fff;font-size:11px;font-weight:700;letter-spacing:.05em;
+    text-align:center;padding:6px;border-radius:6px;margin-bottom:16px;
+  }
+  .sheet{
+    background:#fff;max-width:760px;margin:0 auto;border-radius:10px;overflow:hidden;
+    box-shadow:0 4px 24px rgba(11,32,80,.14);
+  }
+  .accent-bar{height:5px;background:linear-gradient(90deg, var(--primary), var(--primary-dark));}
+  .letterhead{
+    background:var(--topbar-bg);color:#fff;padding:12px 28px;display:flex;justify-content:space-between;align-items:flex-start;
+  }
+  .brand-block{display:flex;align-items:center;gap:14px;}
+  .brand-logo{height:30px;width:auto;display:block;}
+  .letterhead h1{margin:0;font-size:17px;letter-spacing:.02em;}
+  .letterhead .doc-type{font-size:11px;letter-spacing:.08em;color:#9aa3c2;text-transform:uppercase;margin-top:4px;}
+  .letterhead .period{text-align:right;font-size:12.5px;color:#c7cde0;}
+  .letterhead .period b{color:#fff;font-size:14px;}
+  .letterhead .invoice-no{font-size:12px;color:#ffd98a;font-weight:700;margin-top:6px;}
+
+  .meta-row{display:flex;justify-content:space-between;padding:7px 28px;border-bottom:1px solid var(--border);font-size:12.5px;gap:16px;}
+  .meta-col{flex:1;}
+  .meta-col b{
+    display:block;color:var(--primary-dark);font-size:10px;text-transform:uppercase;letter-spacing:.06em;
+    margin-bottom:4px;font-weight:700;
+  }
+  .meta-col span{font-size:14px;font-weight:600;}
+  .to-col{display:flex;flex-direction:column;}
+  .to-name{font-size:13px;font-weight:600;line-height:1.5;}
+  .to-name em{font-style:normal;font-weight:400;color:var(--text-dim);font-size:12px;}
+  .position-select{
+    font-size:14px;font-weight:600;font-family:inherit;color:var(--text);background:transparent;
+    border:none;border-bottom:1.3px solid var(--border);padding:2px 0;width:100%;
+  }
+  .position-select:focus{outline:none;border-bottom-color:var(--primary);}
+
+  .fill-section{padding:7px 28px 0;}
+  .fill-section .section-label{
+    font-size:10.5px;color:var(--primary-dark);text-transform:uppercase;letter-spacing:.06em;
+    margin-bottom:9px;font-weight:700;padding-left:9px;border-left:3px solid var(--primary);
+  }
+  .fill-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 20px;}
+  .fill-field{display:flex;flex-direction:column;gap:3px;}
+  .fill-field label{font-size:10.5px;color:var(--text-dim);}
+  .fill-field input{
+    border:none;border-bottom:1.3px solid var(--border);padding:5px 2px;font-size:13.5px;
+    font-family:inherit;color:var(--text);background:transparent;
+  }
+  .fill-field input:focus{outline:none;border-bottom-color:var(--primary);}
+
+  .warning-note{
+    margin:16px 28px 0;background:#fff4e0;border:1px solid var(--amber);color:#8a5a00;
+    border-radius:8px;padding:10px 14px;font-size:12px;line-height:1.5;
+  }
+
+  .figures-section, .payables-section{margin:7px 28px 0;padding-top:7px;border-top:2px solid var(--topbar-bg);}
+  .payables-section{border-top:1px solid var(--border);padding-top:6px;}
+  .figures-section .section-label, .payables-section .section-label, .bank-section .section-label{
+    font-size:10.5px;color:var(--primary-dark);text-transform:uppercase;letter-spacing:.06em;
+    margin-bottom:10px;font-weight:700;padding-left:9px;border-left:3px solid var(--primary);
+  }
+  .figures-table{width:100%;border-collapse:collapse;font-size:13px;}
+  .figures-table thead th{
+    text-align:left;color:var(--primary-dark);font-size:10px;text-transform:uppercase;letter-spacing:.03em;
+    padding:4px 8px;background:rgba(11,92,255,.06);border-bottom:1px solid var(--border);
+  }
+  .figures-table thead th:not(:first-child), .figures-table tbody td:not(:first-child){text-align:right;}
+  .figures-table tbody td{padding:4px 8px;border-bottom:1px solid var(--border);}
+  .figures-table .line-total{font-weight:700;color:var(--primary-dark);}
+  .calc-input, .payable-amount{
+    border:none;border-bottom:1.3px solid var(--border);padding:3px 2px;font-size:13.5px;font-weight:600;
+    font-family:inherit;color:var(--text);background:transparent;text-align:right;width:110px;
+  }
+  .desc-input{
+    border:none;border-bottom:1.3px solid var(--border);padding:3px 2px;font-size:13.5px;
+    font-family:inherit;color:var(--text);background:transparent;width:100%;
+  }
+  .calc-input:focus, .payable-amount:focus, .desc-input:focus{outline:none;border-bottom-color:var(--primary);}
+  .total-note{font-size:11px;color:var(--text-dim);margin-top:5px;}
+
+  .grand-total-row{
+    margin:7px 28px 0;padding:7px 20px;border-radius:8px;background:rgba(11,92,255,.05);
+    border:1px solid rgba(11,92,255,.18);display:flex;justify-content:space-between;align-items:baseline;
+  }
+  .grand-total-row .label{font-size:15px;font-weight:700;color:var(--topbar-bg);}
+  .grand-total-row .value{font-size:20px;font-weight:800;color:var(--primary-dark);}
+
+  .bank-section{margin:7px 28px 0;padding-top:7px;border-top:1px solid var(--border);}
+  .bank-hint{font-size:10px;color:var(--text-dim);margin-bottom:5px;}
+  .bank-lines{display:flex;flex-direction:column;gap:5px;}
+  .bank-line{
+    border:none;border-bottom:1px solid var(--border);padding:2px 2px;font-size:12.5px;
+    font-family:inherit;color:var(--text);background:transparent;
+  }
+  .bank-line:focus{outline:none;border-bottom-color:var(--primary);}
+
+  .footer-note{padding:6px 28px 8px;font-size:9px;color:var(--text-dim);border-top:1px solid var(--border);}
+
+  .action-row{max-width:760px;margin:16px auto 0;display:flex;justify-content:flex-end;gap:10px;}
+  .btn{font-size:12.5px;font-weight:700;padding:9px 18px;border-radius:7px;cursor:pointer;border:none;}
+  .btn.primary{background:var(--primary);color:#fff;}
+  .btn.ghost{background:#fff;color:var(--text);border:1px solid var(--border);}
+
+  @media print{
+    body{background:#fff;padding:0;}
+    .mockup-banner,.action-row{display:none;}
+    .sheet{box-shadow:none;border-radius:0;max-width:100%;}
+    .fill-field input, .calc-input, .payable-amount, .desc-input, .bank-line, .position-select{border-bottom:1px solid #999;}
+    @page{size:A4;margin:9mm;}
+  }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+  <div class="accent-bar"></div>
+  <div class="letterhead">
+    <div class="brand-block">
+      <img src="Atrada_%20Symbol_%20Blue%20%5BRGB%5D.png" alt="Atrada" class="brand-logo">
+      <div>
+        <h1>ATRADA</h1>
+        <div class="doc-type">Fortnightly Hours Summary — For Accounts</div>
+      </div>
+    </div>
+    <div class="period">
+      Period<br><b>__PERIOD_LABEL__</b><br>
+      Payday: __PAYDAY_LABEL__
+      <div class="invoice-no">Invoice No: <span id="invoiceNumber">—</span></div>
+    </div>
+  </div>
+
+  <div class="meta-row">
+    <div class="meta-col"><b>Draftee</b><span>__DRAFTEE_NAME__</span></div>
+    <div class="meta-col"><b>Position</b>
+      <select class="position-select">
+        <option value="Draftee" __DRAFTEE_SELECTED__>Draftee</option>
+        <option value="Estimator" __ESTIMATOR_SELECTED__>Estimator</option>
+      </select>
+    </div>
+    <div class="meta-col to-col"><b>To</b>
+      <span class="to-name">James Judd <em>— Director</em></span>
+      <span class="to-name">Yogita Baswan <em>— Accountant</em></span>
+    </div>
+    <div class="meta-col"><b>Generated</b><span>__GENERATED_LABEL__</span></div>
+  </div>
+
+  <div class="fill-section">
+    <div class="section-label">Contact Details</div>
+    <div class="fill-grid">
+      <div class="fill-field">
+        <label>Phone Number</label>
+        <input type="text" placeholder="+63 9XX XXX XXXX">
+      </div>
+      <div class="fill-field">
+        <label>Address (Philippines)</label>
+        <input type="text" placeholder="Street, Barangay, City, Province">
+      </div>
+    </div>
+  </div>
+
+  <div class="figures-section">
+    <div class="section-label">Figures</div>
+    <table class="figures-table">
+      <thead><tr><th>Billable Hrs</th><th>Rate</th><th>Total</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>__TOTAL_HOURS__ hrs</td>
+          <td><input type="text" id="rateInput" class="calc-input" placeholder="AUD 0.00" oninput="updateGrandTotal()"></td>
+          <td class="line-total">AUD <span id="lineTotal">0.00</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="total-note">Sick Leave Used YTD: 0 / 10 days</div>
+  </div>
+
+  <div class="payables-section">
+    <div class="section-label">Other Payables</div>
+    <table class="figures-table">
+      <thead><tr><th>Description</th><th>Amount</th></tr></thead>
+      <tbody>
+        <tr><td><input type="text" class="desc-input" placeholder="e.g. Transport allowance"></td><td><input type="text" class="payable-amount" placeholder="AUD 0.00" oninput="updateGrandTotal()"></td></tr>
+        <tr><td><input type="text" class="desc-input" placeholder="e.g. Internet allowance"></td><td><input type="text" class="payable-amount" placeholder="AUD 0.00" oninput="updateGrandTotal()"></td></tr>
+        <tr><td><input type="text" class="desc-input" placeholder="e.g. Reimbursement"></td><td><input type="text" class="payable-amount" placeholder="AUD 0.00" oninput="updateGrandTotal()"></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grand-total-row">
+    <div class="label">Grand Total</div>
+    <div class="value">AUD <span id="grandTotal">0.00</span></div>
+  </div>
+
+  <div class="bank-section">
+    <div class="section-label">Bank / Wise Account Details for Payment</div>
+    <div class="bank-hint">Fill in whichever apply — traditional bank account details, or Wise account details.</div>
+    <div class="bank-lines">
+      <input type="text" class="bank-line">
+      <input type="text" class="bank-line">
+      <input type="text" class="bank-line">
+      <input type="text" class="bank-line">
+      <input type="text" class="bank-line">
+      <input type="text" class="bank-line">
+      <input type="text" class="bank-line">
+      <input type="text" class="bank-line">
+      <input type="text" class="bank-line">
+      <input type="text" class="bank-line">
+      <input type="text" class="bank-line">
+    </div>
+  </div>
+
+  <div class="footer-note">
+    Generated from the Atrada SO Schedule Board. Daily hour-by-hour breakdown is available on the board only. This is a system-generated summary, not a final payslip.
+  </div>
+</div>
+
+<div class="action-row">
+  <button class="btn ghost" onclick="window.close()">Close</button>
+  <button class="btn primary" onclick="printInvoice()">🖨 Print / Save as PDF</button>
+</div>
+
+<script>
+  function generateInvoiceNumber(){
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth()+1).padStart(2,'0');
+    const d = String(now.getDate()).padStart(2,'0');
+    const rand = Math.random().toString(36).substring(2,6).toUpperCase();
+    return `ATR-INV-${y}${m}${d}-${rand}`;
+  }
+  function printInvoice(){
+    document.getElementById('invoiceNumber').textContent = generateInvoiceNumber();
+    setTimeout(() => window.print(), 50);
+  }
+  const TOTAL_HOURS = __TOTAL_HOURS_NUM__;
+  function updateGrandTotal(){
+    const rateRaw = document.getElementById('rateInput').value.replace(/[^\d.]/g, '');
+    const rate = parseFloat(rateRaw) || 0;
+    const lineTotal = rate * TOTAL_HOURS;
+    document.getElementById('lineTotal').textContent = lineTotal.toLocaleString('en-AU', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+    let payablesSum = 0;
+    document.querySelectorAll('.payable-amount').forEach(el => {
+      const v = parseFloat(el.value.replace(/[^\d.]/g, '')) || 0;
+      payablesSum += v;
+    });
+
+    const grandTotal = lineTotal + payablesSum;
+    document.getElementById('grandTotal').textContent = grandTotal.toLocaleString('en-AU', {minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+  // show a number on load too, so it's never blank while just viewing
+  document.getElementById('invoiceNumber').textContent = generateInvoiceNumber();
+</script>
+
+</body>
+</html>
