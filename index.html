@@ -1368,24 +1368,6 @@ function isSupervisor(){
   return SUPERVISOR_EMAILS.includes(session.user.email.toLowerCase());
 }
 
-// Self-healing: if a new draftee joins after an internal category already exists, give them their
-// own clockable row for it automatically, instead of requiring a supervisor to remember to add one.
-async function ensureMyInternalSubitems(){
-  const myName = getMyDrafteeName();
-  if(!myName) return;
-  const internalJobs = (rows||[]).filter(r => r.is_internal);
-  const missing = internalJobs.filter(r => {
-    const subs = subitemsByParent[r.id] || [];
-    return !subs.some(s => s.subitem_type === 'Internal Time' && (s.draftee||'').trim() === myName);
-  });
-  if(!missing.length) return;
-  const newRows = missing.map(r => ({ parent_id: r.id, subitem_type: 'Internal Time', draftee: myName, status: 'Not Started' }));
-  const { error } = await sb.from('so_subitems').insert(newRows);
-  if(!error){
-    newRows.forEach(nr => { (subitemsByParent[nr.parent_id] = subitemsByParent[nr.parent_id] || []).push(nr); });
-  }
-}
-
 const DASHBOARD_OWNER_EMAIL = 'chris.aviso@atrada.com.au';
 function isDashboardOwner(){
   if(!session || !session.user || !session.user.email) return false;
@@ -1895,7 +1877,6 @@ async function loadData(){
       (subitemsByParent[s.parent_id] = subitemsByParent[s.parent_id] || []).push(s);
     });
   }
-  await ensureMyInternalSubitems();
 
   const { data: logData, error: logError } = await sb.from('so_time_logs').select('*').order('started_at', {ascending:false});
   logsBySubitem = {};
@@ -2629,7 +2610,14 @@ function rowHtml(r){
     if(isLastGaRow && r.requires_client_approval) html += clientApprovalInlineRowHtml(r);
     return html;
   }).join('');
-  return mainRow + subs;
+  const addPersonRow = (r.is_internal && !isCollapsed)
+    ? `<tr class="subrow" onclick="event.stopPropagation()">
+         <td colspan="19">
+           <span class="add-row" style="padding-left:34px;display:inline-block;" onclick="addPersonToInternalCategory('${r.id}')">+ Add Person</span>
+         </td>
+       </tr>`
+    : '';
+  return mainRow + subs + addPersonRow;
 }
 
 function subRowHtml(s, jobType, rcdOrRc, requiresClientApproval){
@@ -2706,6 +2694,7 @@ function subRowHtml(s, jobType, rcdOrRc, requiresClientApproval){
           </div>
         </span>
         ${isSupervisor() ? `<button class="log-edit-btn" onclick="event.stopPropagation(); openLogEditor('${s.id}')" title="Edit time logs">🛠</button>` : ''}
+        ${isInternalSub && isSupervisor() ? `<button class="btn-danger-mini" onclick="event.stopPropagation(); removeInternalPerson('${s.id}')" title="Remove ${escapeAttr(s.draftee||'this person')} from this category">✕</button>` : ''}
       </div>
     </td>
   </tr>`;
@@ -4916,18 +4905,55 @@ document.getElementById('newInternalCategoryBtn').onclick = async () => {
   const label = prompt('New internal/non-project category name (e.g. "Meetings", "Supplier Cost Updates"):');
   const trimmed = (label||'').trim();
   if(!trimmed) return;
+  const allNames = (drafteeOptions && drafteeOptions.length) ? drafteeOptions : Object.values(AUTHORIZED_DRAFTEES);
+  const who = prompt(`Who can log time here? Type exact names separated by commas, or type "all" for everyone.\n\nAvailable: ${allNames.join(', ')}`, 'all');
+  if(who === null) return;
+  const whoTrimmed = who.trim();
+  let selectedNames;
+  if(!whoTrimmed || whoTrimmed.toLowerCase() === 'all'){
+    selectedNames = allNames;
+  } else {
+    selectedNames = whoTrimmed.split(',').map(s => s.trim()).filter(Boolean);
+    const invalid = selectedNames.filter(n => !allNames.includes(n));
+    if(invalid.length){ alert("These names don't match exactly, category not created: " + invalid.join(', ')); return; }
+  }
   const { data: newRow, error } = await sb.from('so_schedule')
     .insert({ item_name: trimmed, is_internal: true, group_name: INTERNAL_GROUP_NAME, job_type: 'SO' })
     .select('id').single();
   if(error){ alert("Couldn't create category: " + error.message); return; }
-  const names = (drafteeOptions && drafteeOptions.length) ? drafteeOptions : Object.values(AUTHORIZED_DRAFTEES);
-  const subRows = names.map(n => ({ parent_id: newRow.id, subitem_type: 'Internal Time', draftee: n, status: 'Not Started' }));
+  const subRows = selectedNames.map(n => ({ parent_id: newRow.id, subitem_type: 'Internal Time', draftee: n, status: 'Not Started' }));
   if(subRows.length){
     const { error: subErr } = await sb.from('so_subitems').insert(subRows);
-    if(subErr){ alert("Category created, but couldn't seed everyone's clock-in rows: " + subErr.message); }
+    if(subErr){ alert("Category created, but couldn't add clock-in rows: " + subErr.message); }
   }
   await loadData();
 };
+
+async function addPersonToInternalCategory(jobId){
+  const existing = (subitemsByParent[jobId]||[]).filter(s => s.subitem_type === 'Internal Time').map(s => (s.draftee||'').trim()).filter(Boolean);
+  const allNames = (drafteeOptions && drafteeOptions.length) ? drafteeOptions : Object.values(AUTHORIZED_DRAFTEES);
+  const available = allNames.filter(n => !existing.includes(n));
+  if(!available.length){ alert('Everyone is already on this category.'); return; }
+  const picked = prompt(`Add who to this category?\n\nAvailable: ${available.join(', ')}`, available[0]);
+  const trimmed = (picked||'').trim();
+  if(!trimmed) return;
+  if(!available.includes(trimmed)){ alert('Please enter one of the exact names listed.'); return; }
+  const { error } = await sb.from('so_subitems').insert({ parent_id: jobId, subitem_type: 'Internal Time', draftee: trimmed, status: 'Not Started' });
+  if(error){ alert("Couldn't add: " + error.message); return; }
+  await loadData();
+}
+
+async function removeInternalPerson(subitemId){
+  const sub = Object.values(subitemsByParent).flat().find(s => s.id === subitemId);
+  if(sub && (Number(sub.total_seconds) > 0 || sub.clock_running)){
+    alert("This person has logged time against this category, so they can't be removed (it would delete their hours history). Stop their timer first if it's running, and otherwise just leave the row in place for the record.");
+    return;
+  }
+  if(!confirm(`Remove ${sub ? escapeHtml(sub.draftee||'this person') : 'this person'} from this internal category?`)) return;
+  const { error } = await sb.from('so_subitems').delete().eq('id', subitemId);
+  if(error){ alert("Couldn't remove: " + error.message); return; }
+  await loadData();
+}
 
 document.getElementById('saveBtn').onclick = async () => {
   const payload = {};
