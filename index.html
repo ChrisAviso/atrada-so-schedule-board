@@ -264,6 +264,19 @@
   .daily-breakdown-table{font-size:11.5px;margin-top:4px;box-shadow:none;}
   .daily-breakdown-table thead th{background:#eef0f7;color:var(--text-dim);font-size:10px;}
   .daily-breakdown-table tbody td{padding:6px 8px;}
+  .hrs-detail-trigger{position:relative;cursor:help;border-bottom:1px dotted var(--text-dim);}
+  .hrs-detail-tooltip{
+    display:none;position:absolute;bottom:calc(100% + 6px);right:0;z-index:60;
+    background:#1d2233;color:#fff;border-radius:8px;padding:8px 10px;min-width:220px;
+    box-shadow:0 8px 24px rgba(0,0,0,.3);font-size:11px;text-align:left;font-weight:400;
+  }
+  .hrs-detail-trigger:hover .hrs-detail-tooltip{display:block;}
+  .hrs-detail-row{display:flex;justify-content:space-between;gap:14px;padding:3px 0;white-space:nowrap;}
+  .hrs-detail-row span:first-child{color:#fff;font-weight:600;}
+  .hrs-detail-row span:nth-child(2){color:#b9bdd6;flex:1;text-align:left;padding:0 8px;}
+  .hrs-detail-row + .hrs-detail-row{border-top:1px solid rgba(255,255,255,.14);}
+  .hrs-detail-head{color:#8a8fb0;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;padding-bottom:5px;}
+  .hrs-detail-head span{color:#8a8fb0 !important;font-weight:700 !important;}
   .attendance-edit-btn{
     font-size:11px;font-weight:700;color:var(--primary);border:1px solid var(--primary);
     border-radius:5px;padding:4px 10px;cursor:pointer;background:#fff;
@@ -3242,6 +3255,42 @@ function toggleDailyBreakdown(name){
   renderSupervisorReviewBody();
 }
 
+// Per-day, per-job breakdown of a draftee's worked hours: which SO/subitem contributed
+// how much, so the daily total can be inspected on hover instead of taken on faith.
+function getDailyJobBreakdown(name, dateStr){
+  const breakdown = [];
+  Object.values(subitemsByParent).flat().forEach(sub => {
+    const logs = logsBySubitem[sub.id] || [];
+    let seconds = 0;
+    logs.forEach(l => {
+      if(!l.started_at || l.clocked_by !== name) return;
+      if(toLocalISODate(new Date(l.started_at)) !== dateStr) return;
+      if(l.duration_seconds != null){
+        seconds += l.duration_seconds;
+      } else if(!l.ended_at){
+        seconds += Math.max(0, Math.floor((Date.now() - new Date(l.started_at).getTime())/1000));
+      }
+    });
+    if(seconds > 0){
+      const parent = rows.find(r => r.id === sub.parent_id);
+      const soLabel = parent ? (parent.so_number || parent.item_name || (parent.is_internal ? 'Internal / Non-Project' : 'Unknown')) : 'Unknown';
+      breakdown.push({ so: soLabel, process: sub.subitem_type || '—', hours: seconds/3600 });
+    }
+  });
+  breakdown.sort((a,b) => b.hours - a.hours);
+  return breakdown;
+}
+
+// Wraps a worked-hours total in a hover trigger showing the SO/Process breakdown behind it.
+// Falls back to a plain number if there's nothing to break down (e.g. zero hours).
+function renderWorkedHoursCell(name, dateStr, hours){
+  if(hours <= 0) return hours.toFixed(2);
+  const breakdown = getDailyJobBreakdown(name, dateStr);
+  if(!breakdown.length) return hours.toFixed(2);
+  const rowsHtml = breakdown.map(b => `<div class="hrs-detail-row"><span>${escapeHtml(b.so)}</span><span>${escapeHtml(b.process)}</span><span>${b.hours.toFixed(2)}</span></div>`).join('');
+  return `<span class="hrs-detail-trigger">${hours.toFixed(2)}<div class="hrs-detail-tooltip"><div class="hrs-detail-row hrs-detail-head"><span>SO</span><span>Process</span><span>Hrs</span></div>${rowsHtml}</div></span>`;
+}
+
 // Builds the per-day rows for one draftee across the current fortnight (weekdays only,
 // matching the Mon–Fri assumption used elsewhere e.g. computeTotalBillableHours).
 function renderDailyBreakdownRows(name, fnStart){
@@ -3281,7 +3330,7 @@ function renderDailyBreakdownRows(name, fnStart){
 
     rows += `<tr>
       <td>${fmtDateShort(dateStr)}</td>
-      <td style="text-align:right;">${worked.toFixed(2)}</td>
+      <td style="text-align:right;">${renderWorkedHoursCell(name, dateStr, worked)}</td>
       <td style="text-align:right;color:var(--text-dim);">${internal.toFixed(2)}</td>
       <td style="text-align:right;">${bankDeltaHtml}</td>
       <td style="text-align:right;">${sickHtml}</td>
