@@ -1085,6 +1085,7 @@
         <button class="icon-btn" id="printViewBtn">🖨 Print View</button>
         <button class="btn-primary-sm" id="newGroupItemBtn">+ New SO Item</button>
         <button class="btn-primary-sm btn-oppts" id="newOpptsItemBtn">+ New OPPTS/PROJTS Job</button>
+        <button class="icon-btn" id="newInternalCategoryBtn" style="display:none;">+ New Internal Category</button>
       </div>
     </div>
 
@@ -1135,6 +1136,7 @@
             <option value="Drawing/BOM Prep">Drawing/BOM Prep</option>
             <option value="Costing Prep">Costing Prep</option>
             <option value="Review/Release">Review/Release</option>
+            <option value="Internal Time">Internal Time (non-project)</option>
           </select>
           <select class="filter-select" id="filterStageStatus">
             <option value="">Any Status</option>
@@ -1364,6 +1366,24 @@ function getMyDrafteeName(){
 function isSupervisor(){
   if(!session || !session.user || !session.user.email) return false;
   return SUPERVISOR_EMAILS.includes(session.user.email.toLowerCase());
+}
+
+// Self-healing: if a new draftee joins after an internal category already exists, give them their
+// own clockable row for it automatically, instead of requiring a supervisor to remember to add one.
+async function ensureMyInternalSubitems(){
+  const myName = getMyDrafteeName();
+  if(!myName) return;
+  const internalJobs = (rows||[]).filter(r => r.is_internal);
+  const missing = internalJobs.filter(r => {
+    const subs = subitemsByParent[r.id] || [];
+    return !subs.some(s => s.subitem_type === 'Internal Time' && (s.draftee||'').trim() === myName);
+  });
+  if(!missing.length) return;
+  const newRows = missing.map(r => ({ parent_id: r.id, subitem_type: 'Internal Time', draftee: myName, status: 'Not Started' }));
+  const { error } = await sb.from('so_subitems').insert(newRows);
+  if(!error){
+    newRows.forEach(nr => { (subitemsByParent[nr.parent_id] = subitemsByParent[nr.parent_id] || []).push(nr); });
+  }
 }
 
 const DASHBOARD_OWNER_EMAIL = 'chris.aviso@atrada.com.au';
@@ -1837,7 +1857,7 @@ async function loadData(){
   }
 
   // project_status + Class 1/2 approval-tracking fields live on the base table but aren't exposed by the so_schedule_computed view yet — merge them in directly
-  const { data: statusData } = await sb.from('so_schedule').select('id, project_status, requires_client_approval, revision_count, first_sent_for_approval_date');
+  const { data: statusData } = await sb.from('so_schedule').select('id, project_status, requires_client_approval, revision_count, first_sent_for_approval_date, is_internal');
   if(statusData){
     const statusById = {};
     statusData.forEach(s => { statusById[s.id] = s; });
@@ -1847,6 +1867,7 @@ async function loadData(){
       r.requires_client_approval = s?.requires_client_approval ?? false;
       r.revision_count = s?.revision_count ?? 0;
       r.first_sent_for_approval_date = s?.first_sent_for_approval_date ?? null;
+      r.is_internal = s?.is_internal ?? false;
     });
   }
   const byDrafteeRows = {};
@@ -1874,6 +1895,7 @@ async function loadData(){
       (subitemsByParent[s.parent_id] = subitemsByParent[s.parent_id] || []).push(s);
     });
   }
+  await ensureMyInternalSubitems();
 
   const { data: logData, error: logError } = await sb.from('so_time_logs').select('*').order('started_at', {ascending:false});
   logsBySubitem = {};
@@ -1959,7 +1981,7 @@ async function silentReload(){
   if(error) return; // stay quiet in the background; the next live event will retry
   rows = data || [];
 
-  const { data: statusData } = await sb.from('so_schedule').select('id, project_status, requires_client_approval, revision_count, first_sent_for_approval_date');
+  const { data: statusData } = await sb.from('so_schedule').select('id, project_status, requires_client_approval, revision_count, first_sent_for_approval_date, is_internal');
   if(statusData){
     const statusById = {};
     statusData.forEach(s => { statusById[s.id] = s; });
@@ -1969,6 +1991,7 @@ async function silentReload(){
       r.requires_client_approval = s?.requires_client_approval ?? false;
       r.revision_count = s?.revision_count ?? 0;
       r.first_sent_for_approval_date = s?.first_sent_for_approval_date ?? null;
+      r.is_internal = s?.is_internal ?? false;
     });
   }
 
@@ -2250,8 +2273,8 @@ function classBreakdownHtml(items){
 }
 
 function finalSummaryHtml(totalSales, avgDifot, filtered){
-  const soItems = (filtered||[]).filter(r => (r.job_type||'SO') === 'SO');
-  const opptsItems = (filtered||[]).filter(r => r.job_type === 'OPPTS');
+  const soItems = (filtered||[]).filter(r => (r.job_type||'SO') === 'SO' && !r.is_internal);
+  const opptsItems = (filtered||[]).filter(r => r.job_type === 'OPPTS' && !r.is_internal);
   return `<div class="final-summary-card">
     <div class="final-summary-title">Final Totals — All Projects</div>
     <div class="final-summary-row">
@@ -2623,6 +2646,7 @@ function subRowHtml(s, jobType, rcdOrRc, requiresClientApproval){
   </tr>`;
   }
   const isClass2Ga = (s.subitem_type === 'GA For Approval Prep' || s.subitem_type === 'Sales Handover') && !requiresClientApproval;
+  const isInternalSub = s.subitem_type === 'Internal Time';
   const elapsed = liveElapsed(s);
   const statusOptions = ['Not Started','In Progress','On-Hold','Done'].map(opt =>
     `<option value="${opt}" ${s.status===opt?'selected':''}>${opt}</option>`
@@ -2631,11 +2655,11 @@ function subRowHtml(s, jobType, rcdOrRc, requiresClientApproval){
   const drafteeCell = isAutoDraftee
     ? `<span class="sub-draftee-readonly" title="Auto-set from line item draftee">${escapeHtml(s.draftee || '—')}</span>`
     : `<select class="sub-draftee" onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleSubDrafteeChange(this, '${s.id}')">${lookupOptionsHtml('draftee', s.draftee)}</select>`;
-  const scheduleCellHtml = isClass2Ga
+  const scheduleCellHtml = (isClass2Ga || isInternalSub)
     ? `<span class="sub-schedule">
          <span class="sub-sched-label">Schedule:</span>
          <span class="inline-sched-wrap">
-           <span class="sub-sched-disabled" title="Standard product — no reserved slot needed. Marking GA Done schedules Detailing onward automatically.">Not scheduled — standard product</span>
+           <span class="sub-sched-disabled" title="${isInternalSub ? 'Internal/non-project work — no Gantt slot needed, just clock in.' : 'Standard product — no reserved slot needed. Marking GA Done schedules Detailing onward automatically.'}">${isInternalSub ? 'Not scheduled — internal work' : 'Not scheduled — standard product'}</span>
            <input type="number" class="inline-sched-duration" disabled placeholder="d">
          </span>
          <input type="date" class="inline-sched-typed-date" disabled>
@@ -2751,7 +2775,8 @@ async function toggleClock(subitemId){
   }
   if(!sub.clock_running){
     const isClass2Ga = (sub.subitem_type === 'GA For Approval Prep' || sub.subitem_type === 'Sales Handover') && parentRow && !parentRow.requires_client_approval;
-    if(!isClass2Ga && (!sub.schedule_start_date || !sub.schedule_end_date)){
+    const isInternalSub = sub.subitem_type === 'Internal Time';
+    if(!isClass2Ga && !isInternalSub && (!sub.schedule_start_date || !sub.schedule_end_date)){
       alert("This sub-process doesn't have a Schedule (start/end date) set yet — set its schedule dates first before clocking in.");
       return;
     }
@@ -2803,6 +2828,8 @@ let breakAutoOffTimer = null;
 
 function refreshTopPanels(){
   document.getElementById('activePanelRoot').innerHTML = attendancePanelHtml() + notClockedInHtml() + activePanelHtml() + onBreakPanelHtml() + openSoSummaryHtml();
+  const internalBtn = document.getElementById('newInternalCategoryBtn');
+  if(internalBtn) internalBtn.style.display = isSupervisor() ? '' : 'none';
 }
 
 function startBreakScheduler(){
@@ -3123,6 +3150,7 @@ async function submitAttendanceDecision(decisionId, isSupervisorFill){
 let supervisorEditingId = null;
 
 let fortnightHoursSummary = {}; // { drafteeName: totalHoursWorkedThisFortnight }
+let internalHoursSummary = {}; // { drafteeName: totalInternalNonProjectHoursThisFortnight }
 
 async function refreshFortnightHoursSummary(){
   const fnStart = currentFortnightStart();
@@ -3133,6 +3161,12 @@ async function refreshFortnightHoursSummary(){
   const totals = {};
   (data||[]).forEach(r => { totals[r.draftee_name] = (totals[r.draftee_name]||0) + Number(r.hours_worked); });
   fortnightHoursSummary = totals;
+
+  const { data: internalData } = await sb.from('so_internal_hours_by_day').select('draftee_name, hours_worked')
+    .gte('work_date', fnStart).lte('work_date', fnEndStr);
+  const internalTotals = {};
+  (internalData||[]).forEach(r => { internalTotals[r.draftee_name] = (internalTotals[r.draftee_name]||0) + Number(r.hours_worked); });
+  internalHoursSummary = internalTotals;
 }
 
 async function openSupervisorAttendanceReview(){
@@ -3161,12 +3195,14 @@ function renderTeamSummaryHtml(fnStart, relevant){
     const bank = hoursBankBalance[name] || 0;
     const sick = sickLeaveYtd[name] || { used: 0, remaining: 10 };
     const hrs = fortnightHoursSummary[name] || 0;
+    const internalHrs = internalHoursSummary[name] || 0;
     const decisionsForName = relevant.filter(d => d.draftee_name === name);
     const pendingCount = decisionsForName.filter(d => d.status === 'pending').length;
     const resolvedCount = decisionsForName.length - pendingCount;
     return `<tr>
       <td><span class="attendance-draftee-link" onclick="openDrafteeIndividualWindow('${name}')">${escapeHtml(name)}</span></td>
       <td style="text-align:right;">${hrs.toFixed(2)}</td>
+      <td style="text-align:right;color:var(--text-dim);">${internalHrs.toFixed(2)}</td>
       <td style="text-align:right;${bank<0?'color:var(--red);font-weight:700;':''}">${bank.toFixed(2)}</td>
       <td style="text-align:right;">${sick.used}/10</td>
       <td style="text-align:right;">${pendingCount>0?`<span class="attendance-status-pill pending">${pendingCount}</span>`:'0'}</td>
@@ -3177,7 +3213,7 @@ function renderTeamSummaryHtml(fnStart, relevant){
   return `<div style="margin-bottom:20px;">
     <div class="attendance-deadline-banner" style="background:#eef2ff;color:var(--primary-dark);border-color:var(--primary);">📊 Team summary at a glance — ${fortnightLabel(fnStart)}</div>
     <table class="attendance-table">
-      <thead><tr><th>Draftee</th><th style="text-align:right;">Hrs Worked</th><th style="text-align:right;">Bank Bal.</th><th style="text-align:right;">Sick Used</th><th style="text-align:right;">Pending</th><th style="text-align:right;">Resolved</th></tr></thead>
+      <thead><tr><th>Draftee</th><th style="text-align:right;">Hrs Worked</th><th style="text-align:right;">Internal Hrs</th><th style="text-align:right;">Bank Bal.</th><th style="text-align:right;">Sick Used</th><th style="text-align:right;">Pending</th><th style="text-align:right;">Resolved</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
   </div>`;
@@ -4862,6 +4898,24 @@ backdrop.addEventListener('click', e => { if(e.target === backdrop) closeModal()
 
 document.getElementById('newGroupItemBtn').onclick = () => openModal(null, NEW_ITEM_GROUP, 'SO');
 document.getElementById('newOpptsItemBtn').onclick = () => openModal(null, NEW_OPPTS_GROUP, 'OPPTS');
+
+const INTERNAL_GROUP_NAME = 'Internal / Non-Project';
+document.getElementById('newInternalCategoryBtn').onclick = async () => {
+  const label = prompt('New internal/non-project category name (e.g. "Meetings", "Supplier Cost Updates"):');
+  const trimmed = (label||'').trim();
+  if(!trimmed) return;
+  const { data: newRow, error } = await sb.from('so_schedule')
+    .insert({ item_name: trimmed, is_internal: true, group_name: INTERNAL_GROUP_NAME, job_type: 'SO' })
+    .select('id').single();
+  if(error){ alert("Couldn't create category: " + error.message); return; }
+  const names = (drafteeOptions && drafteeOptions.length) ? drafteeOptions : Object.values(AUTHORIZED_DRAFTEES);
+  const subRows = names.map(n => ({ parent_id: newRow.id, subitem_type: 'Internal Time', draftee: n, status: 'Not Started' }));
+  if(subRows.length){
+    const { error: subErr } = await sb.from('so_subitems').insert(subRows);
+    if(subErr){ alert("Category created, but couldn't seed everyone's clock-in rows: " + subErr.message); }
+  }
+  await loadData();
+};
 
 document.getElementById('saveBtn').onclick = async () => {
   const payload = {};
