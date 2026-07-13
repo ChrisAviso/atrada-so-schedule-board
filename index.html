@@ -838,6 +838,13 @@
   .gantt-legend-swatch-ghost{display:inline-block;width:12px;height:8px;border:1.5px dashed rgba(58,92,235,.6);border-radius:3px;vertical-align:middle;}
   .gantt-legend-swatch-baseline{display:inline-block;width:12px;height:4px;background:#7c5cf0;border-radius:2px;vertical-align:middle;}
   .gantt-save-baseline-btn{margin-left:auto;font-size:10.5px;padding:4px 9px;}
+  .baseline-approval-banner{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    background:#fff1d6;color:#8a5a00;border:1px solid #f0d090;border-radius:8px;
+    padding:9px 12px;margin-bottom:10px;font-size:12.5px;
+  }
+  .baseline-approval-banner b{font-weight:700;}
+  .baseline-approval-actions{display:flex;gap:6px;margin-left:auto;}
   .gantt-live-dot{width:7px;height:7px;border-radius:50%;background:#fff;margin-right:4px;animation:gantt-pulse 1.2s infinite;flex-shrink:0;}
   @keyframes gantt-pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
   .gantt-empty{padding:40px;text-align:center;color:var(--text-dim);font-size:13px;}
@@ -4660,16 +4667,35 @@ function computePlannedStages(record){
 }
 
 let jobBaselinesCache = {};
+let jobPendingBaselineCache = {}; // { parentId: pendingRowOrNull }
 
 async function loadJobBaseline1(parentId){
   if(jobBaselinesCache[parentId] !== undefined) return jobBaselinesCache[parentId];
-  const { data } = await sb.from('so_schedule_baselines').select('stages').eq('parent_id', parentId).eq('baseline_number', 1).maybeSingle();
+  const { data } = await sb.from('so_schedule_baselines').select('stages').eq('parent_id', parentId).eq('baseline_number', 1).eq('status', 'approved').maybeSingle();
   jobBaselinesCache[parentId] = data ? data.stages : null;
   return jobBaselinesCache[parentId];
 }
 
+async function loadJobPendingBaseline(parentId){
+  if(jobPendingBaselineCache[parentId] !== undefined) return jobPendingBaselineCache[parentId];
+  const { data } = await sb.from('so_schedule_baselines').select('id, requested_by, captured_at').eq('parent_id', parentId).eq('status', 'pending').order('captured_at', {ascending:false}).limit(1).maybeSingle();
+  jobPendingBaselineCache[parentId] = data || null;
+  return jobPendingBaselineCache[parentId];
+}
+
+async function refreshGanttPanel(parentId){
+  const jgBody = document.getElementById('jobGanttBody');
+  if(!jgBody || editingId !== parentId) return;
+  const record = rows.find(r => r.id === parentId);
+  if(!record) return;
+  await Promise.all([loadJobBaseline1(parentId), loadJobPendingBaseline(parentId)]);
+  jgBody.innerHTML = renderJobGanttPanel(record);
+  const shell = jgBody.querySelector('.gantt-shell[data-today-scroll]');
+  if(shell) shell.scrollLeft = parseInt(shell.dataset.todayScroll, 10) || 0;
+}
+
 async function saveNewBaseline(parentId){
-  if(!confirm("Save the current plan as a new baseline? This freezes today's projection as a permanent historical reference — it can't be edited or removed afterward.")) return;
+  if(!confirm("Submit the current plan as a new baseline? A supervisor will need to approve it before it becomes official — it can't be edited or removed once approved.")) return;
   const record = rows.find(r => r.id === parentId);
   if(!record) return;
   const subs = subitemsByParent[parentId] || [];
@@ -4686,11 +4712,41 @@ async function saveNewBaseline(parentId){
       stages[type] = { start: planned[type].start, end: planned[type].end };
     }
   });
-  const { data: existing } = await sb.from('so_schedule_baselines').select('baseline_number').eq('parent_id', parentId).order('baseline_number', {ascending:false}).limit(1);
-  const nextNumber = existing && existing.length ? existing[0].baseline_number + 1 : 1;
-  await sb.from('so_schedule_baselines').insert({ parent_id: parentId, baseline_number: nextNumber, stages });
-  alert(`Saved as Baseline ${nextNumber}.`);
+  const requestedBy = getMyDrafteeName() || getFriendlyName(session.user.email);
+  const { error } = await sb.from('so_schedule_baselines').insert({ parent_id: parentId, status: 'pending', requested_by: requestedBy, stages });
+  if(error){ alert("Couldn't submit: " + error.message); return; }
+  alert("Submitted — a supervisor needs to approve this before it becomes an official baseline.");
+  delete jobPendingBaselineCache[parentId];
   await silentReload();
+  await refreshGanttPanel(parentId);
+}
+
+async function approveBaseline(parentId){
+  if(!isSupervisor()){ alert("Only supervisors can approve baselines."); return; }
+  const pending = await loadJobPendingBaseline(parentId);
+  if(!pending){ alert("No pending baseline to approve."); return; }
+  const { data: existing } = await sb.from('so_schedule_baselines').select('baseline_number').eq('parent_id', parentId).eq('status', 'approved').order('baseline_number', {ascending:false}).limit(1);
+  const nextNumber = existing && existing.length ? existing[0].baseline_number + 1 : 1;
+  const approvedBy = getMyDrafteeName() || getFriendlyName(session.user.email);
+  const { error } = await sb.from('so_schedule_baselines').update({ status: 'approved', baseline_number: nextNumber, approved_by: approvedBy, approved_at: new Date().toISOString() }).eq('id', pending.id);
+  if(error){ alert("Couldn't approve: " + error.message); return; }
+  alert(`Approved as Baseline ${nextNumber}.`);
+  delete jobBaselinesCache[parentId];
+  delete jobPendingBaselineCache[parentId];
+  await silentReload();
+  await refreshGanttPanel(parentId);
+}
+
+async function rejectBaseline(parentId){
+  if(!isSupervisor()){ alert("Only supervisors can reject baselines."); return; }
+  const pending = await loadJobPendingBaseline(parentId);
+  if(!pending){ return; }
+  if(!confirm("Reject this baseline request? It will be deleted and can't be recovered.")) return;
+  const { error } = await sb.from('so_schedule_baselines').delete().eq('id', pending.id);
+  if(error){ alert("Couldn't reject: " + error.message); return; }
+  delete jobPendingBaselineCache[parentId];
+  await silentReload();
+  await refreshGanttPanel(parentId);
 }
 
 function renderJobGanttPanel(record){
@@ -4698,6 +4754,7 @@ function renderJobGanttPanel(record){
   if(subs.length === 0) return `<div class="gantt-empty">No sub-processes on this job yet.</div>`;
   const plannedStages = computePlannedStages(record);
   const baseline1 = jobBaselinesCache[record.id];
+  const pendingBaseline = jobPendingBaselineCache[record.id];
 
   const stageOrder = record.requires_client_approval
     ? ['Sales Handover','GA For Approval Prep','__CLIENT_APPROVAL__','Detailing/PDF/DXF Prep','Checking / Release','Production Handover','Cost Analysis']
@@ -4807,11 +4864,20 @@ function renderJobGanttPanel(record){
     `;
   });
 
+  const baselineControlHtml = pendingBaseline
+    ? `<span>⏳ Baseline requested by <b>${escapeHtml(pendingBaseline.requested_by || 'someone')}</b> on ${fmtDate(toLocalISODate(new Date(pendingBaseline.captured_at)))} — awaiting supervisor approval.</span>
+       ${isSupervisor() ? `<div class="baseline-approval-actions">
+         <button class="btn-primary-sm" onclick="approveBaseline('${record.id}')">Approve</button>
+         <button class="btn-secondary" onclick="rejectBaseline('${record.id}')">Reject</button>
+       </div>` : ''}`
+    : `<button class="btn-ghost-sm gantt-save-baseline-btn" onclick="saveNewBaseline('${record.id}')">💾 Save current plan as new baseline</button>`;
+
   return `<div class="gantt-plan-legend">
       <span class="gantt-legend-swatch-ghost"></span> Planned (projected from the last real milestone) &nbsp;&nbsp;
       <span class="gantt-legend-swatch-baseline"></span> Baseline 1 (original committed ETA)
-      <button class="btn-ghost-sm gantt-save-baseline-btn" onclick="saveNewBaseline('${record.id}')">💾 Save current plan as new baseline</button>
+      ${pendingBaseline ? '' : baselineControlHtml}
     </div>
+    ${pendingBaseline ? `<div class="baseline-approval-banner">${baselineControlHtml}</div>` : ''}
   <div class="gantt-shell" data-today-scroll="${scrollToPx}"><div class="gantt-grid-table" style="grid-template-columns:130px 1fr;">
     <div class="gantt-grid-head"><div>Stage</div><div class="gantt-timeline-head">${headerHtml}</div></div>
     ${rowsHtml}
@@ -5035,7 +5101,7 @@ function openModal(id, presetGroup, presetJobType){
   if(jgShell) jgShell.scrollLeft = parseInt(jgShell.dataset.todayScroll, 10) || 0;
 
   if(record){
-    loadJobBaseline1(record.id).then(() => {
+    Promise.all([loadJobBaseline1(record.id), loadJobPendingBaseline(record.id)]).then(() => {
       const jgBody = document.getElementById('jobGanttBody');
       if(jgBody){
         jgBody.innerHTML = renderJobGanttPanel(record);
