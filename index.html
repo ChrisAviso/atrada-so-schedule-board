@@ -742,6 +742,12 @@
   .field input[type=checkbox]{width:auto;margin-right:8px;}
   .checkbox-field{display:flex;align-items:center;font-size:13.5px;margin-top:26px;}
   .modal-foot{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;gap:10px;}
+  .name-picker-modal{max-width:440px;}
+  .name-picker-actions{display:flex;gap:8px;margin-bottom:12px;}
+  .name-picker-actions.hidden{display:none;}
+  .name-picker-list{display:flex;flex-wrap:wrap;gap:8px;}
+  .name-picker-list .toggle-check{flex:0 0 auto;}
+  .name-picker-empty{font-size:13px;color:var(--text-dim);}
   .break-modal-sub{font-size:13px;color:var(--text-dim);}
   #breakCountdown{font-weight:700;color:var(--amber);font-family:'JetBrains Mono',monospace;}
   .log-edit-btn{
@@ -1282,6 +1288,28 @@
     </div>
     <div class="modal-body" id="attendanceSupervisorBody">
       <!-- filled by JS -->
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop hidden" id="namePickerModalBackdrop">
+  <div class="modal name-picker-modal">
+    <div class="modal-head">
+      <h2 id="namePickerTitle">Select names</h2>
+      <button class="modal-close" id="namePickerCloseBtn">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="name-picker-actions hidden" id="namePickerBulkActions">
+        <button type="button" class="btn-ghost" id="namePickerSelectAllBtn">Select all</button>
+        <button type="button" class="btn-ghost" id="namePickerClearBtn">Clear all</button>
+      </div>
+      <div class="name-picker-list" id="namePickerList"></div>
+    </div>
+    <div class="modal-foot">
+      <div class="foot-right" style="margin-left:auto;">
+        <button class="btn-secondary" id="namePickerCancelBtn">Cancel</button>
+        <button class="btn-primary-sm" id="namePickerConfirmBtn">OK</button>
+      </div>
     </div>
   </div>
 </div>
@@ -4901,6 +4929,50 @@ document.getElementById('modalCloseBtn').onclick = closeModal;
 document.getElementById('cancelBtn').onclick = closeModal;
 backdrop.addEventListener('click', e => { if(e.target === backdrop) closeModal(); });
 
+// Reusable name-picker modal: shows a checklist (multi) or single-pick list of exact
+// names instead of a free-text prompt, so selections can never mismatch/typo.
+// Resolves with an array of chosen names, or null if cancelled.
+function openNamePicker({ title, names, multi = true, preselected = null }){
+  return new Promise(resolve => {
+    const npBackdrop = document.getElementById('namePickerModalBackdrop');
+    const listEl = document.getElementById('namePickerList');
+    const bulkEl = document.getElementById('namePickerBulkActions');
+    const titleEl = document.getElementById('namePickerTitle');
+    const confirmBtn = document.getElementById('namePickerConfirmBtn');
+    const cancelBtn = document.getElementById('namePickerCancelBtn');
+    const closeBtn = document.getElementById('namePickerCloseBtn');
+    const selectAllBtn = document.getElementById('namePickerSelectAllBtn');
+    const clearBtn = document.getElementById('namePickerClearBtn');
+
+    titleEl.textContent = title || 'Select names';
+    const preselectSet = new Set(preselected !== null ? preselected : (multi ? names : []));
+    const inputType = multi ? 'checkbox' : 'radio';
+    listEl.innerHTML = names.length ? names.map(n => `
+      <label class="toggle-check">
+        <input type="${inputType}" name="namePickerOption" value="${escapeAttr(n)}" ${preselectSet.has(n) ? 'checked' : ''}>
+        ${escapeHtml(n)}
+      </label>`).join('') : `<p class="name-picker-empty">No names available.</p>`;
+    bulkEl.classList.toggle('hidden', !multi);
+
+    function getSelection(){
+      return Array.from(listEl.querySelectorAll('input:checked')).map(el => el.value);
+    }
+    function cleanup(result){
+      npBackdrop.classList.add('hidden');
+      confirmBtn.onclick = null; cancelBtn.onclick = null; closeBtn.onclick = null;
+      selectAllBtn.onclick = null; clearBtn.onclick = null; npBackdrop.onclick = null;
+      resolve(result);
+    }
+    confirmBtn.onclick = () => cleanup(getSelection());
+    cancelBtn.onclick = () => cleanup(null);
+    closeBtn.onclick = () => cleanup(null);
+    npBackdrop.onclick = (e) => { if(e.target === npBackdrop) cleanup(null); };
+    selectAllBtn.onclick = () => { listEl.querySelectorAll('input').forEach(el => el.checked = true); };
+    clearBtn.onclick = () => { listEl.querySelectorAll('input').forEach(el => el.checked = false); };
+    npBackdrop.classList.remove('hidden');
+  });
+}
+
 document.getElementById('newGroupItemBtn').onclick = () => openModal(null, NEW_ITEM_GROUP, 'SO');
 document.getElementById('newOpptsItemBtn').onclick = () => openModal(null, NEW_OPPTS_GROUP, 'OPPTS');
 
@@ -4910,17 +4982,13 @@ document.getElementById('newInternalCategoryBtn').onclick = async () => {
   const trimmed = (label||'').trim();
   if(!trimmed) return;
   const allNames = (drafteeOptions && drafteeOptions.length) ? drafteeOptions : Object.values(AUTHORIZED_DRAFTEES);
-  const who = prompt(`Who can log time here? Type exact names separated by commas, or type "all" for everyone.\n\nAvailable: ${allNames.join(', ')}`, 'all');
-  if(who === null) return;
-  const whoTrimmed = who.trim();
-  let selectedNames;
-  if(!whoTrimmed || whoTrimmed.toLowerCase() === 'all'){
-    selectedNames = allNames;
-  } else {
-    selectedNames = whoTrimmed.split(',').map(s => s.trim()).filter(Boolean);
-    const invalid = selectedNames.filter(n => !allNames.includes(n));
-    if(invalid.length){ alert("These names don't match exactly, category not created: " + invalid.join(', ')); return; }
-  }
+  const selectedNames = await openNamePicker({
+    title: `Who can log time under "${trimmed}"?`,
+    names: allNames,
+    multi: true,
+    preselected: allNames
+  });
+  if(selectedNames === null) return;
   const { data: newRow, error } = await sb.from('so_schedule')
     .insert({ item_name: trimmed, is_internal: true, group_name: INTERNAL_GROUP_NAME, job_type: 'SO' })
     .select('id').single();
@@ -4938,10 +5006,9 @@ async function addPersonToInternalCategory(jobId){
   const allNames = (drafteeOptions && drafteeOptions.length) ? drafteeOptions : Object.values(AUTHORIZED_DRAFTEES);
   const available = allNames.filter(n => !existing.includes(n));
   if(!available.length){ alert('Everyone is already on this category.'); return; }
-  const picked = prompt(`Add who to this category?\n\nAvailable: ${available.join(', ')}`, available[0]);
-  const trimmed = (picked||'').trim();
-  if(!trimmed) return;
-  if(!available.includes(trimmed)){ alert('Please enter one of the exact names listed.'); return; }
+  const picked = await openNamePicker({ title: 'Add who to this category?', names: available, multi: false });
+  if(!picked || !picked.length) return;
+  const trimmed = picked[0];
   const { error } = await sb.from('so_subitems').insert({ parent_id: jobId, subitem_type: 'Internal Time', draftee: trimmed, status: 'Not Started' });
   if(error){ alert("Couldn't add: " + error.message); return; }
   await loadData();
