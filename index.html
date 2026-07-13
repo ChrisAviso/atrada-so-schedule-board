@@ -201,6 +201,24 @@
   }
   .upnext-start-btn:hover{background:var(--primary);color:white;}
 
+  .teamsched-panel{
+    background:#eef2ff;border:1px solid var(--primary);border-radius:10px;padding:12px 16px;margin-bottom:18px;
+  }
+  .teamsched-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--primary-dark);margin-bottom:8px;}
+  .teamsched-rows{max-height:280px;overflow-y:auto;}
+  .teamsched-row{
+    display:grid;grid-template-columns:140px 1fr 170px 70px;gap:12px;align-items:center;
+    padding:5px 0;font-size:13px;border-bottom:1px solid rgba(11,92,255,.12);cursor:pointer;
+  }
+  .teamsched-row:last-child{border-bottom:none;}
+  .teamsched-row:hover{background:rgba(11,92,255,.06);}
+  .teamsched-name{font-weight:700;color:var(--text);cursor:pointer;}
+  .teamsched-name:hover{color:var(--primary);text-decoration:underline;}
+  .teamsched-task{color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .teamsched-stage{color:var(--text-dim);font-weight:400;}
+  .teamsched-dates{font-family:'JetBrains Mono',monospace;color:var(--text-dim);font-size:12px;text-align:right;}
+  .teamsched-more{font-size:10.5px;font-weight:700;color:var(--text-dim);background:var(--gray-pill);border-radius:6px;padding:2px 7px;white-space:nowrap;text-align:center;}
+
   .break-panel{
     background:#fff8ed;border:1px solid var(--amber);border-radius:10px;padding:12px 16px;margin-bottom:18px;
   }
@@ -2636,6 +2654,49 @@ function upNextPanelHtml(){
   </div>`;
 }
 
+function teamScheduleSummaryHtml(){
+  if(!isSupervisor()) return '';
+
+  const all = getAllTaskAssignments();
+  const byName = {};
+  all.forEach(t => {
+    if((t.sub.status||'Not Started') === 'Done') return;
+    const name = taskAssigneeNames(t.sub)[0];
+    if(!name) return;
+    (byName[name] = byName[name] || []).push(t);
+  });
+
+  const summaries = Object.keys(byName).map(name => {
+    const list = byName[name].slice().sort((a,b) => taskOrderDate(a.sub).localeCompare(taskOrderDate(b.sub)));
+    return { name, next: list[0], count: list.length };
+  });
+  if(!summaries.length) return '';
+  summaries.sort((a,b) => taskOrderDate(a.next.sub).localeCompare(taskOrderDate(b.next.sub)));
+
+  const rowsHtml = summaries.map(s => {
+    const { sub, job } = s.next;
+    const label = job.is_internal
+      ? `<span class="taskboard-tag-internal">Internal</span>${escapeHtml(job.item_name||'—')}`
+      : `${escapeHtml(job.so_number || '—')} — ${escapeHtml(job.company_name || job.item_name || '')}`;
+    const subLabel = sub.subitem_type === 'Internal Time' ? 'Time log' : sub.subitem_type;
+    const dateRange = (sub.schedule_start_date || sub.schedule_end_date)
+      ? `${fmtDate(sub.schedule_start_date)} → ${fmtDate(sub.schedule_end_date)}`
+      : 'Not scheduled';
+    const moreTag = s.count > 1 ? `<span class="teamsched-more">+${s.count-1} more</span>` : '';
+    return `<div class="teamsched-row" onclick="scrollToItem('${job.id}')" title="Jump to this item">
+      <span class="teamsched-name" onclick="event.stopPropagation(); openTaskBoard(); setTaskBoardFilter('${escapeAttr(s.name)}');" title="Open ${escapeAttr(s.name)}'s full task board">${escapeHtml(s.name)}</span>
+      <span class="teamsched-task">${label} <span class="teamsched-stage">— ${escapeHtml(subLabel)}</span></span>
+      <span class="teamsched-dates">${dateRange}</span>
+      ${moreTag}
+    </div>`;
+  }).join('');
+
+  return `<div class="teamsched-panel">
+    <div class="teamsched-title">📋 Team Schedule — What's Next, In Order</div>
+    <div class="teamsched-rows">${rowsHtml}</div>
+  </div>`;
+}
+
 function onBreakPanelHtml(){
   const breakEntries = [];
   const now = new Date();
@@ -2992,7 +3053,7 @@ let breakPromptActive = false;
 let breakAutoOffTimer = null;
 
 function refreshTopPanels(){
-  document.getElementById('activePanelRoot').innerHTML = attendancePanelHtml() + notClockedInHtml() + activePanelHtml() + upNextPanelHtml() + onBreakPanelHtml() + openSoSummaryHtml();
+  document.getElementById('activePanelRoot').innerHTML = attendancePanelHtml() + notClockedInHtml() + activePanelHtml() + upNextPanelHtml() + teamScheduleSummaryHtml() + onBreakPanelHtml() + openSoSummaryHtml();
 }
 
 function startBreakScheduler(){
