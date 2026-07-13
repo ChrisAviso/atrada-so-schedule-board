@@ -264,13 +264,13 @@
   .daily-breakdown-table{font-size:11.5px;margin-top:4px;box-shadow:none;}
   .daily-breakdown-table thead th{background:#eef0f7;color:var(--text-dim);font-size:10px;}
   .daily-breakdown-table tbody td{padding:6px 8px;}
-  .hrs-detail-trigger{position:relative;cursor:help;border-bottom:1px dotted var(--text-dim);}
-  .hrs-detail-tooltip{
-    display:none;position:absolute;bottom:calc(100% + 6px);right:0;z-index:60;
+  .hrs-detail-trigger{cursor:help;border-bottom:1px dotted var(--text-dim);}
+  .hrs-detail-tooltip-fixed{
+    display:none;position:fixed;z-index:500;pointer-events:none;
     background:#1d2233;color:#fff;border-radius:8px;padding:8px 10px;min-width:220px;
     box-shadow:0 8px 24px rgba(0,0,0,.3);font-size:11px;text-align:left;font-weight:400;
   }
-  .hrs-detail-trigger:hover .hrs-detail-tooltip{display:block;}
+  .hrs-detail-tooltip-fixed.visible{display:block;}
   .hrs-detail-row{display:flex;justify-content:space-between;gap:14px;padding:3px 0;white-space:nowrap;}
   .hrs-detail-row span:first-child{color:#fff;font-weight:600;}
   .hrs-detail-row span:nth-child(2){color:#b9bdd6;flex:1;text-align:left;padding:0 8px;}
@@ -1334,6 +1334,8 @@
     </div>
   </div>
 </div>
+
+<div id="hrsDetailTooltip" class="hrs-detail-tooltip-fixed"></div>
 
 <div class="modal-backdrop hidden" id="dailyCheckinModalBackdrop">
   <div class="modal daily-checkin-modal">
@@ -3291,8 +3293,26 @@ function renderWorkedHoursCell(name, dateStr, hours){
   const breakdown = getDailyJobBreakdown(name, dateStr);
   if(!breakdown.length) return hours.toFixed(2);
   const rowsHtml = breakdown.map(b => `<div class="hrs-detail-row"><span>${escapeHtml(b.so)}</span><span>${escapeHtml(b.process)}</span><span>${b.hours.toFixed(2)}</span></div>`).join('');
-  return `<span class="hrs-detail-trigger">${hours.toFixed(2)}<div class="hrs-detail-tooltip"><div class="hrs-detail-row hrs-detail-head"><span>SO</span><span>Process</span><span>Hrs</span></div>${rowsHtml}</div></span>`;
+  const tipHtml = `<div class="hrs-detail-row hrs-detail-head"><span>SO</span><span>Process</span><span>Hrs</span></div>${rowsHtml}`;
+  return `<span class="hrs-detail-trigger" data-tip="${escapeAttr(tipHtml)}">${hours.toFixed(2)}</span>`;
 }
+
+// Shared fixed-position tooltip: lives outside the modal's scrollable DOM so it can
+// never get clipped by an ancestor's overflow, regardless of where the trigger sits.
+document.addEventListener('mouseover', e => {
+  const trigger = e.target.closest('.hrs-detail-trigger');
+  if(!trigger) return;
+  const tip = document.getElementById('hrsDetailTooltip');
+  tip.innerHTML = trigger.dataset.tip || '';
+  const rect = trigger.getBoundingClientRect();
+  tip.style.left = Math.min(rect.right, window.innerWidth - 20) + 'px';
+  tip.style.top = Math.max(rect.top - 8, 8) + 'px';
+  tip.style.transform = 'translate(-100%, -100%)';
+  tip.classList.add('visible');
+});
+document.addEventListener('mouseout', e => {
+  if(e.target.closest('.hrs-detail-trigger')) document.getElementById('hrsDetailTooltip').classList.remove('visible');
+});
 
 // Builds the per-day rows for one draftee across the current fortnight (weekdays only,
 // matching the Mon–Fri assumption used elsewhere e.g. computeTotalBillableHours).
