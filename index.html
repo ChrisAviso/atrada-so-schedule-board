@@ -1085,7 +1085,7 @@
         <button class="icon-btn" id="printViewBtn">🖨 Print View</button>
         <button class="btn-primary-sm" id="newGroupItemBtn">+ New SO Item</button>
         <button class="btn-primary-sm btn-oppts" id="newOpptsItemBtn">+ New OPPTS/PROJTS Job</button>
-        <button class="icon-btn" id="newInternalCategoryBtn" style="display:none;">+ New Internal Category</button>
+        <button class="icon-btn" id="newInternalCategoryBtn">+ New Internal Category</button>
       </div>
     </div>
 
@@ -2828,8 +2828,6 @@ let breakAutoOffTimer = null;
 
 function refreshTopPanels(){
   document.getElementById('activePanelRoot').innerHTML = attendancePanelHtml() + notClockedInHtml() + activePanelHtml() + onBreakPanelHtml() + openSoSummaryHtml();
-  const internalBtn = document.getElementById('newInternalCategoryBtn');
-  if(internalBtn) internalBtn.style.display = isSupervisor() ? '' : 'none';
 }
 
 function startBreakScheduler(){
