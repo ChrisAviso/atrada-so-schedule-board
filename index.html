@@ -1473,6 +1473,10 @@ const INTERNAL_GROUP_ORDER = [
 ];
 const GROUP_ORDER = [...SO_STAGE_GROUP_ORDER, ...OPPTS_GROUP_ORDER, ...INTERNAL_GROUP_ORDER];
 const GROUP_COLORS = ["#546e7a","#3a5ceb","#e0921a","#12b886","#f5a623","#7c5cf0","#0aa3a3","#0da374","#2c9c4a","#9c6b2c","#5c6bc0"];
+// Synthetic, additive-only view: every open (non-Done) real SO job across all 7 stage groups, purely
+// for aging-based triage. Deliberately NOT in GROUP_ORDER — it never changes any job's actual group_name,
+// so it doesn't shift the color assignment of the real stage groups.
+const CONSOLIDATED_GROUP_NAME = "Consolidated Sales Orders";
 const NEW_ITEM_GROUP = null;
 const NEW_OPPTS_GROUP = "OPPTS/PROJTS Cost Sheet Prep";
 
@@ -2304,8 +2308,19 @@ function renderBoard(){
   });
   SO_STAGE_GROUP_ORDER.forEach(g => { if(!groups[g]) groups[g] = []; });
 
+  // Consolidated view: pulls every open (non-Done) real SO job from the 7 stage groups into one place
+  // for aging-based triage. Purely additive — those jobs still appear in their normal stage group too.
+  const consolidatedItems = SO_STAGE_GROUP_ORDER
+    .filter(g => g !== 'Done')
+    .flatMap(g => groups[g] || []);
+  if(consolidatedItems.length){
+    groups[CONSOLIDATED_GROUP_NAME] = consolidatedItems.slice();
+  }
+
   let groupNames = Object.keys(groups);
   groupNames.sort((a,b) => {
+    if(a === CONSOLIDATED_GROUP_NAME) return -1;
+    if(b === CONSOLIDATED_GROUP_NAME) return 1;
     const ia = GROUP_ORDER.indexOf(a), ib = GROUP_ORDER.indexOf(b);
     if(ia === -1 && ib === -1) return a.localeCompare(b);
     if(ia === -1) return 1;
@@ -2324,9 +2339,11 @@ function renderBoard(){
   const globalAvgDifot = globalDifotVals.length ? (globalDifotVals.reduce((a,b)=>a+b,0)/globalDifotVals.length) : null;
 
   root.innerHTML = groupNames.map((g, idx) => {
-    const color = GROUP_COLORS[GROUP_ORDER.indexOf(g) >= 0 ? GROUP_ORDER.indexOf(g) % GROUP_COLORS.length : idx % GROUP_COLORS.length];
+    const isConsolidated = g === CONSOLIDATED_GROUP_NAME;
+    const color = isConsolidated ? 'var(--topbar-bg)' : GROUP_COLORS[GROUP_ORDER.indexOf(g) >= 0 ? GROUP_ORDER.indexOf(g) % GROUP_COLORS.length : idx % GROUP_COLORS.length];
     const items = groups[g];
-    if(sortBy === 'aging_desc' || sortBy === '') items.sort((a,b) => (b.computed_aging_days??-Infinity) - (a.computed_aging_days??-Infinity));
+    if(isConsolidated) items.sort((a,b) => (b.computed_aging_days??-Infinity) - (a.computed_aging_days??-Infinity));
+    else if(sortBy === 'aging_desc' || sortBy === '') items.sort((a,b) => (b.computed_aging_days??-Infinity) - (a.computed_aging_days??-Infinity));
     else if(sortBy === 'difot_desc') items.sort((a,b) => (b.computed_difot_10days??-Infinity) - (a.computed_difot_10days??-Infinity));
     else if(sortBy === 'sales_desc') items.sort((a,b) => (Number(b.project_sales)||0) - (Number(a.project_sales)||0));
     const scrollId = 'scroll_' + idx;
