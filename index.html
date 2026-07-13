@@ -1514,6 +1514,7 @@ let hoursBankBalance = {};      // { drafteeName: balanceHours }
 let sickLeaveYtd = {};          // { drafteeName: { used, remaining, fyStart } }
 let dailyAttendancePopupShown = false;
 let individualWindowViewedName = null; // non-null when a supervisor is viewing a specific draftee's own window
+const ESTIMATOR_NAMES = ['Jessica Visca', 'Jochelle Paet'];
 
 /* ---------------- AUTH ---------------- */
 const authTitle = document.getElementById('authTitle');
@@ -2977,7 +2978,10 @@ function renderAttendanceReconBody(){
   const sick = sickLeaveYtd[viewedName] || { used: 0, remaining: 10 };
 
   if(myDecisions.length === 0){
-    document.getElementById('attendanceReconBody').innerHTML = `<p style="color:var(--text-dim);font-size:13px;">No shortfall days this fortnight${supervisorViewing ? ` for ${escapeHtml(viewedName)}` : ''} — nothing to confirm. 🎉</p>`;
+    document.getElementById('attendanceReconBody').innerHTML = `
+      ${supervisorViewing ? `<div style="margin-bottom:12px;"><span class="attendance-draftee-link" onclick="backToSupervisorTable()">← Back to team view</span></div>` : ''}
+      <div style="margin-bottom:12px;"><button class="btn-primary-sm" onclick="openInvoiceForDraftee('${viewedName}')">🖨 Print Invoice</button></div>
+      <p style="color:var(--text-dim);font-size:13px;">No shortfall days this fortnight${supervisorViewing ? ` for ${escapeHtml(viewedName)}` : ''} — nothing to confirm. 🎉</p>`;
     return;
   }
 
@@ -3010,10 +3014,82 @@ function renderAttendanceReconBody(){
 
   document.getElementById('attendanceReconBody').innerHTML = `
     ${supervisorViewing ? `<div style="margin-bottom:12px;"><span class="attendance-draftee-link" onclick="backToSupervisorTable()">← Back to team view</span></div>` : `<div class="attendance-deadline-banner">⏰ Please confirm by end of day Thursday (day before payday). If you haven't chosen by then, a supervisor will fill it in for you.</div>`}
+    <div style="margin-bottom:12px;"><button class="btn-primary-sm" onclick="openInvoiceForDraftee('${viewedName}')">🖨 Print Invoice</button></div>
     <table class="attendance-table">
       <thead><tr><th>Date</th><th>${supervisorViewing ? 'Choice' : 'Your Choice'}</th><th></th></tr></thead>
       <tbody>${rowsHtml}</tbody>
     </table>`;
+}
+
+/* ---- Fortnight invoice (print/PDF) ---- */
+async function computeTotalBillableHours(drafteeName, fnStart){
+  const fnEndDate = new Date(fnStart+'T00:00:00'); fnEndDate.setDate(fnEndDate.getDate()+13);
+  const fnEndStr = toLocalISODate(fnEndDate);
+  const { data: dailyRows } = await sb.from('so_daily_hours').select('work_date, hours_worked')
+    .eq('draftee_name', drafteeName).gte('work_date', fnStart).lte('work_date', fnEndStr);
+  const hoursByDate = {};
+  (dailyRows||[]).forEach(r => { hoursByDate[r.work_date] = Number(r.hours_worked); });
+
+  const decisionByDate = {};
+  attendanceDecisions
+    .filter(d => d.draftee_name === drafteeName && d.fortnight_start === fnStart)
+    .forEach(d => { decisionByDate[d.work_date] = d; });
+
+  let total = 0;
+  const start = new Date(fnStart+'T00:00:00');
+  for(let i=0;i<14;i++){
+    const day = new Date(start); day.setDate(day.getDate()+i);
+    if(day.getDay() === 0 || day.getDay() === 6) continue; // skip weekends
+    const dateStr = toLocalISODate(day);
+    const worked = hoursByDate[dateStr] || 0;
+    const decision = decisionByDate[dateStr];
+    if(!decision){
+      total += Math.min(worked, 8);
+    } else if(decision.status !== 'pending'){
+      total += 8;
+    } else {
+      total += worked; // top-up not yet confirmed, count only what's certain
+    }
+  }
+  return total;
+}
+
+async function buildInvoiceHtml(drafteeName, totalHours, periodLabel, paydayLabel, generatedLabel){
+  const resp = await fetch('invoice_template.html?v=' + Date.now());
+  let html = await resp.text();
+  const isEstimator = ESTIMATOR_NAMES.includes(drafteeName);
+  html = html
+    .replace(/__DRAFTEE_NAME__/g, drafteeName)
+    .replace('__TOTAL_HOURS_NUM__', totalHours.toFixed(2))
+    .replace(/__TOTAL_HOURS__/g, totalHours.toFixed(2))
+    .replace('__PERIOD_LABEL__', periodLabel)
+    .replace('__PAYDAY_LABEL__', paydayLabel)
+    .replace('__GENERATED_LABEL__', generatedLabel)
+    .replace('__DRAFTEE_SELECTED__', isEstimator ? '' : 'selected')
+    .replace('__ESTIMATOR_SELECTED__', isEstimator ? 'selected' : '');
+  return html;
+}
+
+async function openInvoiceForDraftee(drafteeName){
+  const invoiceWindow = window.open('', '_blank');
+  if(!invoiceWindow){ alert('Please allow popups to generate the invoice.'); return; }
+  invoiceWindow.document.write('<p style="font-family:sans-serif;padding:40px;color:#585d73;">Generating invoice…</p>');
+
+  const fnStart = currentFortnightStart();
+  const fnStartDate = new Date(fnStart+'T00:00:00');
+  const fnEndDate = new Date(fnStartDate); fnEndDate.setDate(fnEndDate.getDate()+13);
+  const paydayDate = new Date(fnStartDate); paydayDate.setDate(paydayDate.getDate()+15);
+  const fmtDay = (d, withYear) => d.toLocaleDateString('en-AU', {weekday:'short', day:'numeric', month:'short', year: withYear?'numeric':undefined});
+  const periodLabel = `${fmtDay(fnStartDate,false)} – ${fmtDay(fnEndDate,true)}`;
+  const paydayLabel = fmtDay(paydayDate, true);
+  const generatedLabel = fmtDay(new Date(), true);
+
+  const totalHours = await computeTotalBillableHours(drafteeName, fnStart);
+  const html = await buildInvoiceHtml(drafteeName, totalHours, periodLabel, paydayLabel, generatedLabel);
+
+  invoiceWindow.document.open();
+  invoiceWindow.document.write(html);
+  invoiceWindow.document.close();
 }
 
 function selectAttendanceChoice(decisionId, choice){
