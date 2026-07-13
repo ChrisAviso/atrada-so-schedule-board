@@ -183,6 +183,24 @@
   }
   .active-panel-stop-btn:hover{background:var(--green);color:white;}
 
+  .upnext-panel{
+    background:#eef2ff;border:1px solid var(--primary);border-radius:10px;padding:12px 16px;margin-bottom:18px;
+  }
+  .upnext-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--primary-dark);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+  .upnext-row{
+    display:grid;grid-template-columns:1fr 170px 90px;gap:14px;align-items:center;
+    padding:4px 0;font-size:13px;cursor:pointer;
+  }
+  .upnext-row:hover{background:rgba(11,92,255,.06);}
+  .upnext-item{font-weight:600;color:var(--text);}
+  .upnext-stage{color:var(--text-dim);font-size:12px;margin-top:2px;}
+  .upnext-dates{font-family:'JetBrains Mono',monospace;color:var(--text-dim);font-size:12px;text-align:right;}
+  .upnext-start-btn{
+    font-size:11.5px;font-weight:700;color:var(--primary);background:white;border:1.5px solid var(--primary);
+    border-radius:6px;padding:4px 8px;cursor:pointer;white-space:nowrap;
+  }
+  .upnext-start-btn:hover{background:var(--primary);color:white;}
+
   .break-panel{
     background:#fff8ed;border:1px solid var(--amber);border-radius:10px;padding:12px 16px;margin-bottom:18px;
   }
@@ -816,8 +834,10 @@
   .taskboard-card:hover{box-shadow:var(--shadow);border-color:var(--primary);}
   .taskboard-card-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px;line-height:1.3;}
   .taskboard-card-sub{font-size:12px;color:var(--text-dim);}
-  .taskboard-card-meta{display:flex;justify-content:flex-end;align-items:center;margin-top:7px;min-height:1px;}
-  .taskboard-assignee{font-size:11px;font-weight:700;color:var(--primary);background:#eef2ff;border-radius:8px;padding:2px 8px;}
+  .taskboard-card-dates{font-size:11px;color:var(--text-dim);margin-top:4px;font-family:'JetBrains Mono',monospace;}
+  .taskboard-card-meta{display:flex;justify-content:space-between;align-items:center;margin-top:7px;min-height:1px;gap:6px;}
+  .taskboard-seq{font-size:10.5px;font-weight:700;color:var(--primary-dark);background:#eef2ff;border-radius:6px;padding:2px 7px;white-space:nowrap;}
+  .taskboard-assignee{font-size:11px;font-weight:700;color:var(--primary);background:#eef2ff;border-radius:8px;padding:2px 8px;margin-left:auto;}
   .taskboard-tag-internal{
     font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;
     color:var(--green);background:#e8f9f2;border-radius:6px;padding:1px 6px;margin-right:5px;
@@ -2576,6 +2596,46 @@ function activePanelHtml(){
   </div>`;
 }
 
+function upNextPanelHtml(){
+  const myName = getMyDrafteeName();
+  if(!myName) return '';
+
+  const amClockedIn = Object.values(subitemsByParent).flat().some(s => s.clock_running && taskAssigneeNames(s).includes(myName));
+  if(amClockedIn) return '';
+
+  const myTasks = [];
+  (rows||[]).forEach(r => {
+    (subitemsByParent[r.id]||[]).forEach(s => {
+      if((s.status||'Not Started') !== 'Done' && taskAssigneeNames(s).includes(myName)){
+        myTasks.push({ sub: s, job: r });
+      }
+    });
+  });
+  if(!myTasks.length) return '';
+
+  myTasks.sort((a,b) => taskOrderDate(a.sub).localeCompare(taskOrderDate(b.sub)));
+  const next = myTasks[0];
+  const label = next.job.is_internal
+    ? `<span class="taskboard-tag-internal">Internal</span>${escapeHtml(next.job.item_name||'—')}`
+    : `${escapeHtml(next.job.so_number || '—')} — ${escapeHtml(next.job.company_name || next.job.item_name || '')}`;
+  const subLabel = next.sub.subitem_type === 'Internal Time' ? 'Time log' : next.sub.subitem_type;
+  const dateRange = (next.sub.schedule_start_date || next.sub.schedule_end_date)
+    ? `${fmtDate(next.sub.schedule_start_date)} → ${fmtDate(next.sub.schedule_end_date)}`
+    : 'Not scheduled';
+
+  return `<div class="upnext-panel">
+    <div class="upnext-title">👉 Up Next${myTasks.length>1 ? ` (+${myTasks.length-1} more queued)` : ''}</div>
+    <div class="upnext-row" onclick="scrollToItem('${next.job.id}')" title="Jump to this item">
+      <div class="upnext-main">
+        <div class="upnext-item">${label}</div>
+        <div class="upnext-stage">${escapeHtml(subLabel)}</div>
+      </div>
+      <div class="upnext-dates">${dateRange}</div>
+      <button class="upnext-start-btn" onclick="event.stopPropagation(); toggleClock('${next.sub.id}')">▶ Start</button>
+    </div>
+  </div>`;
+}
+
 function onBreakPanelHtml(){
   const breakEntries = [];
   const now = new Date();
@@ -2932,7 +2992,7 @@ let breakPromptActive = false;
 let breakAutoOffTimer = null;
 
 function refreshTopPanels(){
-  document.getElementById('activePanelRoot').innerHTML = attendancePanelHtml() + notClockedInHtml() + activePanelHtml() + onBreakPanelHtml() + openSoSummaryHtml();
+  document.getElementById('activePanelRoot').innerHTML = attendancePanelHtml() + notClockedInHtml() + activePanelHtml() + upNextPanelHtml() + onBreakPanelHtml() + openSoSummaryHtml();
 }
 
 function startBreakScheduler(){
@@ -5606,7 +5666,28 @@ function getAllTaskAssignments(){
   return list;
 }
 
-function taskCardHtml(item, showAssignee){
+function taskOrderDate(sub){
+  return sub.schedule_start_date || sub.schedule_end_date || '9999-99-99';
+}
+
+// Per-person queue order, among not-yet-done tasks, earliest schedule first — "do this 1st, 2nd, …"
+function computeTaskSeqMap(scoped){
+  const byName = {};
+  scoped.forEach(t => {
+    if((t.sub.status||'Not Started') === 'Done') return;
+    const name = taskAssigneeNames(t.sub)[0];
+    if(!name) return;
+    (byName[name] = byName[name] || []).push(t);
+  });
+  const seqMap = {};
+  Object.values(byName).forEach(list => {
+    list.sort((a,b) => taskOrderDate(a.sub).localeCompare(taskOrderDate(b.sub)));
+    list.forEach((t, idx) => { seqMap[t.sub.id] = { seq: idx+1, total: list.length }; });
+  });
+  return seqMap;
+}
+
+function taskCardHtml(item, showAssignee, seqInfo){
   const { sub, job } = item;
   const todayStr = todayLocalISO();
   const overdue = !job.is_internal && sub.status !== 'Done' && sub.schedule_end_date && sub.schedule_end_date < todayStr;
@@ -5614,11 +5695,16 @@ function taskCardHtml(item, showAssignee){
     ? `<span class="taskboard-tag-internal">Internal</span>${escapeHtml(job.item_name||'—')}`
     : `${escapeHtml(job.so_number || '—')} — ${escapeHtml(job.company_name || job.item_name || '')}`;
   const subLabel = sub.subitem_type === 'Internal Time' ? 'Time log' : sub.subitem_type;
+  const dateRangeHtml = (sub.schedule_start_date || sub.schedule_end_date)
+    ? `<div class="taskboard-card-dates">${fmtDate(sub.schedule_start_date)} → ${fmtDate(sub.schedule_end_date)}</div>`
+    : '';
+  const seqBadge = seqInfo ? `<span class="taskboard-seq" title="Order in the queue, earliest schedule first">#${seqInfo.seq} of ${seqInfo.total}</span>` : '';
   const assignee = showAssignee ? `<span class="taskboard-assignee">${escapeHtml(sub.draftee||'—')}</span>` : '';
   return `<div class="taskboard-card ${overdue?'taskboard-overdue':''}" onclick="closeTaskBoard(); openModal('${job.id}');">
     <div class="taskboard-card-title">${titleHtml}</div>
     <div class="taskboard-card-sub">${escapeHtml(subLabel)}</div>
-    <div class="taskboard-card-meta">${assignee}</div>
+    ${dateRangeHtml}
+    <div class="taskboard-card-meta">${seqBadge}${assignee}</div>
   </div>`;
 }
 
@@ -5644,11 +5730,12 @@ function renderTaskBoard(){
     : (supervisor ? all : all.filter(t => taskAssigneeNames(t.sub).includes(myName)));
 
   const showAssignee = supervisor && !taskBoardFilterName;
+  const seqMap = computeTaskSeqMap(scoped);
   const statuses = ['Not Started','In Progress','On-Hold','Done'];
   const cols = statuses.map(st => {
     const items = scoped.filter(t => (t.sub.status||'Not Started') === st)
-      .sort((a,b) => (a.sub.schedule_end_date||'9999-99-99').localeCompare(b.sub.schedule_end_date||'9999-99-99'));
-    const cards = items.map(t => taskCardHtml(t, showAssignee)).join('') || `<div class="taskboard-empty">Nothing here</div>`;
+      .sort((a,b) => taskOrderDate(a.sub).localeCompare(taskOrderDate(b.sub)));
+    const cards = items.map(t => taskCardHtml(t, showAssignee, seqMap[t.sub.id])).join('') || `<div class="taskboard-empty">Nothing here</div>`;
     return `<div class="taskboard-col">
       <div class="taskboard-col-header"><span>${st}</span><span class="taskboard-count">${items.length}</span></div>
       <div class="taskboard-col-body">${cards}</div>
