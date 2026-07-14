@@ -2609,7 +2609,7 @@ function notClockedInHtml(){
   const openItems = rows.filter(r => !r.actual_release_to_prodn_date);
   const assignedNames = new Set();
   openItems.forEach(r => {
-    (r.draftee||'').split(',').map(s=>s.trim()).filter(Boolean).forEach(n => assignedNames.add(n));
+    (r.draftee||'').split(',').map(s=>s.trim()).filter(Boolean).forEach(n => { if(n !== 'To Be Confirmed') assignedNames.add(n); });
   });
   if(assignedNames.size === 0) return '';
 
@@ -2688,8 +2688,9 @@ function teamScheduleSummaryHtml(){
   const byName = {};
   all.forEach(t => {
     if((t.sub.status||'Not Started') === 'Done') return;
+    if(t.job.project_status === 'Awaiting Client Approval') return; // nothing actionable until client approves — skip to next hot job by aging
     const name = taskAssigneeNames(t.sub)[0];
-    if(!name) return;
+    if(!name || name === 'To Be Confirmed') return;
     (byName[name] = byName[name] || []).push(t);
   });
 
