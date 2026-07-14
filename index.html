@@ -533,6 +533,9 @@
   .consolidated-group-pill{
     display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;color:white;white-space:nowrap;
   }
+  .baseline-badge-row{margin-top:5px;display:flex;gap:5px;flex-wrap:wrap;align-items:center;}
+  .baseline-number-pill{font-size:10px;font-weight:700;color:var(--text-dim);background:var(--gray-pill);border-radius:6px;padding:2px 7px;white-space:nowrap;}
+  .baseline-over-badge{font-size:10px;font-weight:700;color:var(--red);background:#fdeaea;border-radius:6px;padding:2px 7px;white-space:nowrap;}
   tbody td{padding:11px 14px;white-space:nowrap;}
   td.item-name{font-weight:600;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   td.so-number-cell{width:180px;min-width:180px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}
@@ -1652,6 +1655,7 @@ let rows = [];
 let subitemsByParent = {};
 let drafteeRowSeq = {}; // { rowId: {seq, total} } — this row's position in its draftee's overall job queue, ordered by schedule/target date
 let logsBySubitem = {};
+let baselinesByParent = {}; // { parentId: { number, stages } } — latest APPROVED baseline only
 let salesPersonOptions = [];
 let drafteeOptions = [];
 let filterDraftee = '';
@@ -2055,6 +2059,12 @@ async function loadData(){
     });
   }
 
+  const { data: baselineData } = await sb.from('so_schedule_baselines').select('parent_id, baseline_number, stages').eq('status', 'approved').order('baseline_number', {ascending:true});
+  baselinesByParent = {};
+  if(baselineData){
+    baselineData.forEach(b => { baselinesByParent[b.parent_id] = { number: b.baseline_number, stages: b.stages }; });
+  }
+
   const { data: lookupData } = await sb.from('so_lookup_names').select('*').order('name', {ascending:true});
   if(lookupData){
     salesPersonOptions = lookupData.filter(l => l.category === 'sales_person').map(l => l.name);
@@ -2174,6 +2184,12 @@ async function silentReload(){
   logsBySubitem = {};
   if(!logError && logData){
     logData.forEach(l => { (logsBySubitem[l.subitem_id] = logsBySubitem[l.subitem_id] || []).push(l); });
+  }
+
+  const { data: baselineData } = await sb.from('so_schedule_baselines').select('parent_id, baseline_number, stages').eq('status', 'approved').order('baseline_number', {ascending:true});
+  baselinesByParent = {};
+  if(baselineData){
+    baselineData.forEach(b => { baselinesByParent[b.parent_id] = { number: b.baseline_number, stages: b.stages }; });
   }
 
   const { data: lookupData } = await sb.from('so_lookup_names').select('*').order('name', {ascending:true});
@@ -2854,7 +2870,28 @@ function rowHtml(r, opts){
     const rowGroupLabel = (r.job_type !== 'OPPTS' && !r.group_name) ? computeCurrentStageGroup(r) : (r.group_name || 'No group');
     const groupColorIdx = GROUP_ORDER.indexOf(rowGroupLabel);
     const groupColor = groupColorIdx >= 0 ? GROUP_COLORS[groupColorIdx % GROUP_COLORS.length] : '#8a8fb0';
-    const cellGroup = `<td><span class="consolidated-group-pill" style="background:${groupColor}">${escapeHtml(rowGroupLabel)}</span></td>`;
+
+    let baselineBadgesHtml = '';
+    const baseline = baselinesByParent[r.id];
+    if(baseline){
+      const baselineLookupType = rowGroupLabel === 'Awaiting Client Approval' ? 'GA For Approval Prep' : rowGroupLabel;
+      const baselineStage = baseline.stages ? baseline.stages[baselineLookupType] : null;
+      let overBadge = '';
+      if(baselineStage && baselineStage.end){
+        const liveSubs = (subitemsByParent[r.id]||[]).filter(s =>
+          s.subitem_type === baselineLookupType && s.status !== 'Done' && s.schedule_end_date
+        );
+        if(liveSubs.length){
+          const latestLiveEnd = liveSubs.reduce((max,s) => s.schedule_end_date > max ? s.schedule_end_date : max, liveSubs[0].schedule_end_date);
+          if(latestLiveEnd > baselineStage.end){
+            overBadge = `<span class="baseline-over-badge" title="Currently due ${fmtDate(latestLiveEnd)}, vs Baseline ${baseline.number}'s ${fmtDate(baselineStage.end)}">⚠ Over Baseline</span>`;
+          }
+        }
+      }
+      baselineBadgesHtml = `<div class="baseline-badge-row"><span class="baseline-number-pill">Baseline ${baseline.number}</span>${overBadge}</div>`;
+    }
+
+    const cellGroup = `<td><span class="consolidated-group-pill" style="background:${groupColor}">${escapeHtml(rowGroupLabel)}</span>${baselineBadgesHtml}</td>`;
     bodyCells = [cellSoNumber, cellSubtoggle, cellCompany, cellItem, cellAging, cellGroup, cellDraftee, cellSalesPerson,
       cellDifot, cellDifotDays, cellClass, cellRcdRc, cellDraftingTransfer, cellTargetStart, cellTargetRelease,
       cellActualRelease, cellProjectSales, cellActualHrs, cellExcess, cellMoveGroup];
