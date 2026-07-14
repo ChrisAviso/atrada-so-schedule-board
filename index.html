@@ -2351,10 +2351,11 @@ function renderBoard(){
   });
   SO_STAGE_GROUP_ORDER.forEach(g => { if(!groups[g]) groups[g] = []; });
 
-  // Consolidated view: pulls every open (non-Done) real SO job from the 7 stage groups into one place
-  // for aging-based triage. Purely additive — those jobs still appear in their normal stage group too.
+  // Consolidated view: pulls every open (non-Done, non-Cost Analysis) real SO job from the stage groups
+  // into one place for aging-based triage. Purely additive — those jobs still appear in their normal
+  // stage group too.
   const consolidatedItems = SO_STAGE_GROUP_ORDER
-    .filter(g => g !== 'Done')
+    .filter(g => g !== 'Done' && g !== 'Cost Analysis')
     .flatMap(g => groups[g] || []);
   if(consolidatedItems.length){
     groups[CONSOLIDATED_GROUP_NAME] = consolidatedItems.slice();
@@ -2492,7 +2493,12 @@ function finalSummaryHtml(totalSales, avgDifot, filtered){
 }
 
 function openJobsSummaryHtml(jobType, title){
-  const openItems = rows.filter(r => !r.actual_release_to_prodn_date && !r.is_internal && (r.job_type||'SO') === jobType);
+  const openItems = rows.filter(r => {
+    if(r.actual_release_to_prodn_date || r.is_internal || (r.job_type||'SO') !== jobType) return false;
+    const currentGroup = (r.job_type !== 'OPPTS' && !r.group_name) ? computeCurrentStageGroup(r) : (r.group_name || null);
+    if(currentGroup === 'Cost Analysis' || currentGroup === 'Done') return false;
+    return true;
+  });
   if(openItems.length === 0) return '';
   const categorized = openItems.map(r => ({ r, status: getScheduleStatus(r), diff: scheduleDiffDays(r) }));
   const counts = { behind: 0, approaching: 0, ontrack: 0 };
