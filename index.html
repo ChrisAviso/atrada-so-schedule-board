@@ -2689,6 +2689,7 @@ function teamScheduleSummaryHtml(){
   all.forEach(t => {
     if((t.sub.status||'Not Started') === 'Done') return;
     if(t.job.project_status === 'Awaiting Client Approval') return; // nothing actionable until client approves — skip to next hot job by aging
+    if((t.sub.subitem_type === 'GA For Approval Prep' || t.sub.subitem_type === 'Sales Handover') && !t.job.requires_client_approval) return; // standard product — stage is bypassed, not real work
     const name = taskAssigneeNames(t.sub)[0];
     if(!name || name === 'To Be Confirmed') return;
     (byName[name] = byName[name] || []).push(t);
