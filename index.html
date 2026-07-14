@@ -1249,10 +1249,11 @@
         <div class="filter-group-controls">
           <select class="filter-select" id="filterStage">
             <option value="">Any Stage</option>
+            <option value="Sales Handover">Sales Handover</option>
             <option value="GA For Approval Prep">GA For Approval Prep</option>
             <option value="Detailing/PDF/DXF Prep">Detailing/PDF/DXF Prep</option>
             <option value="Checking">Checking</option>
-            <option value="Release">Release</option>
+            <option value="Checking / Release">Checking / Release</option>
             <option value="Production Handover">Production Handover</option>
             <option value="Cost Analysis">Cost Analysis</option>
             <option value="Drawing/BOM Prep">Drawing/BOM Prep</option>
@@ -5289,12 +5290,23 @@ function openModal(id, presetGroup, presetJobType){
       let selectOptions = f.options;
       let autoOptHtml = '';
       if(f.key === 'group_name'){
-        selectOptions = currentPresetJobType === 'OPPTS' ? OPPTS_GROUP_ORDER : SO_STAGE_GROUP_ORDER;
-        if(currentPresetJobType !== 'OPPTS'){
-          autoOptHtml = `<option value="" ${!val?'selected':''}>Auto (current stage: ${escapeHtml(record ? computeCurrentStageGroup(record) : '—')})</option>`;
+        if(record && record.is_internal){
+          selectOptions = INTERNAL_GROUP_ORDER;
+        } else {
+          selectOptions = currentPresetJobType === 'OPPTS' ? OPPTS_GROUP_ORDER : SO_STAGE_GROUP_ORDER;
+          if(currentPresetJobType !== 'OPPTS'){
+            autoOptHtml = `<option value="" ${!val?'selected':''}>Auto (current stage: ${escapeHtml(record ? computeCurrentStageGroup(record) : '—')})</option>`;
+          }
         }
       }
-      const opts = autoOptHtml + selectOptions.map(opt => `<option value="${escapeAttr(opt)}" ${val===opt?'selected':''}>${escapeHtml(opt)}</option>`).join('');
+      // Defense in depth: a select must never silently coerce a value it doesn't recognize into
+      // whatever option happens to render first. A blank/legacy current value (e.g. rcd_or_rc left
+      // unset, or a project_status like "Awaiting Client Approval - SENT"/"- TQ" that predates this
+      // field's fixed option list) gets preserved as its own selected option instead of being
+      // overwritten the next time this record is saved for an unrelated reason.
+      const blankOptHtml = (!autoOptHtml && !val) ? `<option value="" selected>—</option>` : '';
+      const preserveUnknownOptHtml = (val && !selectOptions.includes(val)) ? `<option value="${escapeAttr(val)}" selected>${escapeHtml(val)}</option>` : '';
+      const opts = autoOptHtml + blankOptHtml + preserveUnknownOptHtml + selectOptions.map(opt => `<option value="${escapeAttr(opt)}" ${val===opt?'selected':''}>${escapeHtml(opt)}</option>`).join('');
       return `<div class="field">
         <label>${fieldLabel}</label>
         <select id="f_${f.key}">${opts}</select>
