@@ -4258,14 +4258,17 @@ async function commitSubScheduleDrag(subitemId, newStartDate, newEndDate){
   if(draftees.length && candidate.schedule_start_date && candidate.schedule_end_date){
     const aStart = schedDateTime(candidate.schedule_start_date, candidate.schedule_start_hour, false);
     const aEnd = schedDateTime(candidate.schedule_end_date, candidate.schedule_end_hour, true);
-    const conflicts = allSubs.filter(o => {
-      if(o.id === subitemId || o.status === 'Done') return false;
-      const oDraftees = (o.draftee || '').split(',').map(x => x.trim());
-      if(!draftees.some(d => oDraftees.includes(d))) return false;
+    const overlapsWindow = (o) => {
       if(!o.schedule_start_date || !o.schedule_end_date) return false;
       const bStart = schedDateTime(o.schedule_start_date, o.schedule_start_hour, false);
       const bEnd = schedDateTime(o.schedule_end_date, o.schedule_end_hour, true);
       return aStart <= bEnd && aEnd >= bStart;
+    };
+    const conflicts = allSubs.filter(o => {
+      if(o.id === subitemId || o.status === 'Done') return false;
+      const oDraftees = (o.draftee || '').split(',').map(x => x.trim());
+      if(!draftees.some(d => oDraftees.includes(d))) return false;
+      return overlapsWindow(o);
     });
     if(conflicts.length){
       const list = conflicts.map(c => {
@@ -4273,7 +4276,22 @@ async function commitSubScheduleDrag(subitemId, newStartDate, newEndDate){
         const jobBits = parent ? [parent.so_number, parent.company_name, parent.item_name].filter(Boolean).join(' — ') : 'another job';
         return `• ${jobBits}: ${c.subitem_type} (${fmtDate(c.schedule_start_date)} → ${fmtDate(c.schedule_end_date)})`;
       }).join('\n');
-      const proceed = confirm(`Heads up — this overlaps with ${draftees.join(', ')}'s existing schedule:\n${list}\n\nSave anyway?`);
+
+      const allNames = (drafteeOptions && drafteeOptions.length) ? drafteeOptions : Object.values(AUTHORIZED_DRAFTEES);
+      const availableDraftees = allNames.filter(name => {
+        if(draftees.includes(name)) return false;
+        return !allSubs.some(o => {
+          if(o.id === subitemId || o.status === 'Done') return false;
+          const oDraftees = (o.draftee || '').split(',').map(x => x.trim());
+          if(!oDraftees.includes(name)) return false;
+          return overlapsWindow(o);
+        });
+      });
+      const availableLine = availableDraftees.length
+        ? `\n\nFree during this window: ${availableDraftees.join(', ')}`
+        : `\n\nNobody else on the team is free during this exact window either.`;
+
+      const proceed = confirm(`Heads up — this overlaps with ${draftees.join(', ')}'s existing schedule:\n${list}${availableLine}\n\nSave anyway?`);
       if(!proceed) return false;
     }
   }
@@ -4558,14 +4576,17 @@ async function handleSubScheduleChange(inputEl, subitemId, column){
   if(draftees.length && candidate.schedule_start_date && candidate.schedule_end_date){
     const aStart = schedDateTime(candidate.schedule_start_date, candidate.schedule_start_hour, false);
     const aEnd = schedDateTime(candidate.schedule_end_date, candidate.schedule_end_hour, true);
-    const conflicts = allSubs.filter(o => {
-      if(o.id === subitemId || o.status === 'Done') return false;
-      const oDraftees = (o.draftee || '').split(',').map(x => x.trim());
-      if(!draftees.some(d => oDraftees.includes(d))) return false;
+    const overlapsWindow = (o) => {
       if(!o.schedule_start_date || !o.schedule_end_date) return false;
       const bStart = schedDateTime(o.schedule_start_date, o.schedule_start_hour, false);
       const bEnd = schedDateTime(o.schedule_end_date, o.schedule_end_hour, true);
       return aStart <= bEnd && aEnd >= bStart;
+    };
+    const conflicts = allSubs.filter(o => {
+      if(o.id === subitemId || o.status === 'Done') return false;
+      const oDraftees = (o.draftee || '').split(',').map(x => x.trim());
+      if(!draftees.some(d => oDraftees.includes(d))) return false;
+      return overlapsWindow(o);
     });
     if(conflicts.length){
       const list = conflicts.map(c => {
@@ -4573,7 +4594,22 @@ async function handleSubScheduleChange(inputEl, subitemId, column){
         const jobBits = parent ? [parent.so_number, parent.company_name, parent.item_name].filter(Boolean).join(' — ') : 'another job';
         return `• ${jobBits}: ${c.subitem_type} (${fmtDate(c.schedule_start_date)}${c.schedule_start_hour!=null?' '+String(c.schedule_start_hour).padStart(2,'0')+':00':''} → ${fmtDate(c.schedule_end_date)}${c.schedule_end_hour!=null?' '+String(c.schedule_end_hour).padStart(2,'0')+':00':''})`;
       }).join('\n');
-      const proceed = confirm(`Heads up — this overlaps with ${draftees.join(', ')}'s existing schedule:\n${list}\n\nSave anyway?`);
+
+      const allNames = (drafteeOptions && drafteeOptions.length) ? drafteeOptions : Object.values(AUTHORIZED_DRAFTEES);
+      const availableDraftees = allNames.filter(name => {
+        if(draftees.includes(name)) return false;
+        return !allSubs.some(o => {
+          if(o.id === subitemId || o.status === 'Done') return false;
+          const oDraftees = (o.draftee || '').split(',').map(x => x.trim());
+          if(!oDraftees.includes(name)) return false;
+          return overlapsWindow(o);
+        });
+      });
+      const availableLine = availableDraftees.length
+        ? `\n\nFree during this window: ${availableDraftees.join(', ')}`
+        : `\n\nNobody else on the team is free during this exact window either.`;
+
+      const proceed = confirm(`Heads up — this overlaps with ${draftees.join(', ')}'s existing schedule:\n${list}${availableLine}\n\nSave anyway?`);
       if(!proceed){ inputEl.value = prevValue; return; }
     }
   }
