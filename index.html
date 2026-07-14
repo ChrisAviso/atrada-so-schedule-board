@@ -2314,6 +2314,12 @@ function computeCurrentStageGroup(job){
   return 'Done';
 }
 
+function isAnyFilterActive(){
+  const q = document.getElementById('searchBox').value.trim().toLowerCase();
+  return !!(q || filterDraftee || filterSalesPerson || filterClass || filterJobType || filterDifot ||
+    filterStage || filterStageStatus || filterDue || filterOverBudget || filterClockedIn);
+}
+
 function renderBoard(){
   const q = document.getElementById('searchBox').value.trim().toLowerCase();
   const today = new Date(); today.setHours(0,0,0,0);
@@ -2364,8 +2370,7 @@ function renderBoard(){
     groups[CONSOLIDATED_GROUP_NAME] = consolidatedItems.slice();
   }
 
-  const anyFilterActive = !!(q || filterDraftee || filterSalesPerson || filterClass || filterJobType || filterDifot ||
-    filterStage || filterStageStatus || filterDue || filterOverBudget || filterClockedIn);
+  const anyFilterActive = isAnyFilterActive();
 
   let groupNames = Object.keys(groups);
   if(anyFilterActive && groups[CONSOLIDATED_GROUP_NAME] && groups[CONSOLIDATED_GROUP_NAME].length){
@@ -3135,7 +3140,9 @@ let breakPromptActive = false;
 let breakAutoOffTimer = null;
 
 function refreshTopPanels(){
-  document.getElementById('activePanelRoot').innerHTML = attendancePanelHtml() + notClockedInHtml() + activePanelHtml() + teamScheduleSummaryHtml() + onBreakPanelHtml() + openSoSummaryHtml();
+  document.getElementById('activePanelRoot').innerHTML = isAnyFilterActive()
+    ? '' // filtering active — these panels aren't filter-aware, so hide them rather than show unfiltered/misleading data
+    : (attendancePanelHtml() + notClockedInHtml() + activePanelHtml() + teamScheduleSummaryHtml() + onBreakPanelHtml() + openSoSummaryHtml());
 }
 
 function startBreakScheduler(){
