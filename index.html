@@ -2364,7 +2364,15 @@ function renderBoard(){
     groups[CONSOLIDATED_GROUP_NAME] = consolidatedItems.slice();
   }
 
+  const anyFilterActive = !!(q || filterDraftee || filterSalesPerson || filterClass || filterJobType || filterDifot ||
+    filterStage || filterStageStatus || filterDue || filterOverBudget || filterClockedIn);
+
   let groupNames = Object.keys(groups);
+  if(anyFilterActive && groups[CONSOLIDATED_GROUP_NAME] && groups[CONSOLIDATED_GROUP_NAME].length){
+    // Filtering active: the Consolidated group already contains every matching open item,
+    // so showing the per-stage groups too is just noise/duplication — hide them.
+    groupNames = [CONSOLIDATED_GROUP_NAME];
+  }
   groupNames.sort((a,b) => {
     if(a === CONSOLIDATED_GROUP_NAME) return -1;
     if(b === CONSOLIDATED_GROUP_NAME) return 1;
