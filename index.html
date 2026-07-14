@@ -2891,11 +2891,11 @@ function rowHtml(r, opts){
         if(liveSubs.length){
           const latestLiveEnd = liveSubs.reduce((max,s) => s.schedule_end_date > max ? s.schedule_end_date : max, liveSubs[0].schedule_end_date);
           if(latestLiveEnd > baselineStage.end){
-            overBadge = `<span class="baseline-over-badge" title="Currently due ${fmtDate(latestLiveEnd)}, vs Baseline ${baseline.number}'s ${fmtDate(baselineStage.end)}">⚠ Over Baseline</span>`;
+            overBadge = `<span class="baseline-over-badge" title="Currently due ${fmtDate(latestLiveEnd)}, vs Budget ${baseline.number}'s ${fmtDate(baselineStage.end)}">⚠ Over Budget</span>`;
           }
         }
       }
-      baselineBadgesHtml = `<div class="baseline-badge-row"><span class="baseline-number-pill">Baseline ${baseline.number}</span>${overBadge}</div>`;
+      baselineBadgesHtml = `<div class="baseline-badge-row"><span class="baseline-number-pill">Budget ${baseline.number}</span>${overBadge}</div>`;
     }
 
     const cellGroup = `<td><span class="consolidated-group-pill" style="background:${groupColor}">${escapeHtml(rowGroupLabel)}</span>${baselineBadgesHtml}</td>`;
@@ -4972,7 +4972,7 @@ async function refreshGanttPanel(parentId){
 }
 
 async function saveNewBaseline(parentId){
-  if(!confirm("Submit the current plan as a new baseline? A supervisor will need to approve it before it becomes official — it can't be edited or removed once approved.")) return;
+  if(!confirm("Submit the current plan as a new budget? A supervisor will need to approve it before it becomes official — it can't be edited or removed once approved.")) return;
   const record = rows.find(r => r.id === parentId);
   if(!record) return;
   const subs = subitemsByParent[parentId] || [];
@@ -4992,22 +4992,22 @@ async function saveNewBaseline(parentId){
   const requestedBy = getMyDrafteeName() || getFriendlyName(session.user.email);
   const { error } = await sb.from('so_schedule_baselines').insert({ parent_id: parentId, status: 'pending', requested_by: requestedBy, stages });
   if(error){ alert("Couldn't submit: " + error.message); return; }
-  alert("Submitted — a supervisor needs to approve this before it becomes an official baseline.");
+  alert("Submitted — a supervisor needs to approve this before it becomes an official budget.");
   delete jobPendingBaselineCache[parentId];
   await silentReload();
   await refreshGanttPanel(parentId);
 }
 
 async function approveBaseline(parentId){
-  if(!isSupervisor()){ alert("Only supervisors can approve baselines."); return; }
+  if(!isSupervisor()){ alert("Only supervisors can approve budgets."); return; }
   const pending = await loadJobPendingBaseline(parentId);
-  if(!pending){ alert("No pending baseline to approve."); return; }
+  if(!pending){ alert("No pending budget to approve."); return; }
   const { data: existing } = await sb.from('so_schedule_baselines').select('baseline_number').eq('parent_id', parentId).eq('status', 'approved').order('baseline_number', {ascending:false}).limit(1);
   const nextNumber = existing && existing.length ? existing[0].baseline_number + 1 : 1;
   const approvedBy = getMyDrafteeName() || getFriendlyName(session.user.email);
   const { error } = await sb.from('so_schedule_baselines').update({ status: 'approved', baseline_number: nextNumber, approved_by: approvedBy, approved_at: new Date().toISOString() }).eq('id', pending.id);
   if(error){ alert("Couldn't approve: " + error.message); return; }
-  alert(`Approved as Baseline ${nextNumber}.`);
+  alert(`Approved as Budget ${nextNumber}.`);
   delete jobBaselinesCache[parentId];
   delete jobPendingBaselineCache[parentId];
   await silentReload();
@@ -5015,10 +5015,10 @@ async function approveBaseline(parentId){
 }
 
 async function rejectBaseline(parentId){
-  if(!isSupervisor()){ alert("Only supervisors can reject baselines."); return; }
+  if(!isSupervisor()){ alert("Only supervisors can reject budgets."); return; }
   const pending = await loadJobPendingBaseline(parentId);
   if(!pending){ return; }
-  if(!confirm("Reject this baseline request? It will be deleted and can't be recovered.")) return;
+  if(!confirm("Reject this budget request? It will be deleted and can't be recovered.")) return;
   const { error } = await sb.from('so_schedule_baselines').delete().eq('id', pending.id);
   if(error){ alert("Couldn't reject: " + error.message); return; }
   delete jobPendingBaselineCache[parentId];
@@ -5131,7 +5131,7 @@ function renderJobGanttPanel(record){
             const bWidth = Math.max((bEnd - bStart) * DAY_W - 4, 40);
             const color = BASELINE_COLORS[(b.number - 1) % BASELINE_COLORS.length];
             const bottomOffset = 1 + idx * 5;
-            return `<div class="gantt-baseline-bar" style="left:${bStart*DAY_W}px; width:${bWidth}px; bottom:${bottomOffset}px; background:${color};" title="Baseline ${b.number}: ${fmtDate(stageData.start)} → ${fmtDate(stageData.end)}"></div>`;
+            return `<div class="gantt-baseline-bar" style="left:${bStart*DAY_W}px; width:${bWidth}px; bottom:${bottomOffset}px; background:${color};" title="Budget ${b.number}: ${fmtDate(stageData.start)} → ${fmtDate(stageData.end)}"></div>`;
           }).join('')}
           ${plannedStages[type] && !hasRealSchedule ? (() => {
             const pStart = dayOff(plannedStages[type].start);
@@ -5146,16 +5146,16 @@ function renderJobGanttPanel(record){
   });
 
   const baselineControlHtml = pendingBaseline
-    ? `<span>⏳ Baseline requested by <b>${escapeHtml(pendingBaseline.requested_by || 'someone')}</b> on ${fmtDate(toLocalISODate(new Date(pendingBaseline.captured_at)))} — awaiting supervisor approval.</span>
+    ? `<span>⏳ Budget requested by <b>${escapeHtml(pendingBaseline.requested_by || 'someone')}</b> on ${fmtDate(toLocalISODate(new Date(pendingBaseline.captured_at)))} — awaiting supervisor approval.</span>
        ${isSupervisor() ? `<div class="baseline-approval-actions">
          <button class="btn-primary-sm" onclick="approveBaseline('${record.id}')">Approve</button>
          <button class="btn-secondary" onclick="rejectBaseline('${record.id}')">Reject</button>
        </div>` : ''}`
-    : `<button class="btn-ghost-sm gantt-save-baseline-btn" onclick="saveNewBaseline('${record.id}')">💾 Save current plan as new baseline</button>`;
+    : `<button class="btn-ghost-sm gantt-save-baseline-btn" onclick="saveNewBaseline('${record.id}')">💾 Save current plan as new budget</button>`;
 
   const baselineLegendHtml = baselines.map(b => {
     const color = BASELINE_COLORS[(b.number - 1) % BASELINE_COLORS.length];
-    return `<span class="gantt-legend-swatch-baseline" style="background:${color};"></span> Baseline ${b.number}&nbsp;&nbsp;`;
+    return `<span class="gantt-legend-swatch-baseline" style="background:${color};"></span> Budget ${b.number}&nbsp;&nbsp;`;
   }).join('');
 
   return `<div class="gantt-plan-legend">
