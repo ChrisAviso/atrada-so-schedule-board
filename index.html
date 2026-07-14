@@ -494,12 +494,12 @@
   tr.row-approaching:hover{background:#fef8e7;}
   tr.row-behind{border-left:3px solid var(--red);background:#fffbfb;}
   tr.row-behind:hover{background:#fdedef;}
-  .board-table thead th:nth-child(8),.board-table thead th:nth-child(11),.board-table thead th:nth-child(12),
+  .board-table thead th:nth-child(6),.board-table thead th:nth-child(9),.board-table thead th:nth-child(12),
   .board-table thead th:nth-child(13),.board-table thead th:nth-child(14),.board-table thead th:nth-child(15),
   .board-table thead th:nth-child(16),.board-table thead th:nth-child(17),.board-table thead th:nth-child(18){
     text-align:right;
   }
-  .board-table tbody tr:not(.subrow) td:nth-child(8),.board-table tbody tr:not(.subrow) td:nth-child(11),
+  .board-table tbody tr:not(.subrow) td:nth-child(6),.board-table tbody tr:not(.subrow) td:nth-child(9),
   .board-table tbody tr:not(.subrow) td:nth-child(12),.board-table tbody tr:not(.subrow) td:nth-child(13),
   .board-table tbody tr:not(.subrow) td:nth-child(14),.board-table tbody tr:not(.subrow) td:nth-child(15),
   .board-table tbody tr:not(.subrow) td:nth-child(16),.board-table tbody tr:not(.subrow) td:nth-child(17),
@@ -508,23 +508,25 @@
   }
   /* Consolidated Sales Orders has Aging + Group inserted after Item, shifting later columns by 2 —
      override alignment for its actual column positions (higher specificity beats the rules above). */
-  .board-table.consolidated-layout thead th:nth-child(8),
-  .board-table.consolidated-layout thead th:nth-child(11),.board-table.consolidated-layout thead th:nth-child(12){
+  .board-table.consolidated-layout thead th:nth-child(6),
+  .board-table.consolidated-layout thead th:nth-child(9),.board-table.consolidated-layout thead th:nth-child(12),
+  .board-table.consolidated-layout thead th:nth-child(13){
     text-align:left;
   }
-  .board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(8),
-  .board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(11),.board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(12){
+  .board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(6),
+  .board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(9),.board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(12),
+  .board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(13){
     text-align:left;font-variant-numeric:normal;
   }
-  .board-table.consolidated-layout thead th:nth-child(5),.board-table.consolidated-layout thead th:nth-child(10),
-  .board-table.consolidated-layout thead th:nth-child(13),.board-table.consolidated-layout thead th:nth-child(14),
+  .board-table.consolidated-layout thead th:nth-child(5),.board-table.consolidated-layout thead th:nth-child(8),
+  .board-table.consolidated-layout thead th:nth-child(11),.board-table.consolidated-layout thead th:nth-child(14),
   .board-table.consolidated-layout thead th:nth-child(15),.board-table.consolidated-layout thead th:nth-child(16),
   .board-table.consolidated-layout thead th:nth-child(17),.board-table.consolidated-layout thead th:nth-child(18),
   .board-table.consolidated-layout thead th:nth-child(19){
     text-align:right;
   }
-  .board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(5),.board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(10),
-  .board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(13),.board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(14),
+  .board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(5),.board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(8),
+  .board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(11),.board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(14),
   .board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(15),.board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(16),
   .board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(17),.board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(18),
   .board-table.consolidated-layout tbody tr:not(.subrow) td:nth-child(19){
@@ -2409,10 +2411,10 @@ function renderBoard(){
         <table class="board-table${isConsolidated ? ' consolidated-layout' : ''}">
           <thead><tr>
             ${isConsolidated
-              ? `<th class="so-number-cell" style="width:180px;">SO Number</th><th></th><th>Company</th><th>Item</th><th>Aging</th><th>Group</th><th>Draftee</th><th>Sales Person</th><th>DIFOT</th><th>DIFOT Days</th><th>Class</th><th>RCD/RC</th>
-                 <th>Drafting Transfer</th><th>Target Start</th><th>Target Release</th><th>Actual Release to Prodn</th><th>Project Sales</th><th>Actual Hrs</th><th>O/A Excess</th><th>Move to Group</th>`
-              : `<th class="so-number-cell" style="width:180px;">SO Number</th><th></th><th>Company</th><th>Item</th><th>Draftee</th><th>Sales Person</th><th>DIFOT</th><th>DIFOT Days</th><th>Class</th><th>RCD/RC</th>
-                 <th>Drafting Transfer</th><th>Target Start</th><th>Target Release</th><th>Actual Release to Prodn</th><th>Project Sales</th><th>Aging</th><th>Actual Hrs</th><th>O/A Excess</th><th>Move to Group</th>`}
+              ? `<th class="so-number-cell" style="width:180px;">SO Number</th><th></th><th>Company</th><th>Item</th><th>Aging</th><th>Group</th><th>Draftee</th><th>Drafting Transfer</th><th>Sales Person</th><th>DIFOT</th><th>DIFOT Days</th><th>Class</th><th>RCD/RC</th>
+                 <th>Target Start</th><th>Target Release</th><th>Actual Release to Prodn</th><th>Project Sales</th><th>Actual Hrs</th><th>O/A Excess</th><th>Move to Group</th>`
+              : `<th class="so-number-cell" style="width:180px;">SO Number</th><th></th><th>Company</th><th>Item</th><th>Draftee</th><th>Drafting Transfer</th><th>Sales Person</th><th>DIFOT</th><th>DIFOT Days</th><th>Class</th><th>RCD/RC</th>
+                 <th>Target Start</th><th>Target Release</th><th>Actual Release to Prodn</th><th>Project Sales</th><th>Aging</th><th>Actual Hrs</th><th>O/A Excess</th><th>Move to Group</th>`}
           </tr></thead>
           <tbody>
             ${items.map(r => rowHtml(r, { consolidated: isConsolidated })).join('')}
@@ -2425,9 +2427,9 @@ function renderBoard(){
               <td colspan="3"></td>
             </tr>
             <tr class="group-foot">
-              <td colspan="9">Average DIFOT days</td>
+              <td colspan="10">Average DIFOT days</td>
               <td>${avgDifot !== null ? avgDifot.toFixed(1) : '—'}</td>
-              <td colspan="10"></td>
+              <td colspan="9"></td>
             </tr>` : `
             <tr class="group-foot">
               <td colspan="14">Group totals</td>
@@ -2435,9 +2437,9 @@ function renderBoard(){
               <td colspan="4"></td>
             </tr>
             <tr class="group-foot">
-              <td colspan="7">Average DIFOT days</td>
+              <td colspan="8">Average DIFOT days</td>
               <td>${avgDifot !== null ? avgDifot.toFixed(1) : '—'}</td>
-              <td colspan="11"></td>
+              <td colspan="10"></td>
             </tr>`}
           </tfoot>
         </table>
@@ -2899,12 +2901,12 @@ function rowHtml(r, opts){
     }
 
     const cellGroup = `<td><span class="consolidated-group-pill" style="background:${groupColor}">${escapeHtml(rowGroupLabel)}</span>${baselineBadgesHtml}</td>`;
-    bodyCells = [cellSoNumber, cellSubtoggle, cellCompany, cellItem, cellAging, cellGroup, cellDraftee, cellSalesPerson,
-      cellDifot, cellDifotDays, cellClass, cellRcdRc, cellDraftingTransfer, cellTargetStart, cellTargetRelease,
+    bodyCells = [cellSoNumber, cellSubtoggle, cellCompany, cellItem, cellAging, cellGroup, cellDraftee, cellDraftingTransfer, cellSalesPerson,
+      cellDifot, cellDifotDays, cellClass, cellRcdRc, cellTargetStart, cellTargetRelease,
       cellActualRelease, cellProjectSales, cellActualHrs, cellExcess, cellMoveGroup];
   } else {
-    bodyCells = [cellSoNumber, cellSubtoggle, cellCompany, cellItem, cellDraftee, cellSalesPerson,
-      cellDifot, cellDifotDays, cellClass, cellRcdRc, cellDraftingTransfer, cellTargetStart, cellTargetRelease,
+    bodyCells = [cellSoNumber, cellSubtoggle, cellCompany, cellItem, cellDraftee, cellDraftingTransfer, cellSalesPerson,
+      cellDifot, cellDifotDays, cellClass, cellRcdRc, cellTargetStart, cellTargetRelease,
       cellActualRelease, cellProjectSales, cellAging, cellActualHrs, cellExcess, cellMoveGroup];
   }
 
