@@ -293,6 +293,7 @@
   .daily-breakdown-table{font-size:11.5px;margin-top:4px;box-shadow:none;}
   .daily-breakdown-table thead th{background:#eef0f7;color:var(--text-dim);font-size:10px;}
   .daily-breakdown-table tbody td{padding:6px 8px;}
+  .attendance-breakdown-heading{font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin:18px 0 8px;}
   .hrs-detail-trigger{cursor:help;border-bottom:1px dotted var(--text-dim);}
   .hrs-detail-tooltip-fixed{
     display:none;position:fixed;z-index:500;pointer-events:none;
@@ -3287,11 +3288,12 @@ function attendancePanelHtml(){
 /* ---- Draftee-facing reconciliation modal ---- */
 let attendanceSelections = {}; // { decisionId: 'bank'|'sick_leave'|'owe_hours' }
 
-function openMyAttendanceReconciliation(){
+async function openMyAttendanceReconciliation(){
   const myName = getMyDrafteeName();
   if(!myName){ alert("No draftee profile matched to your login."); return; }
   individualWindowViewedName = null;
   document.getElementById('attendanceReconTitle').textContent = 'Attendance & Leave Reconciliation';
+  await refreshFortnightHoursSummary();
   renderAttendanceReconBody();
   document.getElementById('attendanceReconModalBackdrop').classList.remove('hidden');
 }
@@ -3333,7 +3335,12 @@ function renderAttendanceReconBody(){
         <div class="attendance-balance-item"><span class="attendance-balance-label">Bank Hours</span><span class="attendance-balance-value">${bank.toFixed(2)} hrs</span></div>
         <div class="attendance-balance-item"><span class="attendance-balance-label">Sick Leave</span><span class="attendance-balance-value">${sick.remaining}/10 days</span></div>
       </div>
-      <p style="color:var(--text-dim);font-size:13px;">No shortfall days this fortnight${supervisorViewing ? ` for ${escapeHtml(viewedName)}` : ''} — nothing to confirm. 🎉</p>`;
+      <p style="color:var(--text-dim);font-size:13px;">No shortfall days this fortnight${supervisorViewing ? ` for ${escapeHtml(viewedName)}` : ''} — nothing to confirm. 🎉</p>
+      <div class="attendance-breakdown-heading">Full Fortnight Breakdown</div>
+      <table class="attendance-table daily-breakdown-table">
+        <thead><tr><th>Date</th><th style="text-align:right;">Worked</th><th style="text-align:right;">Internal</th><th style="text-align:right;">Bank Δ</th><th style="text-align:right;">Sick</th><th>Status</th></tr></thead>
+        <tbody>${renderDailyBreakdownRows(viewedName, fnStart)}</tbody>
+      </table>`;
     return;
   }
 
@@ -3376,6 +3383,11 @@ function renderAttendanceReconBody(){
     <table class="attendance-table">
       <thead><tr><th>Date</th><th>${supervisorViewing ? 'Choice' : 'Your Choice'}</th><th></th></tr></thead>
       <tbody>${rowsHtml}</tbody>
+    </table>
+    <div class="attendance-breakdown-heading">Full Fortnight Breakdown</div>
+    <table class="attendance-table daily-breakdown-table">
+      <thead><tr><th>Date</th><th style="text-align:right;">Worked</th><th style="text-align:right;">Internal</th><th style="text-align:right;">Bank Δ</th><th style="text-align:right;">Sick</th><th>Status</th></tr></thead>
+      <tbody>${renderDailyBreakdownRows(viewedName, fnStart)}</tbody>
     </table>`;
 }
 
