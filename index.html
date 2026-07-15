@@ -257,7 +257,7 @@
     background:#fff8ed;color:#8a5a00;border:1px solid var(--amber);border-radius:8px;
     padding:9px 13px;font-size:12.5px;font-weight:600;margin-bottom:14px;
   }
-  .attendance-balance-summary{display:flex;gap:10px;margin-bottom:14px;}
+  .attendance-balance-summary{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
   .attendance-balance-item{
     background:#fafbff;border:1px solid var(--border);border-radius:8px;
     padding:8px 14px;display:flex;flex-direction:column;gap:2px;
@@ -3326,12 +3326,16 @@ function renderAttendanceReconBody(){
   const myDecisions = attendanceDecisions.filter(d => d.draftee_name === viewedName && d.fortnight_start === fnStart);
   const bank = hoursBankBalance[viewedName] || 0;
   const sick = sickLeaveYtd[viewedName] || { used: 0, remaining: 10 };
+  const hrs = fortnightHoursSummary[viewedName] || 0;
+  const internalHrs = internalHoursSummary[viewedName] || 0;
 
   if(myDecisions.length === 0){
     document.getElementById('attendanceReconBody').innerHTML = `
       ${supervisorViewing ? `<div style="margin-bottom:12px;"><span class="attendance-draftee-link" onclick="backToSupervisorTable()">← Back to team view</span></div>` : ''}
       <div style="margin-bottom:12px;"><button class="btn-primary-sm" onclick="openInvoiceForDraftee('${viewedName}')">🖨 Print Invoice</button></div>
       <div class="attendance-balance-summary">
+        <div class="attendance-balance-item"><span class="attendance-balance-label">Hrs Worked</span><span class="attendance-balance-value">${hrs.toFixed(2)}</span></div>
+        <div class="attendance-balance-item"><span class="attendance-balance-label">Internal Hrs</span><span class="attendance-balance-value">${internalHrs.toFixed(2)}</span></div>
         <div class="attendance-balance-item"><span class="attendance-balance-label">Bank Hours</span><span class="attendance-balance-value">${bank.toFixed(2)} hrs</span></div>
         <div class="attendance-balance-item"><span class="attendance-balance-label">Sick Leave</span><span class="attendance-balance-value">${sick.remaining}/10 days</span></div>
       </div>
@@ -3377,6 +3381,8 @@ function renderAttendanceReconBody(){
     ${supervisorViewing ? `<div style="margin-bottom:12px;"><span class="attendance-draftee-link" onclick="backToSupervisorTable()">← Back to team view</span></div>` : `<div class="attendance-deadline-banner">⏰ Please confirm by end of day Thursday (day before payday). If you haven't chosen by then, a supervisor will fill it in for you.</div>`}
     <div style="margin-bottom:12px;"><button class="btn-primary-sm" onclick="openInvoiceForDraftee('${viewedName}')">🖨 Print Invoice</button></div>
     <div class="attendance-balance-summary">
+      <div class="attendance-balance-item"><span class="attendance-balance-label">Hrs Worked</span><span class="attendance-balance-value">${hrs.toFixed(2)}</span></div>
+      <div class="attendance-balance-item"><span class="attendance-balance-label">Internal Hrs</span><span class="attendance-balance-value">${internalHrs.toFixed(2)}</span></div>
       <div class="attendance-balance-item"><span class="attendance-balance-label">Bank Hours</span><span class="attendance-balance-value">${bank.toFixed(2)} hrs</span></div>
       <div class="attendance-balance-item"><span class="attendance-balance-label">Sick Leave</span><span class="attendance-balance-value">${sick.remaining}/10 days</span></div>
     </div>
