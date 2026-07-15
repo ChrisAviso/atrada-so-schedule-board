@@ -287,6 +287,7 @@
   .attendance-status-pill.supervisor_filled{background:#eef2ff;color:var(--primary-dark);}
   .attendance-status-pill.ok{background:#e3f7ee;color:var(--green);}
   .attendance-status-pill.none{background:var(--gray-pill);color:var(--text-dim);}
+  .attendance-status-pill.banked{background:#eaf7f0;color:var(--green);}
   .expand-toggle{cursor:pointer;display:inline-block;width:16px;color:var(--text-dim);font-size:11px;user-select:none;}
   .expand-toggle:hover{color:var(--primary);}
   tr.daily-breakdown-row td{padding:0 8px 14px 8px;border-bottom:1px solid var(--border);background:#fbfbfd;}
@@ -1693,6 +1694,7 @@ let tickerStarted = false;
 const FORTNIGHT_ANCHOR = '2026-07-02'; // first day of the first fortnight under this system
 let attendanceDecisions = [];   // rows from so_attendance_decisions, current + previous fortnight
 let hoursBankBalance = {};      // { drafteeName: balanceHours }
+let weekendAccrualByDraftee = {}; // { drafteeName: { 'YYYY-MM-DD': hoursCreditedToBank } } — from so_hours_bank_ledger reason='ot_accrual'
 let sickLeaveYtd = {};          // { drafteeName: { used, remaining, fyStart } }
 let dailyAttendancePopupShown = false;
 let individualWindowViewedName = null; // non-null when a supervisor is viewing a specific draftee's own window
@@ -2096,6 +2098,12 @@ async function loadData(){
   const { data: bankData } = await sb.from('so_hours_bank_balance').select('*');
   hoursBankBalance = {};
   (bankData||[]).forEach(b => { hoursBankBalance[b.draftee_name] = Number(b.balance_hours); });
+
+  const { data: accrualData } = await sb.from('so_hours_bank_ledger').select('draftee_name, entry_date, delta_hours').eq('reason', 'ot_accrual');
+  weekendAccrualByDraftee = {};
+  (accrualData||[]).forEach(a => {
+    (weekendAccrualByDraftee[a.draftee_name] = weekendAccrualByDraftee[a.draftee_name] || {})[a.entry_date] = Number(a.delta_hours);
+  });
 
   const { data: sickData } = await sb.from('so_sick_leave_ytd').select('*');
   sickLeaveYtd = {};
@@ -3658,8 +3666,14 @@ function renderDailyBreakdownRows(name, fnStart){
         : (resolved ? '0.00' : '<span style="color:var(--text-dim);">pending</span>');
       sickHtml = (resolved && decision.decision === 'sick_leave') ? '1' : '0';
     } else {
-      statusHtml = worked > 0 ? `<span class="attendance-status-pill ok">OK</span>` : `<span class="attendance-status-pill none">—</span>`;
-      bankDeltaHtml = '0.00';
+      const weekendCredit = (weekendAccrualByDraftee[name]||{})[dateStr];
+      if(weekendCredit > 0){
+        statusHtml = `<span class="attendance-status-pill banked">Banked (Weekend)</span>`;
+        bankDeltaHtml = `<span style="color:var(--green);font-weight:700;">+${weekendCredit.toFixed(2)}</span>`;
+      } else {
+        statusHtml = worked > 0 ? `<span class="attendance-status-pill ok">OK</span>` : `<span class="attendance-status-pill none">—</span>`;
+        bankDeltaHtml = '0.00';
+      }
       sickHtml = '0';
     }
 
