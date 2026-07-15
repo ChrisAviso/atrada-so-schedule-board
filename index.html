@@ -5916,27 +5916,20 @@ function taskCardHtml(item, showAssignee, seqInfo){
 }
 
 function renderTaskBoard(){
-  const supervisor = isSupervisor();
-  const myName = getMyDrafteeName();
   const all = getAllTaskAssignments();
 
-  document.getElementById('taskBoardTitle').textContent = supervisor
-    ? (taskBoardFilterName ? `Task Board — ${taskBoardFilterName}` : 'Task Board — All Draftees')
-    : 'My Task Board';
+  document.getElementById('taskBoardTitle').textContent = taskBoardFilterName ? `Task Board — ${taskBoardFilterName}` : 'Task Board — All Draftees';
 
-  let filterRowHtml = '';
-  if(supervisor){
-    const names = (drafteeOptions && drafteeOptions.length) ? drafteeOptions : Object.values(AUTHORIZED_DRAFTEES);
-    const pills = [`<span class="taskboard-pill ${!taskBoardFilterName?'active':''}" onclick="setTaskBoardFilter(null)">All Draftees</span>`]
-      .concat(names.map(n => `<span class="taskboard-pill ${taskBoardFilterName===n?'active':''}" onclick="setTaskBoardFilter('${escapeAttr(n)}')">${escapeHtml(n)}</span>`));
-    filterRowHtml = `<div class="taskboard-pills">${pills.join('')}</div>`;
-  }
+  const names = (drafteeOptions && drafteeOptions.length) ? drafteeOptions : Object.values(AUTHORIZED_DRAFTEES);
+  const pills = [`<span class="taskboard-pill ${!taskBoardFilterName?'active':''}" onclick="setTaskBoardFilter(null)">All Draftees</span>`]
+    .concat(names.map(n => `<span class="taskboard-pill ${taskBoardFilterName===n?'active':''}" onclick="setTaskBoardFilter('${escapeAttr(n)}')">${escapeHtml(n)}</span>`));
+  const filterRowHtml = `<div class="taskboard-pills">${pills.join('')}</div>`;
 
   const scoped = taskBoardFilterName
     ? all.filter(t => taskAssigneeNames(t.sub).includes(taskBoardFilterName))
-    : (supervisor ? all : all.filter(t => taskAssigneeNames(t.sub).includes(myName)));
+    : all;
 
-  const showAssignee = supervisor && !taskBoardFilterName;
+  const showAssignee = !taskBoardFilterName;
   const seqMap = computeTaskSeqMap(scoped);
   const statuses = ['Not Started','In Progress','On-Hold','Done'];
   const cols = statuses.map(st => {
