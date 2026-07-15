@@ -279,6 +279,7 @@
   .attendance-choice.selected{border-color:var(--primary);background:#eef2ff;color:var(--primary);font-weight:700;}
   .attendance-choice.selected.sick{border-color:var(--red);background:#fdeaea;color:var(--red);}
   .attendance-choice.selected.owe{border-color:var(--text-dim);background:var(--gray-pill);color:var(--text-dim);}
+  .attendance-choice.selected.corrected{border-color:var(--green);background:#e8f9f2;color:var(--green);}
   .attendance-preview{font-size:11px;color:var(--text-dim);margin-top:5px;}
   .attendance-status-pill{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;}
   .attendance-status-pill.submitted{background:#e3f7ee;color:var(--green);}
@@ -3344,6 +3345,7 @@ function renderAttendanceReconBody(){
     if(sel === 'bank') preview = `Bank: ${bank.toFixed(2)} → ${(bank - d.shortfall_hours).toFixed(2)} hrs. Sick leave unaffected.`;
     else if(sel === 'sick_leave') preview = `Sick leave: ${sick.remaining} → ${sick.remaining - 1} day${(sick.remaining-1)===1?'':'s'} remaining. Bank unaffected.`;
     else if(sel === 'owe_hours') preview = `Bank: ${bank.toFixed(2)} → ${(bank - d.shortfall_hours).toFixed(2)} hrs (owed). Still paid today — your next overtime pays this down.`;
+    else if(sel === 'no_shortfall') preview = `No deduction — hours already corrected. Bank and sick leave unaffected.`;
 
     return `<tr>
       <td>${fmtDateShort(d.work_date)}<br><span style="color:var(--text-dim);">Shortfall: ${d.shortfall_hours} hrs</span></td>
@@ -3352,6 +3354,7 @@ function renderAttendanceReconBody(){
           ${choice('bank', `Use Bank (${bank.toFixed(2)} available)`, '')}
           ${choice('sick_leave', `Use Sick Leave (${sick.remaining}/10 left)`, 'sick')}
           ${choice('owe_hours', 'Owe Hours (Work It Off)', 'owe')}
+          ${choice('no_shortfall', 'No Shortfall (Corrected)', 'corrected')}
         </div>
         <div class="attendance-preview">${preview}</div>
       </td>
@@ -3613,7 +3616,7 @@ function renderDailyBreakdownRows(name, fnStart){
     .filter(d => d.draftee_name === name && d.fortnight_start === fnStart)
     .forEach(d => { decisionsByDate[d.work_date] = d; });
 
-  const decisionLabel = { bank: 'Bank Hours', sick_leave: 'Sick Leave', owe_hours: 'Owe Hours' };
+  const decisionLabel = { bank: 'Bank Hours', sick_leave: 'Sick Leave', owe_hours: 'Owe Hours', no_shortfall: 'No Shortfall' };
   let rows = '';
   for(let i=0;i<14;i++){
     const day = new Date(start); day.setDate(day.getDate()+i);
@@ -3722,7 +3725,7 @@ function renderSupervisorReviewBody(){
       const editing = supervisorEditingId === d.id;
       const sel = attendanceSelections[d.id] || d.decision || null;
       const choice = (val, label, cls) => `<div class="attendance-choice ${sel===val?('selected '+cls):''}" onclick="selectAttendanceChoice('${d.id}','${val}')">${label}</div>`;
-      const decisionLabel = { bank: 'Bank Hours', sick_leave: 'Sick Leave', owe_hours: 'Owe Hours' }[d.decision] || '—';
+      const decisionLabel = { bank: 'Bank Hours', sick_leave: 'Sick Leave', owe_hours: 'Owe Hours', no_shortfall: 'No Shortfall' }[d.decision] || '—';
       const statusPill = `<span class="attendance-status-pill ${d.status}">${
         d.status === 'pending' ? 'Pending' : d.status === 'supervisor_filled' ? 'Filled in by ' + escapeHtml(d.decided_by||'') : 'Submitted'
       }</span>`;
@@ -3734,6 +3737,7 @@ function renderSupervisorReviewBody(){
                ${choice('bank', `Bank (${bank.toFixed(2)})`, '')}
                ${choice('sick_leave', `Sick (${sick.remaining}/10)`, 'sick')}
                ${choice('owe_hours', 'Owe Hours', 'owe')}
+               ${choice('no_shortfall', 'No Shortfall', 'corrected')}
              </div>`
           : decisionLabel}
         </td>
