@@ -257,6 +257,13 @@
     background:#fff8ed;color:#8a5a00;border:1px solid var(--amber);border-radius:8px;
     padding:9px 13px;font-size:12.5px;font-weight:600;margin-bottom:14px;
   }
+  .attendance-balance-summary{display:flex;gap:10px;margin-bottom:14px;}
+  .attendance-balance-item{
+    background:#fafbff;border:1px solid var(--border);border-radius:8px;
+    padding:8px 14px;display:flex;flex-direction:column;gap:2px;
+  }
+  .attendance-balance-label{font-size:10.5px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.03em;}
+  .attendance-balance-value{font-size:15px;font-weight:700;color:var(--text);}
   .attendance-table{width:100%;border-collapse:collapse;font-size:12.5px;}
   .attendance-table thead th{
     background:var(--topbar-bg);color:#fff;text-align:left;padding:8px;font-size:11px;
@@ -3259,7 +3266,6 @@ function attendancePanelHtml(){
   const pending = relevant.filter(d => d.status === 'pending');
   const myPending = myName ? pending.filter(d => d.draftee_name === myName) : [];
 
-  if(!supervisor && myPending.length === 0) return ''; // nothing for this draftee to do
   if(supervisor && relevant.length === 0) return ''; // nothing at all logged yet this fortnight
 
   const openFn = supervisor ? 'openSupervisorAttendanceReview()' : 'openMyAttendanceReconciliation()';
@@ -3267,7 +3273,9 @@ function attendancePanelHtml(){
     ? (pending.length > 0
         ? `<span class="attendance-badge">${pending.length} pending across the team</span>`
         : `<span class="attendance-badge attendance-badge-clear">All caught up</span>`)
-    : `<span class="attendance-badge">${myPending.length} day${myPending.length===1?'':'s'} need${myPending.length===1?'s':''} your decision</span>`;
+    : (myPending.length > 0
+        ? `<span class="attendance-badge">${myPending.length} day${myPending.length===1?'':'s'} need${myPending.length===1?'s':''} your decision</span>`
+        : `<span class="attendance-badge attendance-badge-clear">All caught up</span>`);
 
   return `<div class="attendance-strip">
     <div class="attendance-strip-left">📋 <b>Fortnight Attendance &amp; Leave Decisions</b> — ${fortnightLabel(fnStart)} ${badge}</div>
@@ -3320,6 +3328,10 @@ function renderAttendanceReconBody(){
     document.getElementById('attendanceReconBody').innerHTML = `
       ${supervisorViewing ? `<div style="margin-bottom:12px;"><span class="attendance-draftee-link" onclick="backToSupervisorTable()">← Back to team view</span></div>` : ''}
       <div style="margin-bottom:12px;"><button class="btn-primary-sm" onclick="openInvoiceForDraftee('${viewedName}')">🖨 Print Invoice</button></div>
+      <div class="attendance-balance-summary">
+        <div class="attendance-balance-item"><span class="attendance-balance-label">Bank Hours</span><span class="attendance-balance-value">${bank.toFixed(2)} hrs</span></div>
+        <div class="attendance-balance-item"><span class="attendance-balance-label">Sick Leave</span><span class="attendance-balance-value">${sick.remaining}/10 days</span></div>
+      </div>
       <p style="color:var(--text-dim);font-size:13px;">No shortfall days this fortnight${supervisorViewing ? ` for ${escapeHtml(viewedName)}` : ''} — nothing to confirm. 🎉</p>`;
     return;
   }
@@ -3354,6 +3366,10 @@ function renderAttendanceReconBody(){
   document.getElementById('attendanceReconBody').innerHTML = `
     ${supervisorViewing ? `<div style="margin-bottom:12px;"><span class="attendance-draftee-link" onclick="backToSupervisorTable()">← Back to team view</span></div>` : `<div class="attendance-deadline-banner">⏰ Please confirm by end of day Thursday (day before payday). If you haven't chosen by then, a supervisor will fill it in for you.</div>`}
     <div style="margin-bottom:12px;"><button class="btn-primary-sm" onclick="openInvoiceForDraftee('${viewedName}')">🖨 Print Invoice</button></div>
+    <div class="attendance-balance-summary">
+      <div class="attendance-balance-item"><span class="attendance-balance-label">Bank Hours</span><span class="attendance-balance-value">${bank.toFixed(2)} hrs</span></div>
+      <div class="attendance-balance-item"><span class="attendance-balance-label">Sick Leave</span><span class="attendance-balance-value">${sick.remaining}/10 days</span></div>
+    </div>
     <table class="attendance-table">
       <thead><tr><th>Date</th><th>${supervisorViewing ? 'Choice' : 'Your Choice'}</th><th></th></tr></thead>
       <tbody>${rowsHtml}</tbody>
