@@ -2696,8 +2696,6 @@ function activePanelHtml(){
 }
 
 function teamScheduleSummaryHtml(){
-  if(!isSupervisor()) return '';
-
   const all = getAllTaskAssignments();
   const byName = {};
   all.forEach(t => {
