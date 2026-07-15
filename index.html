@@ -2864,7 +2864,7 @@ function rowHtml(r, opts){
   const schedFillTier = schedFillPct === null ? '' : (schedFillPct >= 100 ? 'sched-fill-full' : schedFillPct >= 50 ? 'sched-fill-mid' : 'sched-fill-low');
   const schedFillBadge = schedFillPct === null ? '' : `<span class="sched-fill-badge ${schedFillTier}" title="${filledSubs} of ${subsForFill.length} sub-processes scheduled">📅 ${schedFillPct}%</span>`;
   const rowSeq = drafteeRowSeq[r.id];
-  const drafteeSeqBadge = rowSeq ? `<span class="draftee-seq-badge" title="${escapeHtml(r.draftee)}'s job queue position, by scheduled date">Job ${rowSeq.seq}/${rowSeq.total}</span>` : '';
+  const drafteeSeqBadge = rowSeq ? `<span class="draftee-seq-badge" title="${escapeHtml(r.draftee)}'s priority queue position, by scheduled date">Priority ${rowSeq.seq}/${rowSeq.total}</span>` : '';
   const isUntouched = subsForFill.length > 0 && filledSubs === 0;
   const newItemBadge = isUntouched ? `<span class="new-item-badge" title="No draftee or schedule set on any sub-process yet">NEW</span>` : '';
 
