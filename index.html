@@ -3294,8 +3294,6 @@ function attendancePanelHtml(){
   const pending = relevant.filter(d => d.status === 'pending');
   const myPending = myName ? pending.filter(d => d.draftee_name === myName) : [];
 
-  if(supervisor && relevant.length === 0) return ''; // nothing at all logged yet this fortnight
-
   const openFn = supervisor ? 'openSupervisorAttendanceReview()' : 'openMyAttendanceReconciliation()';
   const badge = supervisor
     ? (pending.length > 0
