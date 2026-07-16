@@ -129,6 +129,10 @@
   }
   .icon-btn:hover{border-color:var(--primary);color:var(--primary);}
   .icon-btn.synced{border-color:var(--green);color:var(--green);transition:border-color .6s ease,color .6s ease;}
+  .icon-btn:disabled{opacity:.4;cursor:default;}
+  .icon-btn:disabled:hover{border-color:var(--border);color:var(--text);}
+  .fortnight-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .fortnight-nav-label{font-weight:700;font-size:13px;padding:0 2px;white-space:nowrap;}
 
   main{max-width:1900px;margin:0 auto;padding:22px 26px 80px;}
 
@@ -1716,6 +1720,10 @@ let weekendAccrualByDraftee = {}; // { drafteeName: { 'YYYY-MM-DD': hoursCredite
 let sickLeaveYtd = {};          // { drafteeName: { used, remaining, fyStart } }
 let dailyAttendancePopupShown = false;
 let individualWindowViewedName = null; // non-null when a supervisor is viewing a specific draftee's own window
+let viewedFortnightStart = null; // null = current fortnight; otherwise the fortnight_start being browsed in the reconciliation modal
+function getViewedFortnightStart(){
+  return viewedFortnightStart || currentFortnightStart();
+}
 let expandedDrafteeDailyRows = new Set(); // names currently expanded in the supervisor team summary
 let dailyWorkedByDraftee = {};  // { drafteeName: { 'YYYY-MM-DD': hoursWorked } }
 let dailyInternalByDraftee = {}; // { drafteeName: { 'YYYY-MM-DD': internalHoursWorked } }
@@ -3316,6 +3324,7 @@ async function openMyAttendanceReconciliation(){
   const myName = getMyDrafteeName();
   if(!myName){ alert("No draftee profile matched to your login."); return; }
   individualWindowViewedName = null;
+  viewedFortnightStart = null;
   document.getElementById('attendanceReconTitle').textContent = 'Attendance & Leave Reconciliation';
   await refreshFortnightHoursSummary();
   renderAttendanceReconBody();
@@ -3326,8 +3335,9 @@ function openDrafteeIndividualWindow(drafteeName){
   if(!isSupervisor()){ return; }
   document.getElementById('attendanceSupervisorModalBackdrop').classList.add('hidden');
   individualWindowViewedName = drafteeName;
+  viewedFortnightStart = null;
   document.getElementById('attendanceReconTitle').textContent = `Attendance & Leave Reconciliation — ${drafteeName} (supervisor view)`;
-  renderAttendanceReconBody();
+  refreshFortnightHoursSummary().then(renderAttendanceReconBody);
   document.getElementById('attendanceReconModalBackdrop').classList.remove('hidden');
 }
 
@@ -3346,7 +3356,14 @@ function closeAttendanceRecon(){
 function renderAttendanceReconBody(){
   const viewedName = individualWindowViewedName || getMyDrafteeName();
   const supervisorViewing = !!individualWindowViewedName;
-  const fnStart = currentFortnightStart();
+  const fnStart = getViewedFortnightStart();
+  const isCurrentFn = fnStart >= currentFortnightStart();
+  const fortnightNavHtml = `<div class="fortnight-nav">
+    <button class="icon-btn" onclick="reconGoPriorFortnight()">← Prior</button>
+    <span class="fortnight-nav-label">${fortnightLabel(fnStart)}</span>
+    <button class="icon-btn" onclick="reconGoNextFortnight()" ${isCurrentFn?'disabled':''}>Next →</button>
+    <button class="icon-btn" onclick="reconGoThisFortnight()" ${isCurrentFn?'disabled':''}>This fortnight</button>
+  </div>`;
   const myDecisions = attendanceDecisions.filter(d => d.draftee_name === viewedName && d.fortnight_start === fnStart);
   const bank = hoursBankBalance[viewedName] || 0;
   const sick = sickLeaveYtd[viewedName] || { used: 0, remaining: 10 };
@@ -3356,7 +3373,10 @@ function renderAttendanceReconBody(){
   if(myDecisions.length === 0){
     document.getElementById('attendanceReconBody').innerHTML = `
       ${supervisorViewing ? `<div style="margin-bottom:12px;"><span class="attendance-draftee-link" onclick="backToSupervisorTable()">← Back to team view</span></div>` : ''}
-      <div style="margin-bottom:12px;"><button class="btn-primary-sm" onclick="openInvoiceForDraftee('${viewedName}')">🖨 Print Invoice</button></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+        <button class="btn-primary-sm" onclick="openInvoiceForDraftee('${viewedName}', '${fnStart}')">🖨 Print Invoice</button>
+        ${fortnightNavHtml}
+      </div>
       <div class="attendance-balance-summary">
         <div class="attendance-balance-item"><span class="attendance-balance-label">Hrs Worked</span><span class="attendance-balance-value">${hrs.toFixed(2)}</span></div>
         <div class="attendance-balance-item"><span class="attendance-balance-label">Internal Hrs</span><span class="attendance-balance-value">${internalHrs.toFixed(2)}</span></div>
@@ -3402,8 +3422,11 @@ function renderAttendanceReconBody(){
   }).join('');
 
   document.getElementById('attendanceReconBody').innerHTML = `
-    ${supervisorViewing ? `<div style="margin-bottom:12px;"><span class="attendance-draftee-link" onclick="backToSupervisorTable()">← Back to team view</span></div>` : `<div class="attendance-deadline-banner">⏰ Please confirm by end of day Thursday (day before payday). If you haven't chosen by then, a supervisor will fill it in for you.</div>`}
-    <div style="margin-bottom:12px;"><button class="btn-primary-sm" onclick="openInvoiceForDraftee('${viewedName}')">🖨 Print Invoice</button></div>
+    ${supervisorViewing ? `<div style="margin-bottom:12px;"><span class="attendance-draftee-link" onclick="backToSupervisorTable()">← Back to team view</span></div>` : (isCurrentFn ? `<div class="attendance-deadline-banner">⏰ Please confirm by end of day Thursday (day before payday). If you haven't chosen by then, a supervisor will fill it in for you.</div>` : '')}
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+      <button class="btn-primary-sm" onclick="openInvoiceForDraftee('${viewedName}', '${fnStart}')">🖨 Print Invoice</button>
+      ${fortnightNavHtml}
+    </div>
     <div class="attendance-balance-summary">
       <div class="attendance-balance-item"><span class="attendance-balance-label">Hrs Worked</span><span class="attendance-balance-value">${hrs.toFixed(2)}</span></div>
       <div class="attendance-balance-item"><span class="attendance-balance-label">Internal Hrs</span><span class="attendance-balance-value">${internalHrs.toFixed(2)}</span></div>
@@ -3470,12 +3493,12 @@ async function buildInvoiceHtml(drafteeName, totalHours, periodLabel, paydayLabe
   return html;
 }
 
-async function openInvoiceForDraftee(drafteeName){
+async function openInvoiceForDraftee(drafteeName, fnStartOverride){
   const invoiceWindow = window.open('', '_blank');
   if(!invoiceWindow){ alert('Please allow popups to generate the invoice.'); return; }
   invoiceWindow.document.write('<p style="font-family:sans-serif;padding:40px;color:#585d73;">Generating invoice…</p>');
 
-  const fnStart = currentFortnightStart();
+  const fnStart = fnStartOverride || currentFortnightStart();
   const fnStartDate = new Date(fnStart+'T00:00:00');
   const fnEndDate = new Date(fnStartDate); fnEndDate.setDate(fnEndDate.getDate()+13);
   const paydayDate = new Date(fnStartDate); paydayDate.setDate(paydayDate.getDate()+15);
@@ -3538,8 +3561,8 @@ let supervisorEditingId = null;
 let fortnightHoursSummary = {}; // { drafteeName: totalHoursWorkedThisFortnight }
 let internalHoursSummary = {}; // { drafteeName: totalInternalNonProjectHoursThisFortnight }
 
-async function refreshFortnightHoursSummary(){
-  const fnStart = currentFortnightStart();
+async function refreshFortnightHoursSummary(fnStartOverride){
+  const fnStart = fnStartOverride || currentFortnightStart();
   const fnEndDate = new Date(fnStart+'T00:00:00'); fnEndDate.setDate(fnEndDate.getDate()+13);
   const fnEndStr = toLocalISODate(fnEndDate);
   const { data } = await sb.from('so_daily_hours').select('draftee_name, work_date, hours_worked')
@@ -3565,6 +3588,27 @@ async function refreshFortnightHoursSummary(){
   });
   internalHoursSummary = internalTotals;
   dailyInternalByDraftee = dailyInternal;
+}
+
+async function reconGoPriorFortnight(){
+  const cur = getViewedFortnightStart();
+  const d = new Date(cur+'T00:00:00'); d.setDate(d.getDate()-14);
+  viewedFortnightStart = toLocalISODate(d);
+  await refreshFortnightHoursSummary(viewedFortnightStart);
+  renderAttendanceReconBody();
+}
+async function reconGoNextFortnight(){
+  const cur = getViewedFortnightStart();
+  if(cur >= currentFortnightStart()) return; // already at the latest fortnight
+  const d = new Date(cur+'T00:00:00'); d.setDate(d.getDate()+14);
+  viewedFortnightStart = toLocalISODate(d);
+  await refreshFortnightHoursSummary(viewedFortnightStart);
+  renderAttendanceReconBody();
+}
+async function reconGoThisFortnight(){
+  viewedFortnightStart = null;
+  await refreshFortnightHoursSummary(currentFortnightStart());
+  renderAttendanceReconBody();
 }
 
 async function openSupervisorAttendanceReview(){
