@@ -1040,6 +1040,11 @@
   .approval-revision-remove{
     background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:2px 6px;
   }
+  .approval-revision-final-row{
+    display:flex;align-items:center;gap:10px;margin-top:12px;padding-top:12px;
+    border-top:1px dashed rgba(0,0,0,.12);
+  }
+  .approval-revision-final-row .approval-revision-letter{color:var(--green);min-width:140px;}
 
   .job-gantt-card{
     margin-top:18px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;
@@ -5194,7 +5199,21 @@ function renderApprovalRevisionsBody(recordId){
     </div>`;
   }).join('');
   const emptyHtml = `<div class="approval-revisions-empty">No revisions logged yet — Rev A is the first time this job was sent for approval.</div>`;
-  container.innerHTML = (rowsHtml || emptyHtml) + `<button type="button" class="btn-ghost-sm" onclick="addJobRevision('${recordId}')">+ Add Revision</button>`;
+  const record = rows.find(r => r.id === recordId);
+  const drawingApprovalHtml = `<div class="approval-revision-final-row">
+    <span class="approval-revision-letter">✓ Drawing Approval</span>
+    <input type="date" class="approval-revision-date" value="${record?.actual_approval_received_date || ''}" onchange="saveDrawingApprovalDate('${recordId}', this.value)">
+  </div>`;
+  container.innerHTML = (rowsHtml || emptyHtml)
+    + `<button type="button" class="btn-ghost-sm" onclick="addJobRevision('${recordId}')">+ Add Revision</button>`
+    + drawingApprovalHtml;
+}
+
+async function saveDrawingApprovalDate(recordId, newDate){
+  const { error } = await sb.from('so_schedule').update({ actual_approval_received_date: newDate || null }).eq('id', recordId);
+  if(error){ alert("Couldn't save drawing approval date: " + error.message); return; }
+  await silentReload();
+  renderApprovalRevisionsBody(recordId);
 }
 
 async function addJobRevision(recordId){
@@ -5596,7 +5615,6 @@ const deleteBtn = document.getElementById('deleteBtn');
 const FIELDS = [
   {key:'item_name', label:'Item name', type:'text', required:true},
   {key:'so_number', label:'SO number', type:'text'},
-  {key:'unit_count', label:'Unit #', type:'number'},
   {key:'unit_qty', label:'Unit Qty', type:'number'},
   {key:'company_name', label:'Company', type:'text'},
   {key:'group_name', label:'Group', type:'select', options: GROUP_ORDER},
@@ -5611,8 +5629,6 @@ const FIELDS = [
     'Released - For Production Hand-Over','Done - Production Hand-Over'
   ]},
   {key:'drafting_transfer_date', label:'Drafting transfer date', type:'date'},
-  {key:'actual_sent_for_approval', label:'Actual sent for approval', type:'date'},
-  {key:'actual_approval_received_date', label:'Actual approval received', type:'date'},
   {key:'actual_release_to_prodn_date', label:'Actual release to Prodn', type:'date'},
   {key:'released_to_prodn', label:'Released to production', type:'checkbox'},
   {key:'project_sales', label:'Project sales', type:'number'},
