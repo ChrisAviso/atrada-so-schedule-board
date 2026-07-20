@@ -1733,10 +1733,6 @@ let filterDue = '';
 let absentToday = new Set();
 let sortBy = '';
 let collapsedSubitems = new Set();
-// Cache of fetched revision-history rows per job (parent_id -> [{revision_letter, sent_date}]),
-// populated on demand when the modal opens for a Class 1 job. Cleared for a job whenever a new
-// revision round is logged so the next modal open re-fetches the current full history.
-let revisionHistoryCache = {};
 // Which stage groups (besides Consolidated Sales Orders) the user has manually expanded this
 // session. Reset to just the Consolidated group on every explicit open/refresh (loadData), but
 // left alone across background live-sync re-renders (silentReload) so a manual expand isn't
@@ -2377,8 +2373,10 @@ function computeCurrentStageGroup(job){
     return { done:false, stage: seq[lastTouchedIdx] };
   }
 
-  // A Class 1 job genuinely waiting on the client takes priority over everything else.
-  if(job.requires_client_approval && job.project_status === 'Awaiting Client Approval' && allDone('GA For Approval Prep')){
+  // A Class 1 job genuinely waiting on the client takes priority over everything else. Judged by
+  // whether it's actually been sent and not yet approved (real dates), not by the project_status
+  // text — that field is just a manual label now and carries no behavioral meaning of its own.
+  if(job.requires_client_approval && !job.actual_approval_received_date && (job.first_sent_for_approval_date || job.actual_sent_for_approval) && allDone('GA For Approval Prep')){
     return 'Awaiting Client Approval';
   }
 
@@ -2625,13 +2623,8 @@ function openJobsSummaryHtml(jobType, title){
     const poCell = poDays !== null ? `<span class="open-so-po" title="Days since drafting transfer (PO proxy)">${poDays}d</span>` : `<span class="open-so-po dim">—</span>`;
 
     const sentDate = r.first_sent_for_approval_date || r.actual_sent_for_approval;
-    const statusLower = (r.project_status || '').toLowerCase();
-    const isApproved = r.requires_client_approval
-      ? (r.project_status === 'Client Approved - Drafting In Progress' && r.actual_approval_received_date)
-      : (statusLower.includes('client approved') && r.actual_approval_received_date);
-    const isCurrentlyAwaiting = r.requires_client_approval
-      ? (r.project_status === 'Awaiting Client Approval' || (!!sentDate && !isApproved))
-      : statusLower.includes('awaiting client approval');
+    const isApproved = !!r.actual_approval_received_date;
+    const isCurrentlyAwaiting = r.requires_client_approval && !!sentDate && !isApproved;
 
     // Awaiting shows the live, still-counting wait while a job is genuinely pending, but once it's
     // approved the wait is over — freeze the figure at however many days it actually took (sentDate
@@ -2783,7 +2776,7 @@ function teamScheduleSummaryHtml(){
   const byName = {};
   all.forEach(t => {
     if((t.sub.status||'Not Started') === 'Done') return;
-    if(t.job.project_status === 'Awaiting Client Approval') return; // nothing actionable until client approves — skip to next hot job by aging
+    if(t.job.requires_client_approval && !t.job.actual_approval_received_date && (t.job.first_sent_for_approval_date || t.job.actual_sent_for_approval)) return; // nothing actionable until client approves — skip to next hot job by aging
     if((t.sub.subitem_type === 'GA For Approval Prep' || t.sub.subitem_type === 'Sales Handover') && !t.job.requires_client_approval) return; // standard product — stage is bypassed, not real work
     const name = taskAssigneeNames(t.sub)[0];
     if(!name || name === 'To Be Confirmed') return;
@@ -2794,7 +2787,7 @@ function teamScheduleSummaryHtml(){
   // client has already given it — should jump the queue ahead of jobs still sitting in prep
   // pre-approval-request. Awaiting-approval jobs are excluded above entirely, so this only
   // distinguishes "already approved / never needed it" from "not sent for approval yet".
-  const hasClientApproval = (job) => !job.requires_client_approval || job.project_status === 'Client Approved - Drafting In Progress';
+  const hasClientApproval = (job) => !job.requires_client_approval || !!job.actual_approval_received_date;
 
   const people = Object.keys(byName).map(name => {
     const list = byName[name].slice().sort((a,b) => {
@@ -2817,7 +2810,7 @@ function teamScheduleSummaryHtml(){
       const label = job.is_internal
         ? `<span class="taskboard-tag-internal">Internal</span>${escapeHtml(job.item_name||'—')}`
         : `${escapeHtml(job.so_number || '—')} — ${escapeHtml(job.company_name || job.item_name || '')}`;
-      const approvedTag = (job.requires_client_approval && job.project_status === 'Client Approved - Drafting In Progress')
+      const approvedTag = (job.requires_client_approval && job.actual_approval_received_date)
         ? `<span class="teamsched-approved-tag" title="Client has already approved — cleared to proceed">✓ Approved</span>` : '';
       const subLabel = sub.subitem_type === 'Internal Time' ? 'Time log' : sub.subitem_type;
       const dateRange = (sub.schedule_start_date || sub.schedule_end_date)
@@ -3023,11 +3016,7 @@ function rowHtml(r, opts){
   const mainRow = `<tr id="row_${r.id}" class="${scheduleClass}" onclick="openModal('${r.id}')">${bodyCells.join('')}</tr>`;
   const subsList = subitemsByParent[r.id] || [];
   const subs = isCollapsed ? '' : subsList.map((s, idx) => {
-    let html = subRowHtml(s, r.job_type, r.rcd_or_rc, r.requires_client_approval);
-    const isLastGaRow = s.subitem_type === 'GA For Approval Prep' &&
-      (idx === subsList.length-1 || subsList[idx+1].subitem_type !== 'GA For Approval Prep');
-    if(isLastGaRow && r.requires_client_approval) html += clientApprovalInlineRowHtml(r);
-    return html;
+    return subRowHtml(s, r.job_type, r.rcd_or_rc, r.requires_client_approval);
   }).join('');
   const addPersonRow = (r.is_internal && !isCollapsed)
     ? `<tr class="subrow" onclick="event.stopPropagation()">
@@ -4756,8 +4745,8 @@ async function confirmGaCheckpoint(){
   }).eq('id', subitemId);
   if(gaSub){
     const parentRecord = rows.find(r => r.id === gaSub.parent_id);
-    // Only Class 2 (no approval needed) auto-cascades straight from GA — Class 1 has to wait for
-    // the approval trigger instead, handled separately in markClientApproved.
+    // Only Class 2 (no approval needed) auto-cascades straight from GA — Class 1 jobs no longer
+    // auto-cascade past this point; once the client approves, schedule the remaining stages manually.
     if(parentRecord && !parentRecord.requires_client_approval && gaSub.schedule_end_date){
       await cascadeScheduleForward(gaSub.parent_id, 'GA For Approval Prep', gaSub.schedule_end_date);
     }
@@ -5113,125 +5102,6 @@ function difotPill(status){
   if(status === 'DIFOT_LATE') return `<span class="pill pill-late">Late ✕</span>`;
   return `<span class="pill pill-ongoing">On-Going</span>`;
 }
-function clientApprovalInlineRowHtml(r){
-  const revisionNote = r.revision_count > 0 ? ` · ${r.revision_count} rev` : '';
-  let statusHtml, actionsHtml = '';
-  if(r.project_status === 'Awaiting Client Approval'){
-    const daysWaiting = r.first_sent_for_approval_date
-      ? Math.floor((new Date() - new Date(r.first_sent_for_approval_date+'T00:00:00')) / 86400000)
-      : null;
-    statusHtml = `<span class="approval-inline-status waiting">⏳ Awaiting Approval${daysWaiting!==null?` — Day ${daysWaiting}`:''}${revisionNote}</span>`;
-    actionsHtml = `
-      <button class="btn-ghost-sm" onclick="event.stopPropagation(); requestRevision('${r.id}')">🔄 Revision</button>
-      <button class="btn-ghost-sm approve" onclick="event.stopPropagation(); markClientApproved('${r.id}')">✓ Approved</button>
-    `;
-  } else if(r.project_status === 'Client Approved - Drafting In Progress' && r.actual_approval_received_date){
-    statusHtml = `<span class="approval-inline-status approved">✓ Approved — ${fmtDate(r.actual_approval_received_date)}${revisionNote}</span>`;
-  } else if(r.first_sent_for_approval_date || r.actual_sent_for_approval){
-    const sentDate = r.first_sent_for_approval_date || r.actual_sent_for_approval;
-    statusHtml = `<span class="approval-inline-status waiting">Sent — ${fmtDate(sentDate)}${revisionNote}</span>`;
-  } else {
-    statusHtml = `<span class="approval-inline-status pending">Not sent yet</span>`;
-  }
-  return `<tr class="subrow subrow-approval" onclick="event.stopPropagation()">
-    <td colspan="19">
-      <div class="sub-content">
-        <span class="sub-indent-icon">↳</span>
-        <span class="sub-label">Client Approval</span>
-        ${statusHtml}
-        <span class="approval-inline-actions">${actionsHtml}</span>
-      </div>
-    </td>
-  </tr>`;
-}
-
-function revisionHistoryHtml(record){
-  const history = revisionHistoryCache[record.id];
-  if(!history || !history.length) return '';
-  const rowsHtml = history.map(h => `<div class="revision-history-row"><b>Rev ${escapeHtml(h.revision_letter)}</b> sent ${fmtDate(h.sent_date)}</div>`).join('');
-  return `<div class="revision-history"><div class="revision-history-label">Revision history</div>${rowsHtml}</div>`;
-}
-
-function approvalStatusBannerHtml(record){
-  const revisionNote = record.revision_count > 0 ? ` · ${record.revision_count} revision${record.revision_count===1?'':'s'} so far` : '';
-  if(record.project_status === 'Awaiting Client Approval'){
-    const daysWaiting = record.first_sent_for_approval_date
-      ? Math.floor((new Date() - new Date(record.first_sent_for_approval_date + 'T00:00:00')) / 86400000)
-      : null;
-    return `<div class="approval-banner approval-waiting">
-      <div class="approval-banner-title">⏳ Awaiting Client Approval${daysWaiting !== null ? ` — Day ${daysWaiting}` : ''}${revisionNote}</div>
-      <div class="approval-banner-sub">Sent for approval ${fmtDate(record.actual_sent_for_approval)}. No fixed end date — genuinely unknown until the client responds.</div>
-      <div class="approval-banner-actions">
-        <button class="btn-secondary" onclick="requestRevision('${record.id}')">🔄 Revision Requested</button>
-        <button class="btn-primary-sm" onclick="markClientApproved('${record.id}')">✓ Client Approved</button>
-      </div>
-      ${revisionHistoryHtml(record)}
-    </div>`;
-  }
-  if(record.project_status === 'Client Approved - Drafting In Progress' && record.actual_approval_received_date){
-    const waitDays = record.first_sent_for_approval_date
-      ? Math.floor((new Date(record.actual_approval_received_date+'T00:00:00') - new Date(record.first_sent_for_approval_date+'T00:00:00')) / 86400000)
-      : null;
-    return `<div class="approval-banner approval-approved">
-      <div class="approval-banner-title">✓ Client Approved — ${fmtDate(record.actual_approval_received_date)}</div>
-      <div class="approval-banner-sub">${waitDays !== null ? `Took ${waitDays} day${waitDays===1?'':'s'} waiting on the client${revisionNote}. ` : ''}Hard 10-day release deadline: <b>${fmtDate(record.target_release_date)}</b>.</div>
-      ${revisionHistoryHtml(record)}
-    </div>`;
-  }
-  if(record.actual_sent_for_approval || record.first_sent_for_approval_date){
-    const sentDate = record.first_sent_for_approval_date || record.actual_sent_for_approval;
-    return `<div class="approval-banner approval-waiting">
-      <div class="approval-banner-title">Sent — ${fmtDate(sentDate)}${revisionNote}</div>
-      <div class="approval-banner-sub">Project Status dropdown hasn't been set to "Awaiting Client Approval" yet, so this won't move groups or start the wait-day counter until that's updated.</div>
-    </div>`;
-  }
-  return `<div class="approval-banner approval-pending">
-    <div class="approval-banner-title">Class 1 job — requires client approval</div>
-    <div class="approval-banner-sub">Moves to "Awaiting Client Approval" automatically once GA For Approval Prep is marked Done.</div>
-  </div>`;
-}
-async function requestRevision(parentId){
-  if(!confirm("Mark this as needing revision? This reopens GA For Approval Prep and clears the current wait.")) return;
-  const current = rows.find(r => r.id === parentId);
-  // Log the round that's being closed out (the client asked for changes) so its sent date isn't
-  // lost once actual_sent_for_approval gets cleared/overwritten for the next round.
-  const closingSentDate = current?.actual_sent_for_approval || current?.first_sent_for_approval_date;
-  if(closingSentDate){
-    const revisionLetter = String.fromCharCode(65 + (current?.revision_count || 0));
-    await sb.from('so_approval_revisions').insert({ parent_id: parentId, revision_letter: revisionLetter, sent_date: closingSentDate });
-  }
-  const { data: gaSubs } = await sb.from('so_subitems').select('id').eq('parent_id', parentId).eq('subitem_type', 'GA For Approval Prep');
-  if(gaSubs && gaSubs.length){
-    await sb.from('so_subitems').update({ status: 'In Progress' }).in('id', gaSubs.map(s=>s.id));
-  }
-  await sb.from('so_schedule').update({
-    revision_count: (current?.revision_count || 0) + 1,
-    actual_sent_for_approval: null
-  }).eq('id', parentId);
-  delete revisionHistoryCache[parentId]; // stale — next modal open re-fetches full history
-  closeModal();
-  await silentReload();
-}
-async function markClientApproved(parentId){
-  if(!confirm("Confirm the client has approved this job? This starts the hard 10-day release clock.")) return;
-  const current = rows.find(r => r.id === parentId);
-  // Log the final round too, so the revision history shows the whole story through to approval.
-  const closingSentDate = current?.actual_sent_for_approval || current?.first_sent_for_approval_date;
-  if(closingSentDate){
-    const revisionLetter = String.fromCharCode(65 + (current?.revision_count || 0));
-    await sb.from('so_approval_revisions').insert({ parent_id: parentId, revision_letter: revisionLetter, sent_date: closingSentDate });
-  }
-  await sb.from('so_schedule').update({ project_status: 'Client Approved - Drafting In Progress' }).eq('id', parentId);
-  await silentReload(); // refresh so actual_approval_received_date (set server-side by the trigger) is available locally
-  const record = rows.find(r => r.id === parentId);
-  if(record && record.actual_approval_received_date){
-    await cascadeScheduleForward(parentId, 'GA For Approval Prep', record.actual_approval_received_date);
-  }
-  delete revisionHistoryCache[parentId]; // stale — next modal open re-fetches full history
-  closeModal();
-  await silentReload();
-}
-
 const JOB_GANTT_STAGE_LABELS = {
   'Sales Handover': 'Sales Handover',
   'GA For Approval Prep': 'GA',
@@ -5443,7 +5313,7 @@ function renderJobGanttPanel(record){
     let hasRealSchedule = false;
     if(type === '__CLIENT_APPROVAL__'){
       label = 'Client Approval';
-      if(record.project_status === 'Awaiting Client Approval' && (record.first_sent_for_approval_date || record.actual_sent_for_approval)){
+      if(!record.actual_approval_received_date && (record.first_sent_for_approval_date || record.actual_sent_for_approval)){
         const anchor = record.first_sent_for_approval_date || record.actual_sent_for_approval;
         const start = Math.max(0, dayOff(anchor));
         const width = Math.max((todayOffset + 1 - start) * DAY_W - 4, 40);
@@ -5662,7 +5532,6 @@ function openModal(id, presetGroup, presetJobType){
           </div>
         </div>
       </div>
-      ${record.requires_client_approval ? `<div id="approvalBannerContainer">${approvalStatusBannerHtml(record)}</div>` : ''}
       <div class="job-gantt-card">
         <div class="job-gantt-header" onclick="toggleJobGantt()">
           <span>📅 Job Timeline</span>
@@ -5762,15 +5631,6 @@ function openModal(id, presetGroup, presetJobType){
         jgBody.innerHTML = renderJobGanttPanel(record);
         const shell = jgBody.querySelector('.gantt-shell[data-today-scroll]');
         if(shell) shell.scrollLeft = parseInt(shell.dataset.todayScroll, 10) || 0;
-      }
-    });
-  }
-  if(record && record.requires_client_approval){
-    sb.from('so_approval_revisions').select('revision_letter, sent_date').eq('parent_id', record.id).order('sent_date', {ascending:true}).then(({data}) => {
-      revisionHistoryCache[record.id] = data || [];
-      if(editingId === record.id){
-        const bannerContainer = document.getElementById('approvalBannerContainer');
-        if(bannerContainer) bannerContainer.innerHTML = approvalStatusBannerHtml(rows.find(r => r.id === record.id) || record);
       }
     });
   }
@@ -6401,7 +6261,7 @@ function gatherGanttEntries(windowStart, windowEnd){
   });
 
   rows.forEach(r => {
-    if(r.project_status !== 'Awaiting Client Approval' || !r.requires_client_approval) return;
+    if(!r.requires_client_approval || r.actual_approval_received_date) return;
     const anchorDateStr = r.first_sent_for_approval_date || r.actual_sent_for_approval;
     if(!anchorDateStr) return;
     const anchor = new Date(anchorDateStr + 'T00:00:00');
