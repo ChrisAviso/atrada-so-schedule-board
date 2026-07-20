@@ -1024,6 +1024,23 @@
   .mini-stat b{color:var(--text);font-size:13.5px;font-weight:700;display:block;margin-bottom:2px;}
   .mini-stat-wide{min-width:200px;}
 
+  .approval-revisions-card{
+    margin-top:18px;border:1px solid var(--border);border-radius:var(--radius);
+    padding:14px 16px;background:#fffaf0;
+  }
+  .approval-revisions-header{font-size:13px;font-weight:800;margin-bottom:10px;}
+  .approval-revisions-empty{font-size:12.5px;color:var(--text-dim);margin-bottom:10px;}
+  .approval-revision-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .approval-revision-letter{font-size:12.5px;font-weight:700;min-width:44px;}
+  .approval-revision-date{
+    padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;
+    font-size:13px;font-family:inherit;background:white;
+  }
+  .approval-revision-date:focus{outline:none;border-color:var(--primary);}
+  .approval-revision-remove{
+    background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:2px 6px;
+  }
+
   .job-gantt-card{
     margin-top:18px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;
   }
@@ -5112,14 +5129,13 @@ function difotPill(status){
 // this used to also drive automatic status flips + schedule cascades, but that's been removed —
 // approving or resending is now just a manual edit via the item modal like any other field.
 function clientApprovalInlineRowHtml(r){
-  const revisionNote = r.revision_count > 0 ? ` · ${r.revision_count} rev` : '';
   const sentDate = r.first_sent_for_approval_date || r.actual_sent_for_approval;
   let statusHtml;
   if(r.actual_approval_received_date){
-    statusHtml = `<span class="approval-inline-status approved">✓ Approved — ${fmtDate(r.actual_approval_received_date)}${revisionNote}</span>`;
+    statusHtml = `<span class="approval-inline-status approved">✓ Approved — ${fmtDate(r.actual_approval_received_date)}</span>`;
   } else if(sentDate){
     const daysWaiting = Math.floor((new Date() - new Date(sentDate+'T00:00:00')) / 86400000);
-    statusHtml = `<span class="approval-inline-status waiting">⏳ Awaiting Approval — Day ${daysWaiting}${revisionNote}</span>`;
+    statusHtml = `<span class="approval-inline-status waiting">⏳ Awaiting Approval — Day ${daysWaiting}</span>`;
   } else {
     statusHtml = `<span class="approval-inline-status pending">Not sent yet</span>`;
   }
@@ -5133,6 +5149,74 @@ function clientApprovalInlineRowHtml(r){
     </td>
   </tr>`;
 }
+
+// Manual revision date log (Rev A, Rev B, Rev C...) for a Class 1 job's approval history. Rev A's
+// date is the one that matters for the board's "Day N" waiting counter — kept in sync onto
+// so_schedule.first_sent_for_approval_date every time this list changes, so the fast board-level
+// badge (which reads that column directly rather than joining this table per row) always reflects
+// the earliest send, no matter how many resend rounds (Rev B, C...) have happened since.
+let jobRevisionsCache = {};
+
+async function loadJobRevisions(recordId){
+  const { data } = await sb.from('so_approval_revisions').select('*').eq('parent_id', recordId).order('sent_date', {ascending:true});
+  jobRevisionsCache[recordId] = data || [];
+  renderApprovalRevisionsBody(recordId);
+}
+
+function renderApprovalRevisionsBody(recordId){
+  const container = document.querySelector('#approvalRevisionsContainer .approval-revisions-body');
+  if(!container) return;
+  const revisions = (jobRevisionsCache[recordId] || []).slice().sort((a,b) => (a.sent_date||'').localeCompare(b.sent_date||''));
+  const rowsHtml = revisions.map((rev, idx) => {
+    const letter = String.fromCharCode(65 + idx);
+    return `<div class="approval-revision-row">
+      <span class="approval-revision-letter">Rev ${letter}</span>
+      <input type="date" class="approval-revision-date" value="${rev.sent_date || ''}" onchange="saveJobRevisionDate('${rev.id}', '${recordId}', this.value)">
+      <button type="button" class="approval-revision-remove" onclick="deleteJobRevision('${rev.id}', '${recordId}')" title="Remove this revision">✕</button>
+    </div>`;
+  }).join('');
+  const emptyHtml = `<div class="approval-revisions-empty">No revisions logged yet — Rev A is the first time this job was sent for approval.</div>`;
+  container.innerHTML = (rowsHtml || emptyHtml) + `<button type="button" class="btn-ghost-sm" onclick="addJobRevision('${recordId}')">+ Add Revision</button>`;
+}
+
+async function addJobRevision(recordId){
+  const existing = jobRevisionsCache[recordId] || [];
+  const nextLetter = String.fromCharCode(65 + existing.length);
+  const { data, error } = await sb.from('so_approval_revisions')
+    .insert({ parent_id: recordId, revision_letter: nextLetter, sent_date: toLocalISODate(new Date()) })
+    .select().single();
+  if(error){ alert("Couldn't add revision: " + error.message); return; }
+  jobRevisionsCache[recordId] = [...existing, data];
+  renderApprovalRevisionsBody(recordId);
+  await syncFirstSentDateFromRevisions(recordId);
+}
+
+async function saveJobRevisionDate(id, recordId, newDate){
+  if(!newDate) return;
+  const { error } = await sb.from('so_approval_revisions').update({ sent_date: newDate }).eq('id', id);
+  if(error){ alert("Couldn't save date: " + error.message); return; }
+  const row = (jobRevisionsCache[recordId] || []).find(r => r.id === id);
+  if(row) row.sent_date = newDate;
+  renderApprovalRevisionsBody(recordId);
+  await syncFirstSentDateFromRevisions(recordId);
+}
+
+async function deleteJobRevision(id, recordId){
+  if(!confirm('Remove this revision entry?')) return;
+  const { error } = await sb.from('so_approval_revisions').delete().eq('id', id);
+  if(error){ alert("Couldn't remove: " + error.message); return; }
+  jobRevisionsCache[recordId] = (jobRevisionsCache[recordId] || []).filter(r => r.id !== id);
+  renderApprovalRevisionsBody(recordId);
+  await syncFirstSentDateFromRevisions(recordId);
+}
+
+async function syncFirstSentDateFromRevisions(recordId){
+  const list = jobRevisionsCache[recordId] || [];
+  const earliest = list.reduce((min, r) => (r.sent_date && (!min || r.sent_date < min)) ? r.sent_date : min, null);
+  await sb.from('so_schedule').update({ first_sent_for_approval_date: earliest }).eq('id', recordId);
+  await silentReload();
+}
+
 const JOB_GANTT_STAGE_LABELS = {
   'Sales Handover': 'Sales Handover',
   'GA For Approval Prep': 'GA',
@@ -5563,6 +5647,10 @@ function openModal(id, presetGroup, presetJobType){
           </div>
         </div>
       </div>
+      ${record.requires_client_approval ? `<div class="approval-revisions-card" id="approvalRevisionsContainer">
+        <div class="approval-revisions-header">📨 Client Approval Revisions</div>
+        <div class="approval-revisions-body">Loading…</div>
+      </div>` : ''}
       <div class="job-gantt-card">
         <div class="job-gantt-header" onclick="toggleJobGantt()">
           <span>📅 Job Timeline</span>
@@ -5664,6 +5752,9 @@ function openModal(id, presetGroup, presetJobType){
         if(shell) shell.scrollLeft = parseInt(shell.dataset.todayScroll, 10) || 0;
       }
     });
+  }
+  if(record && record.requires_client_approval){
+    loadJobRevisions(record.id);
   }
 }
 
