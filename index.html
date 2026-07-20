@@ -207,6 +207,7 @@
   .teamsched-dates{font-family:'JetBrains Mono',monospace;color:var(--text-dim);font-size:12px;text-align:right;}
   .teamsched-more{font-size:10.5px;font-weight:700;color:var(--text-dim);background:var(--gray-pill);border-radius:6px;padding:2px 7px;white-space:nowrap;text-align:center;cursor:pointer;}
   .teamsched-more:hover{color:var(--primary);background:#e2ebff;}
+  .teamsched-approved-tag{font-size:10px;font-weight:700;color:var(--green);background:#eafaf3;border:1px solid var(--green);border-radius:5px;padding:1px 6px;white-space:nowrap;margin-left:6px;}
 
   .break-panel{
     background:#fff8ed;border:1px solid var(--amber);border-radius:10px;padding:12px 16px;margin-bottom:18px;
@@ -2750,8 +2751,19 @@ function teamScheduleSummaryHtml(){
     (byName[name] = byName[name] || []).push(t);
   });
 
+  // A job that's already clear to proceed — either it never needed client sign-off, or the
+  // client has already given it — should jump the queue ahead of jobs still sitting in prep
+  // pre-approval-request. Awaiting-approval jobs are excluded above entirely, so this only
+  // distinguishes "already approved / never needed it" from "not sent for approval yet".
+  const hasClientApproval = (job) => !job.requires_client_approval || job.project_status === 'Client Approved - Drafting In Progress';
+
   const people = Object.keys(byName).map(name => {
-    const list = byName[name].slice().sort((a,b) => taskOrderDate(a.sub).localeCompare(taskOrderDate(b.sub)));
+    const list = byName[name].slice().sort((a,b) => {
+      const aApproved = hasClientApproval(a.job);
+      const bApproved = hasClientApproval(b.job);
+      if(aApproved !== bApproved) return aApproved ? -1 : 1;
+      return taskOrderDate(a.sub).localeCompare(taskOrderDate(b.sub));
+    });
     return { name, list };
   });
   if(!people.length) return '';
@@ -2766,6 +2778,8 @@ function teamScheduleSummaryHtml(){
       const label = job.is_internal
         ? `<span class="taskboard-tag-internal">Internal</span>${escapeHtml(job.item_name||'—')}`
         : `${escapeHtml(job.so_number || '—')} — ${escapeHtml(job.company_name || job.item_name || '')}`;
+      const approvedTag = (job.requires_client_approval && job.project_status === 'Client Approved - Drafting In Progress')
+        ? `<span class="teamsched-approved-tag" title="Client has already approved — cleared to proceed">✓ Approved</span>` : '';
       const subLabel = sub.subitem_type === 'Internal Time' ? 'Time log' : sub.subitem_type;
       const dateRange = (sub.schedule_start_date || sub.schedule_end_date)
         ? `${fmtDate(sub.schedule_start_date)} → ${fmtDate(sub.schedule_end_date)}`
@@ -2777,7 +2791,7 @@ function teamScheduleSummaryHtml(){
       return `<div class="teamsched-row${isLast ? ' teamsched-row-last' : ''}" onclick="scrollToItem('${job.id}')" title="Jump to this item">
         ${nameCell}
         <span class="teamsched-priority">Priority ${idx+1}</span>
-        <span class="teamsched-task">${label} <span class="teamsched-stage">— ${escapeHtml(subLabel)}</span></span>
+        <span class="teamsched-task">${label} <span class="teamsched-stage">— ${escapeHtml(subLabel)}</span>${approvedTag}</span>
         <span class="teamsched-dates">${dateRange}</span>
         ${moreTag}
       </div>`;
@@ -3538,7 +3552,7 @@ async function submitAttendanceDecision(decisionId, isSupervisorFill){
   await loadData();
   const supervisorTableOpen = !document.getElementById('attendanceSupervisorModalBackdrop').classList.contains('hidden');
   const individualOpen = !document.getElementById('attendanceReconModalBackdrop').classList.contains('hidden');
-  if(supervisorTableOpen){ await refreshFortnightHoursSummary(); renderSupervisorReviewBody(); }
+  if(supervisorTableOpen){ await refreshFortnightHoursSummary(getViewedFortnightStart()); renderSupervisorReviewBody(); }
   if(individualOpen){ renderAttendanceReconBody(); }
 }
 
@@ -3551,7 +3565,7 @@ async function resetAttendanceDecision(decisionId){
   if(error){ alert('Could not reset: ' + error.message); return; }
   supervisorEditingId = null;
   await loadData();
-  await refreshFortnightHoursSummary();
+  await refreshFortnightHoursSummary(getViewedFortnightStart());
   renderSupervisorReviewBody();
 }
 
@@ -3614,9 +3628,31 @@ async function reconGoThisFortnight(){
 async function openSupervisorAttendanceReview(){
   if(!isSupervisor()){ alert("Only supervisors can view the team's attendance review."); return; }
   supervisorEditingId = null;
+  viewedFortnightStart = null;
   await refreshFortnightHoursSummary();
   renderSupervisorReviewBody();
   document.getElementById('attendanceSupervisorModalBackdrop').classList.remove('hidden');
+}
+
+async function supervisorGoPriorFortnight(){
+  const cur = getViewedFortnightStart();
+  const d = new Date(cur+'T00:00:00'); d.setDate(d.getDate()-14);
+  viewedFortnightStart = toLocalISODate(d);
+  await refreshFortnightHoursSummary(viewedFortnightStart);
+  renderSupervisorReviewBody();
+}
+async function supervisorGoNextFortnight(){
+  const cur = getViewedFortnightStart();
+  if(cur >= currentFortnightStart()) return; // already at the latest fortnight
+  const d = new Date(cur+'T00:00:00'); d.setDate(d.getDate()+14);
+  viewedFortnightStart = toLocalISODate(d);
+  await refreshFortnightHoursSummary(viewedFortnightStart);
+  renderSupervisorReviewBody();
+}
+async function supervisorGoThisFortnight(){
+  viewedFortnightStart = null;
+  await refreshFortnightHoursSummary(currentFortnightStart());
+  renderSupervisorReviewBody();
 }
 
 function closeSupervisorReview(){
@@ -3809,11 +3845,19 @@ function renderTeamSummaryHtml(fnStart, relevant){
 }
 
 function renderSupervisorReviewBody(){
-  const fnStart = currentFortnightStart();
+  const fnStart = getViewedFortnightStart();
+  const isCurrentFn = fnStart >= currentFortnightStart();
+  const fortnightNavHtml = `<div class="fortnight-nav">
+    <button class="icon-btn" onclick="supervisorGoPriorFortnight()">← Prior</button>
+    <span class="fortnight-nav-label">${fortnightLabel(fnStart)}</span>
+    <button class="icon-btn" onclick="supervisorGoNextFortnight()" ${isCurrentFn?'disabled':''}>Next →</button>
+    <button class="icon-btn" onclick="supervisorGoThisFortnight()" ${isCurrentFn?'disabled':''}>This fortnight</button>
+  </div>`;
+  const navWrapHtml = `<div style="display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-bottom:12px;flex-wrap:wrap;">${fortnightNavHtml}</div>`;
   const relevant = attendanceDecisions.filter(d => d.fortnight_start === fnStart);
   const summaryHtml = renderTeamSummaryHtml(fnStart, relevant);
   if(relevant.length === 0){
-    document.getElementById('attendanceSupervisorBody').innerHTML = summaryHtml + `<p style="color:var(--text-dim);font-size:13px;">No shortfall days flagged yet this fortnight.</p>`;
+    document.getElementById('attendanceSupervisorBody').innerHTML = navWrapHtml + summaryHtml + `<p style="color:var(--text-dim);font-size:13px;">No shortfall days flagged yet${isCurrentFn ? ' this fortnight' : ` for ${fortnightLabel(fnStart)}`}.</p>`;
     return;
   }
   const byDraftee = {};
@@ -3854,7 +3898,7 @@ function renderSupervisorReviewBody(){
     }).join('');
   }).join('');
 
-  document.getElementById('attendanceSupervisorBody').innerHTML = summaryHtml + `
+  document.getElementById('attendanceSupervisorBody').innerHTML = navWrapHtml + summaryHtml + `
     <div class="attendance-deadline-banner">⏰ Fortnight ${fortnightLabel(fnStart)} — locks for payroll ahead of Friday's pay run.</div>
     <table class="attendance-table">
       <thead><tr><th>Draftee</th><th>Flagged Day</th><th>Choice</th><th>Status</th><th></th></tr></thead>
