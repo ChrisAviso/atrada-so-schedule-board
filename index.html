@@ -855,6 +855,26 @@
   .name-picker-list{display:flex;flex-wrap:wrap;gap:8px;}
   .name-picker-list .toggle-check{flex:0 0 auto;}
   .name-picker-empty{font-size:13px;color:var(--text-dim);}
+  .field-manage-link{background:none;border:none;color:var(--primary);font-size:11.5px;font-weight:600;cursor:pointer;padding:0;font-family:inherit;}
+  .field-manage-link:hover{text-decoration:underline;}
+  .manage-statuses-modal{max-width:480px;}
+  .manage-status-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+  .manage-status-row{display:flex;align-items:center;gap:8px;}
+  .manage-status-row.locked{padding:8px 10px;background:#f5f6fb;border-radius:8px;color:var(--text-dim);font-size:13.5px;}
+  .manage-status-lock{flex:0 0 auto;}
+  .manage-status-name{flex:1;}
+  .manage-status-input{
+    flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;
+    font-size:13.5px;font-family:inherit;
+  }
+  .manage-status-input:focus{outline:none;border-color:var(--primary);}
+  .manage-status-row .btn-ghost-sm.danger{color:var(--red);border-color:var(--red);}
+  .manage-status-add{display:flex;gap:8px;padding-top:12px;border-top:1px solid var(--border);}
+  .manage-status-add input{
+    flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;
+    font-size:13.5px;font-family:inherit;
+  }
+  .manage-status-add input:focus{outline:none;border-color:var(--primary);}
   .break-modal-sub{font-size:13px;color:var(--text-dim);}
   #breakCountdown{font-weight:700;color:var(--amber);font-family:'JetBrains Mono',monospace;}
   .log-edit-btn{
@@ -1471,6 +1491,18 @@
   </div>
 </div>
 
+<div class="modal-backdrop hidden" id="manageStatusesModalBackdrop">
+  <div class="modal manage-statuses-modal">
+    <div class="modal-head">
+      <h2>Manage Project Statuses</h2>
+      <button class="modal-close" id="manageStatusesCloseBtn">✕</button>
+    </div>
+    <div class="modal-body" id="manageStatusesBody">
+      <!-- filled by JS -->
+    </div>
+  </div>
+</div>
+
 <div id="hrsDetailTooltip" class="hrs-detail-tooltip-fixed"></div>
 
 <div class="modal-backdrop hidden" id="dailyCheckinModalBackdrop">
@@ -1687,6 +1719,9 @@ let logsBySubitem = {};
 let baselinesByParent = {}; // { parentId: { number, stages } } — latest APPROVED baseline only
 let salesPersonOptions = [];
 let drafteeOptions = [];
+let projectStatusOptions = [];
+let projectStatusLocked = new Set(); // statuses that drive automation and can't be renamed/deleted
+let manageStatusesCache = [];
 let filterDraftee = '';
 let filterSalesPerson = '';
 let filterClass = '';
@@ -2113,6 +2148,9 @@ async function loadData(){
   if(lookupData){
     salesPersonOptions = lookupData.filter(l => l.category === 'sales_person').map(l => l.name);
     drafteeOptions = lookupData.filter(l => l.category === 'draftee').map(l => l.name);
+    const projectStatusRows = lookupData.filter(l => l.category === 'project_status').sort((a,b) => (a.sort_order||0) - (b.sort_order||0));
+    projectStatusOptions = projectStatusRows.map(l => l.name);
+    projectStatusLocked = new Set(projectStatusRows.filter(l => l.is_locked).map(l => l.name));
   }
   populateFilterDropdowns();
 
@@ -2161,7 +2199,7 @@ function isSafeToAutoRefresh(){
     if(tag === 'TEXTAREA') return false;
     if(tag === 'INPUT' && !['checkbox','radio'].includes(active.type)) return false;
   }
-  const openModalIds = ['breakModalBackdrop','gaCheckpointModalBackdrop','logEditModalBackdrop'];
+  const openModalIds = ['breakModalBackdrop','gaCheckpointModalBackdrop','logEditModalBackdrop','manageStatusesModalBackdrop'];
   if(openModalIds.some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); })) return false;
   if(document.querySelector('.remarks-popover:not(.hidden)')) return false;
   return true;
@@ -2248,6 +2286,9 @@ async function silentReload(){
   if(lookupData){
     salesPersonOptions = lookupData.filter(l => l.category === 'sales_person').map(l => l.name);
     drafteeOptions = lookupData.filter(l => l.category === 'draftee').map(l => l.name);
+    const projectStatusRows = lookupData.filter(l => l.category === 'project_status').sort((a,b) => (a.sort_order||0) - (b.sort_order||0));
+    projectStatusOptions = projectStatusRows.map(l => l.name);
+    projectStatusLocked = new Set(projectStatusRows.filter(l => l.is_locked).map(l => l.name));
   }
   populateFilterDropdowns();
 
@@ -4872,6 +4913,110 @@ async function handleLookupChange(selectEl, category){
   return true;
 }
 
+function manageStatusRowHtml(row){
+  if(row.is_locked){
+    return `<div class="manage-status-row locked">
+      <span class="manage-status-lock" title="Used by automation — can't be renamed or deleted">🔒</span>
+      <span class="manage-status-name">${escapeHtml(row.name)}</span>
+    </div>`;
+  }
+  return `<div class="manage-status-row" data-id="${row.id}">
+    <input type="text" class="manage-status-input" value="${escapeAttr(row.name)}">
+    <button type="button" class="btn-ghost-sm" onclick="saveStatusRename('${row.id}')">Save</button>
+    <button type="button" class="btn-ghost-sm danger" onclick="deleteStatusOption('${row.id}')">Delete</button>
+  </div>`;
+}
+
+function renderManageStatusesBody(){
+  const rowsHtml = manageStatusesCache.map(manageStatusRowHtml).join('');
+  document.getElementById('manageStatusesBody').innerHTML = `
+    <div class="manage-status-list">${rowsHtml}</div>
+    <div class="manage-status-add">
+      <input type="text" id="newStatusNameInput" placeholder="New status name…">
+      <button type="button" class="btn-primary-sm" onclick="addStatusOption()">+ Add</button>
+    </div>
+  `;
+}
+
+async function openManageStatusesModal(){
+  const { data } = await sb.from('so_lookup_names').select('*').eq('category', 'project_status').order('sort_order', {ascending:true});
+  manageStatusesCache = data || [];
+  renderManageStatusesBody();
+  document.getElementById('manageStatusesModalBackdrop').classList.remove('hidden');
+}
+
+function closeManageStatusesModal(){
+  document.getElementById('manageStatusesModalBackdrop').classList.add('hidden');
+}
+
+// Refreshes the in-memory picklist + the Project Status <select> in the currently open item
+// modal (if any), so a change made in the Manage Statuses modal shows up immediately underneath
+// it without needing to close and reopen the item modal.
+async function refreshProjectStatusOptions(){
+  const { data } = await sb.from('so_lookup_names').select('*').eq('category', 'project_status').order('sort_order', {ascending:true});
+  projectStatusOptions = (data || []).map(l => l.name);
+  projectStatusLocked = new Set((data || []).filter(l => l.is_locked).map(l => l.name));
+  const sel = document.getElementById('f_project_status');
+  if(sel){
+    const current = sel.value;
+    const preserveUnknown = (current && !projectStatusOptions.includes(current)) ? `<option value="${escapeAttr(current)}" selected>${escapeHtml(current)}</option>` : '';
+    const opts = projectStatusOptions.map(opt => `<option value="${escapeAttr(opt)}" ${current===opt?'selected':''}>${escapeHtml(opt)}</option>`).join('');
+    sel.innerHTML = preserveUnknown + opts;
+  }
+}
+
+async function addStatusOption(){
+  const input = document.getElementById('newStatusNameInput');
+  const name = (input?.value || '').trim();
+  if(!name) return;
+  const maxSort = manageStatusesCache.reduce((m, r) => Math.max(m, r.sort_order || 0), 0);
+  const { error } = await sb.from('so_lookup_names').insert({ category: 'project_status', name, is_locked: false, sort_order: maxSort + 1 });
+  if(error){
+    alert(error.message.toLowerCase().includes('duplicate') ? 'That status already exists.' : ("Couldn't add: " + error.message));
+    return;
+  }
+  await refreshProjectStatusOptions();
+  await openManageStatusesModal();
+}
+
+async function saveStatusRename(id){
+  const row = manageStatusesCache.find(r => r.id === id);
+  const rowEl = document.querySelector(`.manage-status-row[data-id="${id}"] .manage-status-input`);
+  const newName = (rowEl?.value || '').trim();
+  if(!row || !newName || newName === row.name) return;
+  const { error } = await sb.from('so_lookup_names').update({ name: newName }).eq('id', id);
+  if(error){
+    alert(error.message.toLowerCase().includes('duplicate') ? 'That status already exists.' : ("Couldn't rename: " + error.message));
+    return;
+  }
+  // Keep every job currently on the old label pointed at the new one, so the rename is complete
+  // rather than leaving existing jobs referencing a name that no longer appears in the picklist.
+  await sb.from('so_schedule').update({ project_status: newName }).eq('project_status', row.name);
+  await refreshProjectStatusOptions();
+  await silentReload();
+  await openManageStatusesModal();
+}
+
+async function deleteStatusOption(id){
+  const row = manageStatusesCache.find(r => r.id === id);
+  if(!row) return;
+  const { count } = await sb.from('so_schedule').select('id', { count: 'exact', head: true }).eq('project_status', row.name);
+  if(count && count > 0){
+    alert(`"${row.name}" is currently used by ${count} job${count===1?'':'s'}. Rename it instead, or update those jobs first.`);
+    return;
+  }
+  if(!confirm(`Delete the "${row.name}" status? This can't be undone.`)) return;
+  const { error } = await sb.from('so_lookup_names').delete().eq('id', id);
+  if(error){ alert("Couldn't delete: " + error.message); return; }
+  await refreshProjectStatusOptions();
+  await openManageStatusesModal();
+}
+
+document.getElementById('manageStatusesCloseBtn').addEventListener('click', closeManageStatusesModal);
+document.getElementById('manageStatusesModalBackdrop').addEventListener('click', e => {
+  if(e.target.id === 'manageStatusesModalBackdrop') closeManageStatusesModal();
+});
+
 async function handleSubDrafteeChange(selectEl, subitemId){
   const ok = await handleLookupChange(selectEl, 'draftee');
   if(!ok) return;
@@ -5555,6 +5700,9 @@ function openModal(id, presetGroup, presetJobType){
           }
         }
       }
+      if(f.key === 'project_status' && projectStatusOptions.length){
+        selectOptions = projectStatusOptions;
+      }
       // Defense in depth: a select must never silently coerce a value it doesn't recognize into
       // whatever option happens to render first. A blank/legacy current value (e.g. rcd_or_rc left
       // unset, or a project_status like "Awaiting Client Approval - SENT"/"- TQ" that predates this
@@ -5563,8 +5711,9 @@ function openModal(id, presetGroup, presetJobType){
       const blankOptHtml = (!autoOptHtml && !val) ? `<option value="" selected>—</option>` : '';
       const preserveUnknownOptHtml = (val && !selectOptions.includes(val)) ? `<option value="${escapeAttr(val)}" selected>${escapeHtml(val)}</option>` : '';
       const opts = autoOptHtml + blankOptHtml + preserveUnknownOptHtml + selectOptions.map(opt => `<option value="${escapeAttr(opt)}" ${val===opt?'selected':''}>${escapeHtml(opt)}</option>`).join('');
+      const manageLinkHtml = f.key === 'project_status' ? ` <button type="button" class="field-manage-link" onclick="openManageStatusesModal()">⚙ Manage</button>` : '';
       return `<div class="field">
-        <label>${fieldLabel}</label>
+        <label>${fieldLabel}${manageLinkHtml}</label>
         <select id="f_${f.key}">${opts}</select>
       </div>`;
     }
