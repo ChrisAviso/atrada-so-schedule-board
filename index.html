@@ -1000,12 +1000,6 @@
   .mini-stat b{color:var(--text);font-size:13.5px;font-weight:700;display:block;margin-bottom:2px;}
   .mini-stat-wide{min-width:200px;}
 
-  .recalc-schedule-row{
-    margin-top:12px;padding:10px 12px;border:1px dashed var(--border);border-radius:var(--radius);
-    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-  }
-  .recalc-schedule-hint{font-size:11px;color:var(--text-dim);}
-
   .job-gantt-card{
     margin-top:18px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;
   }
@@ -1315,14 +1309,6 @@
             <option value="overdue">Overdue</option>
             <option value="week">Due This Week</option>
           </select>
-          <label class="toggle-check"><input type="checkbox" id="filterOverBudget"> Over Budget</label>
-        </div>
-      </div>
-
-      <div class="filter-group">
-        <span class="filter-group-label">Live</span>
-        <div class="filter-group-controls">
-          <label class="toggle-check"><input type="checkbox" id="filterClockedIn"> Clocked In Now</label>
         </div>
       </div>
 
@@ -1703,9 +1689,7 @@ let filterDifot = '';
 let filterStage = '';
 let filterStageStatus = '';
 let filterDue = '';
-let filterOverBudget = false;
 let absentToday = new Set();
-let filterClockedIn = false;
 let sortBy = '';
 let collapsedSubitems = new Set();
 let hasLoadedOnce = false;
@@ -2054,7 +2038,7 @@ async function loadData(){
   }
 
   // project_status + Class 1/2 approval-tracking fields live on the base table but aren't exposed by the so_schedule_computed view yet — merge them in directly
-  const { data: statusData } = await sb.from('so_schedule').select('id, project_status, requires_client_approval, revision_count, first_sent_for_approval_date, is_internal');
+  const { data: statusData } = await sb.from('so_schedule').select('id, project_status, requires_client_approval, revision_count, first_sent_for_approval_date, is_internal, unit_count, unit_qty');
   if(statusData){
     const statusById = {};
     statusData.forEach(s => { statusById[s.id] = s; });
@@ -2065,6 +2049,8 @@ async function loadData(){
       r.revision_count = s?.revision_count ?? 0;
       r.first_sent_for_approval_date = s?.first_sent_for_approval_date ?? null;
       r.is_internal = s?.is_internal ?? false;
+      r.unit_count = s?.unit_count ?? null;
+      r.unit_qty = s?.unit_qty ?? null;
     });
   }
   const byDrafteeRows = {};
@@ -2189,7 +2175,7 @@ async function silentReload(){
   if(error) return; // stay quiet in the background; the next live event will retry
   rows = data || [];
 
-  const { data: statusData } = await sb.from('so_schedule').select('id, project_status, requires_client_approval, revision_count, first_sent_for_approval_date, is_internal');
+  const { data: statusData } = await sb.from('so_schedule').select('id, project_status, requires_client_approval, revision_count, first_sent_for_approval_date, is_internal, unit_count, unit_qty');
   if(statusData){
     const statusById = {};
     statusData.forEach(s => { statusById[s.id] = s; });
@@ -2200,6 +2186,8 @@ async function silentReload(){
       r.revision_count = s?.revision_count ?? 0;
       r.first_sent_for_approval_date = s?.first_sent_for_approval_date ?? null;
       r.is_internal = s?.is_internal ?? false;
+      r.unit_count = s?.unit_count ?? null;
+      r.unit_qty = s?.unit_qty ?? null;
     });
   }
 
@@ -2278,8 +2266,6 @@ document.getElementById('filterDifot').addEventListener('change', e => { filterD
 document.getElementById('filterStage').addEventListener('change', e => { filterStage = e.target.value; renderBoard(); });
 document.getElementById('filterStageStatus').addEventListener('change', e => { filterStageStatus = e.target.value; renderBoard(); });
 document.getElementById('filterDue').addEventListener('change', e => { filterDue = e.target.value; renderBoard(); });
-document.getElementById('filterOverBudget').addEventListener('change', e => { filterOverBudget = e.target.checked; renderBoard(); });
-document.getElementById('filterClockedIn').addEventListener('change', e => { filterClockedIn = e.target.checked; renderBoard(); });
 document.getElementById('sortBy').addEventListener('change', e => { sortBy = e.target.value; renderBoard(); });
 document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
 document.getElementById('printViewBtn').addEventListener('click', () => {
@@ -2296,7 +2282,7 @@ document.getElementById('printViewBtn').addEventListener('click', () => {
 });
 document.getElementById('clearFiltersBtn').addEventListener('click', () => {
   filterDraftee = ''; filterSalesPerson = ''; filterClass = ''; filterJobType = ''; filterDifot = ''; filterStage = '';
-  filterStageStatus = ''; filterDue = ''; filterOverBudget = false; filterClockedIn = false; sortBy = '';
+  filterStageStatus = ''; filterDue = ''; sortBy = '';
   document.getElementById('filterDraftee').value = '';
   document.getElementById('filterSalesPerson').value = '';
   document.getElementById('filterClass').value = '';
@@ -2305,8 +2291,6 @@ document.getElementById('clearFiltersBtn').addEventListener('click', () => {
   document.getElementById('filterStage').value = '';
   document.getElementById('filterStageStatus').value = '';
   document.getElementById('filterDue').value = '';
-  document.getElementById('filterOverBudget').checked = false;
-  document.getElementById('filterClockedIn').checked = false;
   document.getElementById('sortBy').value = '';
   renderBoard();
 });
@@ -2362,7 +2346,7 @@ function computeCurrentStageGroup(job){
 function isAnyFilterActive(){
   const q = document.getElementById('searchBox').value.trim().toLowerCase();
   return !!(q || filterDraftee || filterSalesPerson || filterClass || filterJobType || filterDifot ||
-    filterStage || filterStageStatus || filterDue || filterOverBudget || filterClockedIn);
+    filterStage || filterStageStatus || filterDue);
 }
 
 function renderBoard(){
@@ -2377,13 +2361,11 @@ function renderBoard(){
     const matchesClass = !filterClass || r.product_class === filterClass;
     const matchesJobType = !filterJobType || r.job_type === filterJobType;
     const matchesDifot = !filterDifot || r.computed_difot_status === filterDifot;
-    const matchesOverBudget = !filterOverBudget || (r.computed_remainder_hrs !== null && r.computed_remainder_hrs !== undefined && Number(r.computed_remainder_hrs) < 0);
 
     const subs = subitemsByParent[r.id] || [];
     const matchesStage = (!filterStage && !filterStageStatus) || subs.some(s =>
       (!filterStage || s.subitem_type === filterStage) && (!filterStageStatus || s.status === filterStageStatus)
     );
-    const matchesClockedIn = !filterClockedIn || subs.some(s => s.clock_running);
 
     let matchesDue = true;
     if(filterDue === 'overdue'){
@@ -2393,7 +2375,7 @@ function renderBoard(){
     }
 
     return matchesSearch && matchesDraftee && matchesSalesPerson && matchesClass && matchesJobType && matchesDifot &&
-      matchesOverBudget && matchesStage && matchesClockedIn && matchesDue;
+      matchesStage && matchesDue;
   });
 
   refreshTopPanels();
@@ -2645,7 +2627,7 @@ function openJobsSummaryHtml(jobType, title){
       <span class="align-right">Sales</span>
       <span class="align-right">Target</span>
     </div>
-    <div class="open-so-list">${rowsHtml}</div>
+    <div class="open-so-list" id="openSoList_${jobType}">${rowsHtml}</div>
   </div>`;
 }
 
@@ -2800,7 +2782,7 @@ function teamScheduleSummaryHtml(){
 
   return `<div class="teamsched-panel">
     <div class="teamsched-title">📋 Team Schedule — What's Next, In Order</div>
-    <div class="teamsched-rows">${rowsHtml}</div>
+    <div class="teamsched-rows" id="teamschedRowsBox">${rowsHtml}</div>
   </div>`;
 }
 
@@ -3195,10 +3177,26 @@ async function toggleClock(subitemId){
 let breakPromptActive = false;
 let breakAutoOffTimer = null;
 
+// These sub-panels rebuild their innerHTML wholesale on every periodic refresh (see below), which
+// would otherwise reset anyone's manual scroll position inside them back to the top every ~20s.
+// Save each one's scrollTop before the rebuild and restore it after, so scrolling to browse the
+// Priority box or the Open SO/OPPTS lists isn't fought by the auto-refresh.
+const SCROLLABLE_PANEL_IDS = ['teamschedRowsBox', 'openSoList_SO', 'openSoList_OPPTS'];
+
 function refreshTopPanels(){
-  document.getElementById('activePanelRoot').innerHTML = isAnyFilterActive()
+  const root = document.getElementById('activePanelRoot');
+  const savedScrolls = {};
+  SCROLLABLE_PANEL_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if(el) savedScrolls[id] = el.scrollTop;
+  });
+  root.innerHTML = isAnyFilterActive()
     ? '' // filtering active — these panels aren't filter-aware, so hide them rather than show unfiltered/misleading data
     : (attendancePanelHtml() + notClockedInHtml() + activePanelHtml() + teamScheduleSummaryHtml() + onBreakPanelHtml() + openSoSummaryHtml());
+  SCROLLABLE_PANEL_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if(el && savedScrolls[id] !== undefined) el.scrollTop = savedScrolls[id];
+  });
 }
 
 function startBreakScheduler(){
@@ -4385,17 +4383,6 @@ async function applyDraftingTransferAutoSchedule(parentId, force){
   }
 }
 
-// Manual, explicit re-application for jobs whose schedule predates this rule (or was set some other
-// way) — e.g. legacy jobs sitting months overdue with dates that don't match the +1/+2 workday rule.
-// Requires confirmation since, unlike the on-save path, this overwrites stages even if already set.
-async function recalcDraftingTransferSchedule(parentId){
-  const record = rows.find(r => r.id === parentId);
-  if(!record || !record.drafting_transfer_date){ alert("Set a Drafting transfer date first."); return; }
-  if(!confirm("Recalculate this job's schedule from its Drafting Transfer Date using the standard rule?\n\nThis overwrites the current dates on the relevant stages (Sales Handover/GA for Class 1, or Detailing/Checking-Release/Production Handover for Class 2), even if they were already scheduled.")) return;
-  await applyDraftingTransferAutoSchedule(parentId, true);
-  await silentReload();
-}
-
 async function handleDurationInputChange(inputEl, subitemId){
   const allSubs = Object.values(subitemsByParent).flat();
   const sub = allSubs.find(s => s.id === subitemId);
@@ -4919,12 +4906,10 @@ function exportCsv(){
     const matchesClass = !filterClass || r.product_class === filterClass;
     const matchesJobType = !filterJobType || r.job_type === filterJobType;
     const matchesDifot = !filterDifot || r.computed_difot_status === filterDifot;
-    const matchesOverBudget = !filterOverBudget || (r.computed_remainder_hrs !== null && r.computed_remainder_hrs !== undefined && Number(r.computed_remainder_hrs) < 0);
     const subs = subitemsByParent[r.id] || [];
     const matchesStage = (!filterStage && !filterStageStatus) || subs.some(s =>
       (!filterStage || s.subitem_type === filterStage) && (!filterStageStatus || s.status === filterStageStatus)
     );
-    const matchesClockedIn = !filterClockedIn || subs.some(s => s.clock_running);
     let matchesDue = true;
     if(filterDue === 'overdue'){
       matchesDue = !!(r.target_release_date && !r.actual_release_to_prodn_date && new Date(r.target_release_date+'T00:00:00') < today);
@@ -4932,7 +4917,7 @@ function exportCsv(){
       matchesDue = !!(r.target_release_date && !r.actual_release_to_prodn_date && new Date(r.target_release_date+'T00:00:00') >= today && new Date(r.target_release_date+'T00:00:00') <= weekFromNow);
     }
     return matchesSearch && matchesDraftee && matchesSalesPerson && matchesClass && matchesJobType && matchesDifot &&
-      matchesOverBudget && matchesStage && matchesClockedIn && matchesDue;
+      matchesStage && matchesDue;
   });
 
   const headers = ['SO Number','Item','Job Type','Group','Draftee','Sales Person','Class','RCD/RC','DIFOT Status','DIFOT Days','Drafting Transfer','Target Start','Target Release','Actual Release to Prodn','Project Sales','Aging Days','Actual Hrs','O/A Excess Days'];
@@ -5419,6 +5404,7 @@ const FIELDS = [
   {key:'item_name', label:'Item name', type:'text', required:true},
   {key:'so_number', label:'SO number', type:'text'},
   {key:'unit_count', label:'Unit #', type:'number'},
+  {key:'unit_qty', label:'Unit Qty', type:'number'},
   {key:'company_name', label:'Company', type:'text'},
   {key:'group_name', label:'Group', type:'select', options: GROUP_ORDER},
   {key:'draftee', label:'Draftee (select one or more)', type:'multiselect', category:'draftee'},
@@ -5490,10 +5476,6 @@ function openModal(id, presetGroup, presetJobType){
         </div>
       </div>
       ${record.requires_client_approval ? approvalStatusBannerHtml(record) : ''}
-      ${record.drafting_transfer_date ? `<div class="recalc-schedule-row">
-        <button class="btn-ghost-sm" onclick="recalcDraftingTransferSchedule('${record.id}')">🔁 Recalculate schedule from Drafting Transfer Date</button>
-        <span class="recalc-schedule-hint">Overwrites the relevant stages' dates with the standard +workday rule — use this for legacy jobs whose dates predate the rule or drifted from it.</span>
-      </div>` : ''}
       <div class="job-gantt-card">
         <div class="job-gantt-header" onclick="toggleJobGantt()">
           <span>📅 Job Timeline</span>
