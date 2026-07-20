@@ -1130,6 +1130,8 @@
     .pill{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     tbody tr:hover{background:none;}
     .surface,.board-shell{box-shadow:none !important;}
+    .group.collapsed .group-body{display:block !important;}
+    .group.collapsed .chevron{transform:none !important;}
   }
 </style>
 </head>
@@ -1692,6 +1694,11 @@ let filterDue = '';
 let absentToday = new Set();
 let sortBy = '';
 let collapsedSubitems = new Set();
+// Which stage groups (besides Consolidated Sales Orders) the user has manually expanded this
+// session. Reset to just the Consolidated group on every explicit open/refresh (loadData), but
+// left alone across background live-sync re-renders (silentReload) so a manual expand isn't
+// fought by other people's edits landing mid-session.
+let expandedGroups = new Set([CONSOLIDATED_GROUP_NAME]);
 let hasLoadedOnce = false;
 let editingId = null; // null = new item
 let currentPresetJobType = 'SO';
@@ -2032,6 +2039,7 @@ async function loadData(){
     return;
   }
   rows = data || [];
+  expandedGroups = new Set([CONSOLIDATED_GROUP_NAME]); // every open/refresh starts with only Consolidated expanded
   if(!hasLoadedOnce){
     collapsedSubitems = new Set(rows.map(r => r.id)); // collapse everything only on the very first load
     hasLoadedOnce = true;
@@ -2438,7 +2446,7 @@ function renderBoard(){
     const difotVals = items.map(r => r.computed_difot_10days).filter(v => v !== null && v !== undefined);
     const avgDifot = difotVals.length ? (difotVals.reduce((a,b)=>a+b,0)/difotVals.length) : null;
     return `
-    <div class="group" data-group="${escapeAttr(g)}">
+    <div class="group${expandedGroups.has(g) ? '' : ' collapsed'}" data-group="${escapeAttr(g)}">
       <div class="group-header" style="background:${color}" onclick="toggleGroup(this)">
         <div class="group-header-left">
           <span class="chevron">▾</span>
@@ -5358,7 +5366,11 @@ function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<
 function escapeAttr(s){ return escapeHtml(s).replace(/"/g,'&quot;'); }
 
 function toggleGroup(headerEl){
-  headerEl.parentElement.classList.toggle('collapsed');
+  const groupEl = headerEl.parentElement;
+  groupEl.classList.toggle('collapsed');
+  const groupName = groupEl.dataset.group;
+  if(groupEl.classList.contains('collapsed')) expandedGroups.delete(groupName);
+  else expandedGroups.add(groupName);
 }
 
 function toggleSubitems(parentId){
