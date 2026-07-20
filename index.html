@@ -1737,7 +1737,12 @@ let baselinesByParent = {}; // { parentId: { number, stages } } — latest APPRO
 let salesPersonOptions = [];
 let drafteeOptions = [];
 let projectStatusOptions = [];
-let projectStatusLocked = new Set(); // statuses that drive automation and can't be renamed/deleted
+let projectStatusLocked = new Set(); // no longer used to lock anything, but harmless to keep
+// How many manual revision entries (Rev A, B, C...) have been logged per job, bulk-fetched once
+// per load so the board's inline "Client Approval" badge can show the current revision letter
+// without an expensive per-row query. Current letter = the last logged one, or 'A' implicitly if
+// none have been logged yet but the job has a sent date on record.
+let revisionCountByParent = {};
 let manageStatusesCache = [];
 let filterDraftee = '';
 let filterSalesPerson = '';
@@ -2165,6 +2170,11 @@ async function loadData(){
     projectStatusOptions = projectStatusRows.map(l => l.name);
     projectStatusLocked = new Set(projectStatusRows.filter(l => l.is_locked).map(l => l.name));
   }
+
+  const { data: revisionCountData } = await sb.from('so_approval_revisions').select('parent_id');
+  revisionCountByParent = {};
+  (revisionCountData || []).forEach(rv => { revisionCountByParent[rv.parent_id] = (revisionCountByParent[rv.parent_id] || 0) + 1; });
+
   populateFilterDropdowns();
 
   const todayStr = todayLocalISO();
@@ -2303,6 +2313,11 @@ async function silentReload(){
     projectStatusOptions = projectStatusRows.map(l => l.name);
     projectStatusLocked = new Set(projectStatusRows.filter(l => l.is_locked).map(l => l.name));
   }
+
+  const { data: revisionCountData } = await sb.from('so_approval_revisions').select('parent_id');
+  revisionCountByParent = {};
+  (revisionCountData || []).forEach(rv => { revisionCountByParent[rv.parent_id] = (revisionCountByParent[rv.parent_id] || 0) + 1; });
+
   populateFilterDropdowns();
 
   const todayStr2 = todayLocalISO();
@@ -5130,12 +5145,15 @@ function difotPill(status){
 // approving or resending is now just a manual edit via the item modal like any other field.
 function clientApprovalInlineRowHtml(r){
   const sentDate = r.first_sent_for_approval_date || r.actual_sent_for_approval;
+  const revCount = revisionCountByParent[r.id] || 0;
+  const currentRevLetter = revCount > 0 ? String.fromCharCode(65 + revCount - 1) : 'A';
+  const revNote = sentDate ? ` · Rev ${currentRevLetter}` : '';
   let statusHtml;
   if(r.actual_approval_received_date){
-    statusHtml = `<span class="approval-inline-status approved">✓ Approved — ${fmtDate(r.actual_approval_received_date)}</span>`;
+    statusHtml = `<span class="approval-inline-status approved">✓ Approved — ${fmtDate(r.actual_approval_received_date)}${revNote}</span>`;
   } else if(sentDate){
     const daysWaiting = Math.floor((new Date() - new Date(sentDate+'T00:00:00')) / 86400000);
-    statusHtml = `<span class="approval-inline-status waiting">⏳ Awaiting Approval — Day ${daysWaiting}</span>`;
+    statusHtml = `<span class="approval-inline-status waiting">⏳ Awaiting Approval — Day ${daysWaiting}${revNote}</span>`;
   } else {
     statusHtml = `<span class="approval-inline-status pending">Not sent yet</span>`;
   }
