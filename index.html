@@ -1848,7 +1848,7 @@ document.getElementById('signOutBtn').onclick = async () => {
 };
 
 document.getElementById('backToHubBtn').onclick = () => {
-  window.location.href = 'https://chrisaviso.github.io/atrada-hub/';
+      window.location.href = (location.hostname.endsWith('pages.dev') ? 'https://atrada-hub.pages.dev/' : 'https://chrisaviso.github.io/atrada-hub/');
 };
 
 async function checkSession(){
