@@ -208,6 +208,7 @@
   .teamsched-more{font-size:10.5px;font-weight:700;color:var(--text-dim);background:var(--gray-pill);border-radius:6px;padding:2px 7px;white-space:nowrap;text-align:center;cursor:pointer;}
   .teamsched-more:hover{color:var(--primary);background:#e2ebff;}
   .teamsched-approved-tag{font-size:10px;font-weight:700;color:var(--green);background:#eafaf3;border:1px solid var(--green);border-radius:5px;padding:1px 6px;white-space:nowrap;margin-left:6px;}
+  .teamsched-awaiting-tag{font-size:10px;font-weight:700;color:#8a5a00;background:#fff8ed;border:1px solid var(--amber);border-radius:5px;padding:1px 6px;white-space:nowrap;margin-left:6px;}
 
   .break-panel{
     background:#fff8ed;border:1px solid var(--amber);border-radius:10px;padding:12px 16px;margin-bottom:18px;
@@ -2812,48 +2813,78 @@ function activePanelHtml(){
 }
 
 function teamScheduleSummaryHtml(){
+  // Priority tiers, in order (per person, FIFO within each tier — earliest first):
+  //   1. GA For Approval Prep / Sales Handover — getting a Class 1 job ready to send for approval
+  //   2. Class 2 (no client approval needed) — current active stage on a standard job
+  //   3. Detailing/Checking/etc. on an approved (or not-required) Class 1 job — cleared to proceed normally
+  //   4. Detailing on a Class 1 job still awaiting client approval — parallel work while pending sign-off
   const all = getAllTaskAssignments();
+
+  function classifyTier(t){
+    const { sub, job } = t;
+    const currentGroup = computeCurrentStageGroup(job);
+    if(currentGroup === 'Cost Analysis' || currentGroup === 'Done') return null; // already wrapped up / closed out — nothing left to schedule
+    if(currentGroup === 'Awaiting Client Approval'){
+      // Tier 4: the only real "next thing to work on" while a job sits waiting on the client is
+      // Detailing continuing in parallel — GA Prep itself is already done and sent by definition.
+      if(sub.subitem_type !== 'Detailing/PDF/DXF Prep') return null;
+      return 4;
+    }
+    if(sub.subitem_type !== currentGroup) return null; // only the job's one active stage belongs in the queue
+    if(sub.subitem_type === 'GA For Approval Prep' || sub.subitem_type === 'Sales Handover'){
+      if(!job.requires_client_approval) return null; // standard product — stage is bypassed, not real work
+      return 1;
+    }
+    return job.requires_client_approval ? 3 : 2;
+  }
+
+  // FIFO date for ordering within a tier: tiers 1 & 4 order by when the job was (or will be) sent
+  // for approval — that's the queue that actually matters for those two; tiers 2 & 3 order by the
+  // sub-process's own scheduled date, same as before.
+  function tierOrderDate(t){
+    if(t.tier === 1 || t.tier === 4){
+      return t.job.first_sent_for_approval_date || t.job.actual_sent_for_approval || taskOrderDate(t.sub);
+    }
+    return taskOrderDate(t.sub);
+  }
+
   const byName = {};
   all.forEach(t => {
     if((t.sub.status||'Not Started') === 'Done') return;
-const currentGroup = computeCurrentStageGroup(t.job);
-    if(currentGroup === 'Cost Analysis' || currentGroup === 'Done') return; // already wrapped up / closed out — nothing left to schedule
-    if(t.sub.subitem_type !== currentGroup) return; // only the job's one active stage belongs in the queue
-    if((t.sub.subitem_type === 'GA For Approval Prep' || t.sub.subitem_type === 'Sales Handover') && !t.job.requires_client_approval) return; // standard product — stage is bypassed, not real work
+    const tier = classifyTier(t);
+    if(tier === null) return;
     const name = taskAssigneeNames(t.sub)[0];
     if(!name || name === 'To Be Confirmed') return;
-    (byName[name] = byName[name] || []).push(t);
+    (byName[name] = byName[name] || []).push({ sub: t.sub, job: t.job, tier });
   });
-
-  // A job that's already clear to proceed — either it never needed client sign-off, or the
-  // client has already given it — should jump the queue ahead of jobs still sitting in prep
-  // pre-approval-request. Awaiting-approval jobs are excluded above entirely, so this only
-  // distinguishes "already approved / never needed it" from "not sent for approval yet".
-  const hasClientApproval = (job) => !job.requires_client_approval || !!job.actual_approval_received_date;
 
   const people = Object.keys(byName).map(name => {
     const list = byName[name].slice().sort((a,b) => {
-      const aApproved = hasClientApproval(a.job);
-      const bApproved = hasClientApproval(b.job);
-      if(aApproved !== bApproved) return aApproved ? -1 : 1;
-      return taskOrderDate(a.sub).localeCompare(taskOrderDate(b.sub));
+      if(a.tier !== b.tier) return a.tier - b.tier;
+      return tierOrderDate(a).localeCompare(tierOrderDate(b));
     });
     return { name, list };
   });
   if(!people.length) return '';
-  people.sort((a,b) => taskOrderDate(a.list[0].sub).localeCompare(taskOrderDate(b.list[0].sub)));
+  people.sort((a,b) => {
+    const at = a.list[0].tier, bt = b.list[0].tier;
+    if(at !== bt) return at - bt;
+    return tierOrderDate(a.list[0]).localeCompare(tierOrderDate(b.list[0]));
+  });
 
   const rowsHtml = people.map(p => {
     const top3 = p.list.slice(0, 3);
     const extra = p.list.length - top3.length;
     return top3.map((t, idx) => {
-      const { sub, job } = t;
+      const { sub, job, tier } = t;
       const isLast = idx === top3.length - 1;
       const label = job.is_internal
         ? `<span class="taskboard-tag-internal">Internal</span>${escapeHtml(job.item_name||'—')}`
         : `${escapeHtml(job.so_number || '—')} — ${escapeHtml(job.company_name || job.item_name || '')}`;
       const approvedTag = (job.requires_client_approval && job.actual_approval_received_date)
         ? `<span class="teamsched-approved-tag" title="Client has already approved — cleared to proceed">✓ Approved</span>` : '';
+      const awaitingTag = tier === 4
+        ? `<span class="teamsched-awaiting-tag" title="Client approval still pending — detailing continuing in parallel">⏳ Awaiting approval</span>` : '';
       const subLabel = sub.subitem_type === 'Internal Time' ? 'Time log' : sub.subitem_type;
       const dateRange = (sub.schedule_start_date || sub.schedule_end_date)
         ? `${fmtDate(sub.schedule_start_date)} → ${fmtDate(sub.schedule_end_date)}`
@@ -2865,7 +2896,7 @@ const currentGroup = computeCurrentStageGroup(t.job);
       return `<div class="teamsched-row${isLast ? ' teamsched-row-last' : ''}" onclick="scrollToItem('${job.id}')" title="Jump to this item">
         ${nameCell}
         <span class="teamsched-priority">Priority ${idx+1}</span>
-        <span class="teamsched-task">${label} <span class="teamsched-stage">— ${escapeHtml(subLabel)}</span>${approvedTag}</span>
+        <span class="teamsched-task">${label} <span class="teamsched-stage">— ${escapeHtml(subLabel)}</span>${approvedTag}${awaitingTag}</span>
         <span class="teamsched-dates">${dateRange}</span>
         ${moreTag}
       </div>`;
