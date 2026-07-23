@@ -2816,7 +2816,7 @@ function teamScheduleSummaryHtml(){
   const byName = {};
   all.forEach(t => {
     if((t.sub.status||'Not Started') === 'Done') return;
-    if(t.job.requires_client_approval && !t.job.actual_approval_received_date && (t.job.first_sent_for_approval_date || t.job.actual_sent_for_approval)) return; // nothing actionable until client approves — skip to next hot job by aging
+    const currentGroup = computeCurrentStageGroup(t.job);     if(currentGroup === 'Cost Analysis' || currentGroup === 'Done') return; // already wrapped up / closed out — nothing left to schedule     if(t.sub.subitem_type !== currentGroup) return; // only the job's one active stage belongs in the queue — hides stages still waiting behind it (e.g. Detailing/Checking before GA is approved) and stages already finished // nothing actionable until client approves — skip to next hot job by aging
     if((t.sub.subitem_type === 'GA For Approval Prep' || t.sub.subitem_type === 'Sales Handover') && !t.job.requires_client_approval) return; // standard product — stage is bypassed, not real work
     const name = taskAssigneeNames(t.sub)[0];
     if(!name || name === 'To Be Confirmed') return;
