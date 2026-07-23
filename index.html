@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SO Schedule Board — Atrada</title>
+<title>SO Schedule Board â Atrada</title>
   <script>
     (function(){
         var img = new Image();
@@ -540,7 +540,7 @@
   .board-table tbody tr:not(.subrow) td:nth-child(18){
     text-align:right;font-variant-numeric:tabular-nums;
   }
-  /* Consolidated Sales Orders has Aging + Group inserted after Item, shifting later columns by 2 —
+  /* Consolidated Sales Orders has Aging + Group inserted after Item, shifting later columns by 2 â
      override alignment for its actual column positions (higher specificity beats the rules above). */
   .board-table.consolidated-layout thead th:nth-child(6),
   .board-table.consolidated-layout thead th:nth-child(9),.board-table.consolidated-layout thead th:nth-child(12),
@@ -1188,7 +1188,7 @@
   <div class="auth-card">
     <div class="auth-mark">SO</div>
     <h1 id="authTitle">Sign in</h1>
-    <p class="sub" id="authSub">Atrada · SO Schedule Board</p>
+    <p class="sub" id="authSub">Atrada Â· SO Schedule Board</p>
     <div id="authMsg"></div>
     <div class="field">
       <label>Email</label>
@@ -1196,7 +1196,7 @@
     </div>
     <div class="field">
       <label>Password</label>
-      <input type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password">
+      <input type="password" id="authPassword" placeholder="â¢â¢â¢â¢â¢â¢â¢â¢" autocomplete="current-password">
     </div>
     <button class="btn" id="authSubmit">Sign in</button>
     <div class="auth-toggle">
@@ -1209,7 +1209,7 @@
   <div class="modal ga-checkpoint-modal">
     <div class="modal-head">
       <h2>GA Approval Checkpoints</h2>
-      <button class="modal-close" id="gaCheckpointCloseBtn">✕</button>
+      <button class="modal-close" id="gaCheckpointCloseBtn">â</button>
     </div>
     <div class="modal-body" id="gaCheckpointBody">
       <!-- filled by JS -->
@@ -1227,7 +1227,7 @@
 <!-- ===================== GREETING OVERLAY ===================== -->
 <div id="greetingOverlay" class="greeting-overlay hidden">
   <div class="greeting-card">
-    <div class="greeting-icon" id="greetingIcon">☀️</div>
+    <div class="greeting-icon" id="greetingIcon">âï¸</div>
     <div class="greeting-title" id="greetingTitle">Good morning</div>
     <div class="greeting-name" id="greetingName"></div>
     <div class="greeting-divider"></div>
@@ -1253,7 +1253,7 @@
         <div class="briefing-skel-block" style="width:100%;height:40px;border-radius:10px;margin-top:16px;"></div>
       </div>
     </div>
-    <button class="greeting-btn" id="greetingDismissBtn">Let's get started →</button>
+    <button class="greeting-btn" id="greetingDismissBtn">Let's get started â</button>
   </div>
 </div>
 
@@ -1264,26 +1264,26 @@
       <img class="mark" src="Atrada_%20Symbol_%20Blue%20%5BRGB%5D.png" alt="Atrada">
       <div>
         <h1>Sales Order, OPPTS and PROJTS Schedule</h1>
-        <div class="sub">2026Jul – 2027Jun</div>
+        <div class="sub">2026Jul â 2027Jun</div>
       </div>
     </div>
     <div class="topbar-right">
       <span class="user-chip" id="userChip"></span>
-      <button class="icon-btn" id="refreshBtn">↻ Refresh</button>
-      <button class="icon-btn" id="backToHubBtn">← Back to Hub</button>
+      <button class="icon-btn" id="refreshBtn">â» Refresh</button>
+      <button class="icon-btn" id="backToHubBtn">â Back to Hub</button>
       <button class="icon-btn" id="signOutBtn">Sign out</button>
     </div>
   </header>
 
   <main>
     <div class="toolbar-top">
-      <input class="search-box" id="searchBox" placeholder="Search item name or SO number…">
+      <input class="search-box" id="searchBox" placeholder="Search item name or SO numberâ¦">
       <div class="toolbar-actions">
-        <button class="icon-btn" id="dashboardBtn">📊 Dashboard</button>
-        <button class="icon-btn" id="taskBoardBtn">🗂 Task Board</button>
-        <button class="icon-btn" id="ganttBtn">📅 Gantt</button>
-        <button class="icon-btn" id="exportCsvBtn">⬇ Export CSV</button>
-        <button class="icon-btn" id="printViewBtn">🖨 Print View</button>
+        <button class="icon-btn" id="dashboardBtn">ð Dashboard</button>
+        <button class="icon-btn" id="taskBoardBtn">ð Task Board</button>
+        <button class="icon-btn" id="ganttBtn">ð Gantt</button>
+        <button class="icon-btn" id="exportCsvBtn">â¬ Export CSV</button>
+        <button class="icon-btn" id="printViewBtn">ð¨ Print View</button>
         <button class="btn-primary-sm" id="newGroupItemBtn">+ New SO Item</button>
         <button class="btn-primary-sm btn-oppts" id="newOpptsItemBtn">+ New OPPTS/PROJTS Job</button>
         <button class="icon-btn" id="newInternalCategoryBtn">+ New Internal Category</button>
@@ -1366,9 +1366,9 @@
         <div class="filter-group-controls">
           <select class="filter-select" id="sortBy">
             <option value="">Default</option>
-            <option value="aging_desc">Aging (High→Low)</option>
-            <option value="difot_desc">DIFOT Days (High→Low)</option>
-            <option value="sales_desc">Project Sales (High→Low)</option>
+            <option value="aging_desc">Aging (HighâLow)</option>
+            <option value="difot_desc">DIFOT Days (HighâLow)</option>
+            <option value="sales_desc">Project Sales (HighâLow)</option>
           </select>
         </div>
       </div>
@@ -1379,8 +1379,8 @@
     <div id="boardRoot"></div>
   </main>
   <div class="global-scroll-nav">
-    <button class="scroll-btn" onclick="scrollActiveTable(-260)" aria-label="Scroll left" title="Scroll the table left">‹</button>
-    <button class="scroll-btn" onclick="scrollActiveTable(260)" aria-label="Scroll right" title="Scroll the table right">›</button>
+    <button class="scroll-btn" onclick="scrollActiveTable(-260)" aria-label="Scroll left" title="Scroll the table left">â¹</button>
+    <button class="scroll-btn" onclick="scrollActiveTable(260)" aria-label="Scroll right" title="Scroll the table right">âº</button>
   </div>
 </div>
 
@@ -1389,7 +1389,7 @@
   <div class="modal">
     <div class="modal-head">
       <h2 id="modalTitle">New item</h2>
-      <button class="modal-close" id="modalCloseBtn">✕</button>
+      <button class="modal-close" id="modalCloseBtn">â</button>
     </div>
     <div class="modal-body" id="modalBody">
       <!-- filled by JS -->
@@ -1410,7 +1410,7 @@
       <h2>Time for a break?</h2>
     </div>
     <div class="modal-body">
-      <p>It's <b id="breakTimeLabel"></b> — would you like to take a break?</p>
+      <p>It's <b id="breakTimeLabel"></b> â would you like to take a break?</p>
       <p class="break-modal-sub">If there's no response within <span id="breakCountdown">5:00</span>, your timer will stop automatically.</p>
     </div>
     <div class="modal-foot">
@@ -1426,7 +1426,7 @@
   <div class="modal log-edit-modal">
     <div class="modal-head">
       <h2 id="logEditTitle">Edit Time Logs</h2>
-      <button class="modal-close" id="logEditCloseBtn">✕</button>
+      <button class="modal-close" id="logEditCloseBtn">â</button>
     </div>
     <div class="modal-body">
       <table class="log-edit-table">
@@ -1448,7 +1448,7 @@
   <div class="modal dashboard-modal">
     <div class="modal-head">
       <h2>Team Dashboard</h2>
-      <button class="modal-close" id="dashboardCloseBtn">✕</button>
+      <button class="modal-close" id="dashboardCloseBtn">â</button>
     </div>
     <div class="modal-body" id="dashboardBody">
       <!-- filled by JS -->
@@ -1460,7 +1460,7 @@
   <div class="modal taskboard-modal">
     <div class="modal-head">
       <h2 id="taskBoardTitle">Task Board</h2>
-      <button class="modal-close" id="taskBoardCloseBtn">✕</button>
+      <button class="modal-close" id="taskBoardCloseBtn">â</button>
     </div>
     <div class="modal-body" id="taskBoardBody">
       <!-- filled by JS -->
@@ -1472,7 +1472,7 @@
   <div class="modal attendance-modal">
     <div class="modal-head">
       <h2 id="attendanceReconTitle">Attendance &amp; Leave Reconciliation</h2>
-      <button class="modal-close" id="attendanceReconCloseBtn">✕</button>
+      <button class="modal-close" id="attendanceReconCloseBtn">â</button>
     </div>
     <div class="modal-body" id="attendanceReconBody">
       <!-- filled by JS -->
@@ -1483,8 +1483,8 @@
 <div class="modal-backdrop hidden" id="attendanceSupervisorModalBackdrop">
   <div class="modal attendance-modal attendance-modal-wide">
     <div class="modal-head">
-      <h2>Fortnight Attendance Review — All Draftees</h2>
-      <button class="modal-close" id="attendanceSupervisorCloseBtn">✕</button>
+      <h2>Fortnight Attendance Review â All Draftees</h2>
+      <button class="modal-close" id="attendanceSupervisorCloseBtn">â</button>
     </div>
     <div class="modal-body" id="attendanceSupervisorBody">
       <!-- filled by JS -->
@@ -1496,7 +1496,7 @@
   <div class="modal name-picker-modal">
     <div class="modal-head">
       <h2 id="namePickerTitle">Select names</h2>
-      <button class="modal-close" id="namePickerCloseBtn">✕</button>
+      <button class="modal-close" id="namePickerCloseBtn">â</button>
     </div>
     <div class="modal-body">
       <div class="name-picker-actions hidden" id="namePickerBulkActions">
@@ -1518,7 +1518,7 @@
   <div class="modal manage-statuses-modal">
     <div class="modal-head">
       <h2>Manage Project Statuses</h2>
-      <button class="modal-close" id="manageStatusesCloseBtn">✕</button>
+      <button class="modal-close" id="manageStatusesCloseBtn">â</button>
     </div>
     <div class="modal-body" id="manageStatusesBody">
       <!-- filled by JS -->
@@ -1542,12 +1542,12 @@
       <div class="gantt-head-left">
         <h2>Team Gantt</h2>
         <div class="gantt-nav">
-          <button class="icon-btn" id="ganttPrevBtn">‹ Prev</button>
+          <button class="icon-btn" id="ganttPrevBtn">â¹ Prev</button>
           <button class="icon-btn" id="ganttTodayBtn">Today</button>
-          <button class="icon-btn" id="ganttNextBtn">Next ›</button>
+          <button class="icon-btn" id="ganttNextBtn">Next âº</button>
         </div>
       </div>
-      <button class="modal-close" id="ganttCloseBtn">✕</button>
+      <button class="modal-close" id="ganttCloseBtn">â</button>
     </div>
     <div class="modal-body" id="ganttBody">
       <!-- filled by JS -->
@@ -1557,7 +1557,7 @@
 
 <script>
 /* =======================================================================
-   CONFIG — paste your Supabase project values below.
+   CONFIG â paste your Supabase project values below.
    Both are safe to expose in client-side code (protected by RLS + Auth).
    ======================================================================= */
 const SUPABASE_URL = "https://bibkawnltufvyneuljtt.supabase.co";
@@ -1588,7 +1588,7 @@ const INTERNAL_GROUP_ORDER = [
 const GROUP_ORDER = [...SO_STAGE_GROUP_ORDER, ...OPPTS_GROUP_ORDER, ...INTERNAL_GROUP_ORDER];
 const GROUP_COLORS = ["#546e7a","#3a5ceb","#e0921a","#12b886","#f5a623","#7c5cf0","#0aa3a3","#0da374","#2c9c4a","#9c6b2c","#5c6bc0"];
 // Synthetic, additive-only view: every open (non-Done) real SO job across all 7 stage groups, purely
-// for aging-based triage. Deliberately NOT in GROUP_ORDER — it never changes any job's actual group_name,
+// for aging-based triage. Deliberately NOT in GROUP_ORDER â it never changes any job's actual group_name,
 // so it doesn't shift the color assignment of the real stage groups.
 const CONSOLIDATED_GROUP_NAME = "Consolidated Sales Orders";
 const NEW_ITEM_GROUP = null;
@@ -1628,7 +1628,7 @@ const GA_CHECKPOINT_GROUPS = [
   {
     key: 'lower_drawing_block',
     title: 'Lower Drawing Block Details',
-    subtitle: 'GA Approval — are these correct?',
+    subtitle: 'GA Approval â are these correct?',
     allowNA: false,
     items: [
       'SO number',
@@ -1686,16 +1686,16 @@ const GA_CHECKPOINT_GROUPS = [
   },
   {
     key: 'stickers_container',
-    title: 'Stickers & Plaque — For Container',
+    title: 'Stickers & Plaque â For Container',
     allowNA: true,
     items: [
-      '2x (ST23415) Container Sticker – Atrada Colored Graphics (1x on each external long side)',
+      '2x (ST23415) Container Sticker â Atrada Colored Graphics (1x on each external long side)',
       '2x (ST23413) Atrada Large Sticker (White Graphics) (1x on the container door external and internal side)',
     ]
   },
   {
     key: 'stickers_box',
-    title: 'Stickers & Plaque — For Box, Cages, Framed & Stand-Alone Assembly',
+    title: 'Stickers & Plaque â For Box, Cages, Framed & Stand-Alone Assembly',
     allowNA: true,
     items: [
       '(PL23404-SA) Atrada Plaque - 84 x 30 Sub-Assy',
@@ -1714,7 +1714,7 @@ const GA_CHECKPOINT_GROUPS = [
   },
   {
     key: 'stickers_lubestation',
-    title: 'Stickers & Plaque — For Lubestation',
+    title: 'Stickers & Plaque â For Lubestation',
     allowNA: true,
     items: [
       'Correct line number stickers (32mm height) for pumps',
@@ -1737,9 +1737,9 @@ let gaCheckpointState = {};
 let session = null;
 let rows = [];
 let subitemsByParent = {};
-let drafteeRowSeq = {}; // { rowId: {seq, total} } — this row's position in its draftee's overall job queue, ordered by schedule/target date
+let drafteeRowSeq = {}; // { rowId: {seq, total} } â this row's position in its draftee's overall job queue, ordered by schedule/target date
 let logsBySubitem = {};
-let baselinesByParent = {}; // { parentId: { number, stages } } — latest APPROVED baseline only
+let baselinesByParent = {}; // { parentId: { number, stages } } â latest APPROVED baseline only
 let salesPersonOptions = [];
 let drafteeOptions = [];
 let projectStatusOptions = [];
@@ -1775,7 +1775,7 @@ let tickerStarted = false;
 const FORTNIGHT_ANCHOR = '2026-07-02'; // first day of the first fortnight under this system
 let attendanceDecisions = [];   // rows from so_attendance_decisions, current + previous fortnight
 let hoursBankBalance = {};      // { drafteeName: balanceHours }
-let weekendAccrualByDraftee = {}; // { drafteeName: { 'YYYY-MM-DD': hoursCreditedToBank } } — from so_hours_bank_ledger reason='ot_accrual'
+let weekendAccrualByDraftee = {}; // { drafteeName: { 'YYYY-MM-DD': hoursCreditedToBank } } â from so_hours_bank_ledger reason='ot_accrual'
 let sickLeaveYtd = {};          // { drafteeName: { used, remaining, fyStart } }
 let dailyAttendancePopupShown = false;
 let individualWindowViewedName = null; // non-null when a supervisor is viewing a specific draftee's own window
@@ -1800,7 +1800,7 @@ authSubmit.onclick = async () => {
   if(authSubmit.dataset.mode === 'setpw'){
     const password = document.getElementById('authPassword').value;
     if(!password || password.length < 6){ showAuthMsg("Password must be at least 6 characters.", true); return; }
-    authSubmit.disabled = true; authSubmit.textContent = "Saving…";
+    authSubmit.disabled = true; authSubmit.textContent = "Savingâ¦";
     try{
       const res = await sb.auth.updateUser({ password });
       if(res.error){ showAuthMsg(res.error.message, true); return; }
@@ -1816,7 +1816,7 @@ authSubmit.onclick = async () => {
   const password = document.getElementById('authPassword').value;
   if(!email || !password){ showAuthMsg("Enter an email and password.", true); return; }
   authSubmit.disabled = true;
-  authSubmit.textContent = "Please wait…";
+  authSubmit.textContent = "Please waitâ¦";
   try{
     const res = await sb.auth.signInWithPassword({ email, password });
     if(res.error){ showAuthMsg(res.error.message, true); }
@@ -1832,7 +1832,7 @@ authSubmit.onclick = async () => {
 
 function showSetPasswordForm(){
   authTitle.textContent = "Set your password";
-  authSub.textContent = "Welcome — choose a password to finish setting up your account.";
+  authSub.textContent = "Welcome â choose a password to finish setting up your account.";
   authEmailField.classList.add('hidden');
   authSubmit.textContent = "Set password";
   authSubmit.dataset.mode = 'setpw';
@@ -1861,7 +1861,7 @@ async function checkSession(){
   }
   if(data.session){ session = data.session; enterApp(); return; }
   if(!isInviteOrRecovery){
-    window.location.href = 'https://chrisaviso.github.io/atrada-hub/';
+    window.location.href = (location.hostname.endsWith('pages.dev') ? 'https://atrada-hub.pages.dev/' : 'https://chrisaviso.github.io/atrada-hub/');
   }
 }
 
@@ -1875,26 +1875,26 @@ function enterApp(){
 }
 
 const GREETING_LINES = [
-  "\"The way to get started is to quit talking and begin doing.\" — Walt Disney",
-  "\"Do not wait to strike till the iron is hot, but make it hot by striking.\" — William Butler Yeats",
-  "\"Well done is better than well said.\" — Benjamin Franklin",
-  "\"A goal without a plan is just a wish.\" — Antoine de Saint-Exupéry",
+  "\"The way to get started is to quit talking and begin doing.\" â Walt Disney",
+  "\"Do not wait to strike till the iron is hot, but make it hot by striking.\" â William Butler Yeats",
+  "\"Well done is better than well said.\" â Benjamin Franklin",
+  "\"A goal without a plan is just a wish.\" â Antoine de Saint-ExupÃ©ry",
   "\"Small steps every day add up to big results.\"",
-  "\"Measure twice, cut once — good advice for drafting and for life.\"",
-  "\"The bad news is time flies. The good news is you're the pilot.\" — Michael Altshuler",
+  "\"Measure twice, cut once â good advice for drafting and for life.\"",
+  "\"The bad news is time flies. The good news is you're the pilot.\" â Michael Altshuler",
   "Why did the draftee bring a ladder to work? Because they wanted to reach new heights on the schedule!",
   "Why don't skeletons argue over deadlines? They don't have the guts to miss one.",
   "What did one wall say to the other? \"I'll meet you at the corner!\"",
   "Why was the container always calm under pressure? It had great structural integrity.",
-  "I told my team a joke about steel beams — it didn't get much of a reaction, it was pretty stable.",
+  "I told my team a joke about steel beams â it didn't get much of a reaction, it was pretty stable.",
   "\"Progress, not perfection.\"",
   "\"Every accomplishment starts with the decision to try.\"",
-  "\"You don't have to see the whole staircase, just take the first step.\" — Martin Luther King Jr.",
+  "\"You don't have to see the whole staircase, just take the first step.\" â Martin Luther King Jr.",
   "Why did the schedule break up with the calendar? It needed more space.",
   "\"Discipline is choosing between what you want now and what you want most.\"",
-  "\"The secret of getting ahead is getting started.\" — Mark Twain",
-  "What's an engineer's favorite kind of music? Heavy metal — with a solid foundation.",
-  "\"Great things are done by a series of small things brought together.\" — Vincent Van Gogh",
+  "\"The secret of getting ahead is getting started.\" â Mark Twain",
+  "What's an engineer's favorite kind of music? Heavy metal â with a solid foundation.",
+  "\"Great things are done by a series of small things brought together.\" â Vincent Van Gogh",
   "\"Today is a good day to have a good day.\"",
   "Why did the drafting table feel appreciated? Everyone kept drawing attention to it.",
   "\"Slow progress is still progress.\"",
@@ -1902,17 +1902,17 @@ const GREETING_LINES = [
 ];
 
 const TAGALOG_JOKES = [
-  "Tatay: Pumasa si Juan sa exam, ikaw bagsak! Bakit hindi mo siya gayahin? Anak: Unfair naman po, Tatay — matalino kasi ang nanay ni Juan.",
+  "Tatay: Pumasa si Juan sa exam, ikaw bagsak! Bakit hindi mo siya gayahin? Anak: Unfair naman po, Tatay â matalino kasi ang nanay ni Juan.",
   "Nanay: Ang tigas ng ulo mo, ayaw kang makinig! Anak: Kay Tatay ho ba kayo galit noon? Kasi po, ganyan din siya noon.",
-  "Tatay: Bakit ang tanga-tanga mo mag-Math? Anak: Kay Lolo ho kayo magreklamo — sabi nila, sa kanya raw galing ang utak ni Tatay.",
+  "Tatay: Bakit ang tanga-tanga mo mag-Math? Anak: Kay Lolo ho kayo magreklamo â sabi nila, sa kanya raw galing ang utak ni Tatay.",
   "Nanay: Sunud-sunuran ka lang kina Ate mo, wala kang sariling opinyon! Anak: Kayo rin naman ho ang laging nagsasabi, \"Tama si Ate mo diyan.\"",
   "Tatay: Bakit ang tagal mong gumising tuwing umaga? Anak: Kayo rin naman ho, ma-alas-nuwebe pa naliligo.",
   "Nanay: Yung kapatid mo, magaling maglinis ng bahay. Bakit ikaw hindi? Anak: Siguro po kasi, kayo lagi kasama niya maglinis.",
   "Boy: Tay, tulungan nyo po ako maghanap ng \"prime number.\" Tatay: Ha? Grade three pa lang ako nun eh, hinahanap na yan? Nahanap na ba nila?",
-  "Anak: Ma, ano po ba ibig sabihin ng \"average\" sa report card? Nanay: Malamang, katulad mo — hindi mataas, hindi mababa, pasado lang.",
-  "Boy: Tay, ano po ang \"GCD\" sa Math namin? Tatay: Malamang kaklase mo yun — grade three din siguro.",
-  "Anak: Nay, may \"C\" po ako dito sa card ko, ano ibig sabihin nun? Nanay: Malamang, \"Consistent\" — consistent kang bumabagsak.",
-  "Boy: Tay, bakit may malaking X dito sa test ko? Tatay: Malamang po, \"Xtra effort needed\" — kulang pa sa pag-aaral.",
+  "Anak: Ma, ano po ba ibig sabihin ng \"average\" sa report card? Nanay: Malamang, katulad mo â hindi mataas, hindi mababa, pasado lang.",
+  "Boy: Tay, ano po ang \"GCD\" sa Math namin? Tatay: Malamang kaklase mo yun â grade three din siguro.",
+  "Anak: Nay, may \"C\" po ako dito sa card ko, ano ibig sabihin nun? Nanay: Malamang, \"Consistent\" â consistent kang bumabagsak.",
+  "Boy: Tay, bakit may malaking X dito sa test ko? Tatay: Malamang po, \"Xtra effort needed\" â kulang pa sa pag-aaral.",
   "Anak: Ma, ano ibig sabihin ng \"N/A\" dito sa report card ko? Nanay: \"Need pang Aralin,\" anak."
 ];
 
@@ -1933,10 +1933,10 @@ function emoji3dHero(code, fallback, glowColor){
 
 function getTimeGreeting(){
   const h = new Date().getHours();
-  if(h >= 5 && h < 12) return { icon: '2600', fallback: '☀️', title: 'Good morning', glow: '#ffd76a' };
-  if(h >= 12 && h < 17) return { icon: '1f324', fallback: '🌤️', title: 'Good afternoon', glow: '#a8d5ff' };
-  if(h >= 17 && h < 21) return { icon: '1f307', fallback: '🌇', title: 'Good evening', glow: '#ffb37a' };
-  return { icon: '1f319', fallback: '🌙', title: 'Working late — good on you', glow: '#8ea0ff' };
+  if(h >= 5 && h < 12) return { icon: '2600', fallback: 'âï¸', title: 'Good morning', glow: '#ffd76a' };
+  if(h >= 12 && h < 17) return { icon: '1f324', fallback: 'ð¤ï¸', title: 'Good afternoon', glow: '#a8d5ff' };
+  if(h >= 17 && h < 21) return { icon: '1f307', fallback: 'ð', title: 'Good evening', glow: '#ffb37a' };
+  return { icon: '1f319', fallback: 'ð', title: 'Working late â good on you', glow: '#8ea0ff' };
 }
 
 function getFriendlyName(email){
@@ -1954,7 +1954,7 @@ function showGreetingOverlay(){
   document.getElementById('greetingTitle').textContent = title + (name ? `, ${name}!` : '!');
   document.getElementById('greetingName').textContent = "Here's what's happening on the board today.";
   document.getElementById('greetingQuote').textContent = quote;
-  document.getElementById('greetingTagalog').innerHTML = emoji3d('1f604', 22, '😄') + ' ' + escapeHtml(tagalogJoke);
+  document.getElementById('greetingTagalog').innerHTML = emoji3d('1f604', 22, 'ð') + ' ' + escapeHtml(tagalogJoke);
   document.getElementById('greetingOverlay').classList.remove('hidden');
 }
 
@@ -1987,7 +1987,7 @@ function buildDrafteeBriefing(myName){
           const parent = parentById[parentId];
           const label = parent ? (parent.so_number || parent.item_name || 'an item') : 'an item';
           const key = label + '|' + s.subitem_type;
-          if(!stageSeen.has(key)){ stageSeen.add(key); yesterdayStages.push(`${label} — ${s.subitem_type}`); }
+          if(!stageSeen.has(key)){ stageSeen.add(key); yesterdayStages.push(`${label} â ${s.subitem_type}`); }
         }
       });
     });
@@ -2004,16 +2004,16 @@ function buildDrafteeBriefing(myName){
   let assessment;
   if(openItems.length === 0){
     assessment = completedItems.length > 0
-      ? `You have no open items right now — everything assigned to you is complete. Clean slate!`
-      : `You don't have any items assigned yet — check in with your supervisor for your next job.`;
+      ? `You have no open items right now â everything assigned to you is complete. Clean slate!`
+      : `You don't have any items assigned yet â check in with your supervisor for your next job.`;
   } else if(behindCount === 0){
     assessment = openItems.length === 1
-      ? `You're on track — your 1 open item is within schedule.`
-      : `You're on track — all ${openItems.length} of your open items are within schedule.`;
+      ? `You're on track â your 1 open item is within schedule.`
+      : `You're on track â all ${openItems.length} of your open items are within schedule.`;
   } else if(behindCount < openItems.length){
     assessment = `You're mostly on track, but ${behindCount} of your ${openItems.length} open item${openItems.length === 1 ? '' : 's'} ${behindCount === 1 ? 'is' : 'are'} running behind and need${behindCount === 1 ? 's' : ''} attention.`;
   } else {
-    assessment = `You're currently behind on all ${openItems.length} of your open item${openItems.length === 1 ? '' : 's'} — let's prioritize catching up today.`;
+    assessment = `You're currently behind on all ${openItems.length} of your open item${openItems.length === 1 ? '' : 's'} â let's prioritize catching up today.`;
   }
 
   /* ---- Plan: most urgent open item first (most overdue, else soonest due) ---- */
@@ -2031,9 +2031,9 @@ function buildDrafteeBriefing(myName){
     const activeStage = mySubs.find(s => s.status === 'In Progress') || mySubs.find(s => s.status === 'Not Started' || s.status === 'On-Hold');
     const stageText = activeStage ? ` Start with "${activeStage.subitem_type}" to keep it moving.` : '';
     const itemNameSuffix = (r.item_name && r.item_name !== label) ? ` (${r.item_name})` : '';
-    planText = `Focus next on ${label}${itemNameSuffix} — ${dueText}.${stageText}`;
+    planText = `Focus next on ${label}${itemNameSuffix} â ${dueText}.${stageText}`;
   } else {
-    planText = `No open items in the queue right now — a great time to check with your supervisor for what's next.`;
+    planText = `No open items in the queue right now â a great time to check with your supervisor for what's next.`;
   }
 
   return { yesterdaySeconds, yesterdayStages, completedCount: completedItems.length, openCount: openItems.length, behindCount, assessment, planText };
@@ -2053,41 +2053,41 @@ async function populateBriefing(){
   if(!briefingEl) return;
   const myName = getMyDrafteeName();
   if(!myName){
-    briefingEl.innerHTML = `<div class="briefing-section"><div class="briefing-text">No draftee profile matched to your login yet, so a personalized briefing isn't available — but everything else on the board is ready to go.</div></div>`;
+    briefingEl.innerHTML = `<div class="briefing-section"><div class="briefing-text">No draftee profile matched to your login yet, so a personalized briefing isn't available â but everything else on the board is ready to go.</div></div>`;
     return;
   }
   const b = buildDrafteeBriefing(myName);
   const friendlyDur = fmtFriendlyDuration(b.yesterdaySeconds);
   const recapText = friendlyDur
     ? `Yesterday you logged ${friendlyDur} on: ${b.yesterdayStages.join(', ')}.`
-    : `No time logged yesterday — let's make today count.`;
+    : `No time logged yesterday â let's make today count.`;
   const appreciationText = b.completedCount > 0
-    ? `You've completed ${b.completedCount} item${b.completedCount === 1 ? '' : 's'} so far — great work keeping things moving!`
-    : `You're just getting started — every item you complete builds momentum.`;
+    ? `You've completed ${b.completedCount} item${b.completedCount === 1 ? '' : 's'} so far â great work keeping things moving!`
+    : `You're just getting started â every item you complete builds momentum.`;
   const encouragement = b.behindCount > 0
-    ? `Keep pushing — closing out one stage at a time is how the behind items turn into on-time wins. You've got this!`
-    : `Keep up the great work — steady, consistent progress is exactly what keeps the whole board on track!`;
+    ? `Keep pushing â closing out one stage at a time is how the behind items turn into on-time wins. You've got this!`
+    : `Keep up the great work â steady, consistent progress is exactly what keeps the whole board on track!`;
 
   if(!document.getElementById('greetingBriefing')) return; // overlay closed before this resolved
   briefingEl.innerHTML = `
   <div class="briefing-fade-in">
     <div class="briefing-section">
-      <div class="briefing-label">${emoji3d('1f4c5', 20, '📅')} Yesterday</div>
+      <div class="briefing-label">${emoji3d('1f4c5', 20, 'ð')} Yesterday</div>
       <div class="briefing-text">${escapeHtml(recapText)}</div>
     </div>
     <div class="briefing-section">
-      <div class="briefing-label">${emoji3d('1f64c', 20, '🙌')} Appreciation</div>
+      <div class="briefing-label">${emoji3d('1f64c', 20, 'ð')} Appreciation</div>
       <div class="briefing-text">${escapeHtml(appreciationText)}</div>
     </div>
     <div class="briefing-section">
-      <div class="briefing-label">${emoji3d('1f4ca', 20, '📊')} Your Track Record</div>
+      <div class="briefing-label">${emoji3d('1f4ca', 20, 'ð')} Your Track Record</div>
       <div class="briefing-text">${escapeHtml(b.assessment)}</div>
     </div>
     <div class="briefing-section">
-      <div class="briefing-label">${emoji3d('1f3af', 20, '🎯')} Next Up</div>
+      <div class="briefing-label">${emoji3d('1f3af', 20, 'ð¯')} Next Up</div>
       <div class="briefing-text">${escapeHtml(b.planText)}</div>
     </div>
-    <div class="briefing-encouragement">${emoji3d('1f4aa', 20, '💪')} ${escapeHtml(encouragement)}</div>
+    <div class="briefing-encouragement">${emoji3d('1f4aa', 20, 'ðª')} ${escapeHtml(encouragement)}</div>
   </div>
   `;
 }
@@ -2106,7 +2106,7 @@ async function loadData(){
     </div>`).join('')}</div>`;
   const { data, error } = await sb.from('so_schedule_computed').select('*').order('created_at', {ascending:true});
   if(error){
-    document.getElementById('boardRoot').innerHTML = `<div class="empty-state"><div class="big">⚠️</div>${error.message}</div>`;
+    document.getElementById('boardRoot').innerHTML = `<div class="empty-state"><div class="big">â ï¸</div>${error.message}</div>`;
     return;
   }
   rows = data || [];
@@ -2116,7 +2116,7 @@ async function loadData(){
     hasLoadedOnce = true;
   }
 
-  // project_status + Class 1/2 approval-tracking fields live on the base table but aren't exposed by the so_schedule_computed view yet — merge them in directly
+  // project_status + Class 1/2 approval-tracking fields live on the base table but aren't exposed by the so_schedule_computed view yet â merge them in directly
   const { data: statusData } = await sb.from('so_schedule').select('id, project_status, requires_client_approval, revision_count, first_sent_for_approval_date, is_internal, unit_count, unit_qty');
   if(statusData){
     const statusById = {};
@@ -2134,7 +2134,7 @@ async function loadData(){
   }
   const byDrafteeRows = {};
   rows.forEach(r => {
-    if(r.actual_release_to_prodn_date) return; // already released — not part of the active queue
+    if(r.actual_release_to_prodn_date) return; // already released â not part of the active queue
     const orderDate = r.schedule_start_date || r.target_start_date || r.drafting_transfer_date;
     if(!orderDate) return;
     (r.draftee || '').split(',').map(x => x.trim()).filter(Boolean).forEach(n => {
@@ -2417,7 +2417,7 @@ function computeCurrentStageGroup(job){
 
   // A Class 1 job genuinely waiting on the client takes priority over everything else. Judged by
   // whether it's actually been sent and not yet approved (real dates), not by the project_status
-  // text — that field is just a manual label now and carries no behavioral meaning of its own.
+  // text â that field is just a manual label now and carries no behavioral meaning of its own.
   if(job.requires_client_approval && !job.actual_approval_received_date && (job.first_sent_for_approval_date || job.actual_sent_for_approval) && allDone('GA For Approval Prep')){
     return 'Awaiting Client Approval';
   }
@@ -2430,7 +2430,7 @@ function computeCurrentStageGroup(job){
   const coreResult = findStageInSeq(CORE_SEQ);
   if(!coreResult.done) return coreResult.stage;
 
-  // Only once the core pipeline is genuinely finished do we look at the tail — these two can
+  // Only once the core pipeline is genuinely finished do we look at the tail â these two can
   // sometimes get worked independently/early, so they're deliberately kept separate rather than
   // letting them jump the core queue.
   const TAIL_SEQ = ['Production Handover','Cost Analysis'];
@@ -2485,7 +2485,7 @@ function renderBoard(){
   SO_STAGE_GROUP_ORDER.forEach(g => { if(!groups[g]) groups[g] = []; });
 
   // Consolidated view: pulls every open (non-Done, non-Cost Analysis) real SO job from the stage groups
-  // into one place for aging-based triage. Purely additive — those jobs still appear in their normal
+  // into one place for aging-based triage. Purely additive â those jobs still appear in their normal
   // stage group too.
   const consolidatedItems = SO_STAGE_GROUP_ORDER
     .filter(g => g !== 'Done' && g !== 'Cost Analysis')
@@ -2499,7 +2499,7 @@ function renderBoard(){
   let groupNames = Object.keys(groups);
   if(anyFilterActive && groups[CONSOLIDATED_GROUP_NAME] && groups[CONSOLIDATED_GROUP_NAME].length){
     // Filtering active: the Consolidated group already contains every matching open item,
-    // so showing the per-stage groups too is just noise/duplication — hide them.
+    // so showing the per-stage groups too is just noise/duplication â hide them.
     groupNames = [CONSOLIDATED_GROUP_NAME];
   }
   groupNames.sort((a,b) => {
@@ -2514,7 +2514,7 @@ function renderBoard(){
 
   const root = document.getElementById('boardRoot');
   if(groupNames.length === 0){
-    root.innerHTML = `<div class="empty-state"><div class="big">📋</div>No items yet. Click "+ New item" to add the first sales order.</div>`;
+    root.innerHTML = `<div class="empty-state"><div class="big">ð</div>No items yet. Click "+ New item" to add the first sales order.</div>`;
     return;
   }
 
@@ -2538,7 +2538,7 @@ function renderBoard(){
     <div class="group${expandedGroups.has(g) ? '' : ' collapsed'}" data-group="${escapeAttr(g)}">
       <div class="group-header" style="background:${color}" onclick="toggleGroup(this)">
         <div class="group-header-left">
-          <span class="chevron">▾</span>
+          <span class="chevron">â¾</span>
           <span>${escapeHtml(g)}</span>
         </div>
         <span class="count">${items.length} item${items.length===1?'':'s'}</span>
@@ -2565,7 +2565,7 @@ function renderBoard(){
             </tr>
             <tr class="group-foot">
               <td colspan="10">Average DIFOT days</td>
-              <td>${avgDifot !== null ? avgDifot.toFixed(1) : '—'}</td>
+              <td>${avgDifot !== null ? avgDifot.toFixed(1) : 'â'}</td>
               <td colspan="9"></td>
             </tr>` : `
             <tr class="group-foot">
@@ -2575,7 +2575,7 @@ function renderBoard(){
             </tr>
             <tr class="group-foot">
               <td colspan="8">Average DIFOT days</td>
-              <td>${avgDifot !== null ? avgDifot.toFixed(1) : '—'}</td>
+              <td>${avgDifot !== null ? avgDifot.toFixed(1) : 'â'}</td>
               <td colspan="10"></td>
             </tr>`}
           </tfoot>
@@ -2610,14 +2610,14 @@ function finalSummaryHtml(totalSales, avgDifot, filtered){
   const soItems = (filtered||[]).filter(r => (r.job_type||'SO') === 'SO' && !r.is_internal);
   const opptsItems = (filtered||[]).filter(r => r.job_type === 'OPPTS' && !r.is_internal);
   return `<div class="final-summary-card">
-    <div class="final-summary-title">Final Totals — All Projects</div>
+    <div class="final-summary-title">Final Totals â All Projects</div>
     <div class="final-summary-row">
       <span class="final-summary-label">Final Group Totals (Project Sales)</span>
       <span class="final-summary-value">${fmtMoney(totalSales)}</span>
     </div>
     <div class="final-summary-row">
       <span class="final-summary-label">Final Average DIFOT Days</span>
-      <span class="final-summary-value">${avgDifot !== null ? avgDifot.toFixed(1) : '—'}</span>
+      <span class="final-summary-value">${avgDifot !== null ? avgDifot.toFixed(1) : 'â'}</span>
     </div>
     <div class="final-summary-breakdown">
       <div class="final-summary-breakdown-block">
@@ -2662,17 +2662,17 @@ function openJobsSummaryHtml(jobType, title){
     const todayD = new Date(); todayD.setHours(0,0,0,0);
     const poDays = r.drafting_transfer_date
       ? Math.round((todayD - new Date(r.drafting_transfer_date+'T00:00:00')) / 86400000) : null;
-    const poCell = poDays !== null ? `<span class="open-so-po" title="Days since drafting transfer (PO proxy)">${poDays}d</span>` : `<span class="open-so-po dim">—</span>`;
+    const poCell = poDays !== null ? `<span class="open-so-po" title="Days since drafting transfer (PO proxy)">${poDays}d</span>` : `<span class="open-so-po dim">â</span>`;
 
     const sentDate = r.first_sent_for_approval_date || r.actual_sent_for_approval;
     const isApproved = !!r.actual_approval_received_date;
     const isCurrentlyAwaiting = r.requires_client_approval && !!sentDate && !isApproved;
 
     // Awaiting shows the live, still-counting wait while a job is genuinely pending, but once it's
-    // approved the wait is over — freeze the figure at however many days it actually took (sentDate
+    // approved the wait is over â freeze the figure at however many days it actually took (sentDate
     // to actual_approval_received_date) instead of blanking it out, styled the same green as "done"
     // so it reads as a completed wait rather than an ongoing one.
-    let awaitingCell = `<span class="open-so-approval dim">—</span>`;
+    let awaitingCell = `<span class="open-so-approval dim">â</span>`;
     if(isApproved && sentDate && r.actual_approval_received_date){
       const frozenWaitDays = Math.round((new Date(r.actual_approval_received_date+'T00:00:00') - new Date(sentDate+'T00:00:00')) / 86400000);
       awaitingCell = `<span class="open-so-approval done" title="Waited ${frozenWaitDays}d for approval before it came through">${frozenWaitDays}d</span>`;
@@ -2680,7 +2680,7 @@ function openJobsSummaryHtml(jobType, title){
       const waitDays = Math.round((todayD - new Date(sentDate+'T00:00:00')) / 86400000);
       awaitingCell = `<span class="open-so-approval waiting" title="Still waiting on the client">${waitDays}d</span>`;
     }
-    let sinceApprovalCell = `<span class="open-so-approval dim">—</span>`;
+    let sinceApprovalCell = `<span class="open-so-approval dim">â</span>`;
     if(isApproved){
       const sinceDays = Math.round((todayD - new Date(r.actual_approval_received_date+'T00:00:00')) / 86400000);
       sinceApprovalCell = `<span class="open-so-approval done" title="Days since the client approved">${sinceDays}d</span>`;
@@ -2688,8 +2688,8 @@ function openJobsSummaryHtml(jobType, title){
 
     return `<div class="open-so-row" onclick="scrollToItem('${r.id}')" title="Jump to this item">
       <span class="open-so-dot dot-${status}"></span>
-      <span class="open-so-so">${escapeHtml(r.so_number || '—')}</span>
-      <span class="open-so-company">${escapeHtml(r.company_name || '—')}</span>
+      <span class="open-so-so">${escapeHtml(r.so_number || 'â')}</span>
+      <span class="open-so-company">${escapeHtml(r.company_name || 'â')}</span>
       <span class="open-so-item">${escapeHtml(r.item_name||'(untitled)')}</span>
       ${statusBadge}
       ${poCell}
@@ -2701,7 +2701,7 @@ function openJobsSummaryHtml(jobType, title){
   }).join('');
 
   return `<div class="open-so-panel">
-    <div class="open-so-title">${title} — ${openItems.length} Not Yet Released</div>
+    <div class="open-so-title">${title} â ${openItems.length} Not Yet Released</div>
     <div class="open-so-counts">
       <span class="count-chip count-behind">${counts.behind} Behind</span>
       <span class="count-chip count-approaching">${counts.approaching} Approaching</span>
@@ -2768,7 +2768,7 @@ function notClockedInHtml(){
   }).join('');
 
   return `<div class="not-clocked-panel">
-    <div class="not-clocked-title"><span class="bell">🔔</span> Not Clocked In — Please Start Your Timer!</div>
+    <div class="not-clocked-title"><span class="bell">ð</span> Not Clocked In â Please Start Your Timer!</div>
     <div class="not-clocked-names">
       ${chipsHtml}
     </div>
@@ -2799,13 +2799,13 @@ function activePanelHtml(){
   if(activeEntries.length === 0) return '';
   const rowsHtml = activeEntries.map(({sub,parent}) => `
     <div class="active-panel-row" ${parent ? `onclick="scrollToItem('${parent.id}')" title="Jump to this item"` : ''}>
-      <span class="active-panel-item">${escapeHtml(parent?.so_number || '—')}</span>
-      <span class="active-panel-company">${escapeHtml(parent?.company_name || '—')}</span>
-      <span class="active-panel-itemname">${escapeHtml(parent?.item_name || '—')}</span>
+      <span class="active-panel-item">${escapeHtml(parent?.so_number || 'â')}</span>
+      <span class="active-panel-company">${escapeHtml(parent?.company_name || 'â')}</span>
+      <span class="active-panel-itemname">${escapeHtml(parent?.item_name || 'â')}</span>
       <span class="active-panel-stage">${escapeHtml(sub.subitem_type)}</span>
-      <span class="active-panel-who">${escapeHtml(sub.draftee||'—')}</span>
+      <span class="active-panel-who">${escapeHtml(sub.draftee||'â')}</span>
       <span class="active-panel-time" data-active-panel-timer="${sub.id}">${fmtDuration(liveElapsed(sub))}</span>
-      <button class="active-panel-stop-btn" onclick="event.stopPropagation(); toggleClock('${sub.id}')" title="Clock off">⏹ Stop</button>
+      <button class="active-panel-stop-btn" onclick="event.stopPropagation(); toggleClock('${sub.id}')" title="Clock off">â¹ Stop</button>
     </div>`).join('');
   return `<div class="active-panel">
     <div class="active-panel-title"><span class="active-panel-dot"></span>Clocked in now (${activeEntries.length})</div>
@@ -2818,15 +2818,15 @@ function teamScheduleSummaryHtml(){
   const byName = {};
   all.forEach(t => {
     if((t.sub.status||'Not Started') === 'Done') return;
-    if(t.job.requires_client_approval && !t.job.actual_approval_received_date && (t.job.first_sent_for_approval_date || t.job.actual_sent_for_approval)) return; // nothing actionable until client approves — skip to next hot job by aging
-    if((t.sub.subitem_type === 'GA For Approval Prep' || t.sub.subitem_type === 'Sales Handover') && !t.job.requires_client_approval) return; // standard product — stage is bypassed, not real work
+    if(t.job.requires_client_approval && !t.job.actual_approval_received_date && (t.job.first_sent_for_approval_date || t.job.actual_sent_for_approval)) return; // nothing actionable until client approves â skip to next hot job by aging
+    if((t.sub.subitem_type === 'GA For Approval Prep' || t.sub.subitem_type === 'Sales Handover') && !t.job.requires_client_approval) return; // standard product â stage is bypassed, not real work
     const name = taskAssigneeNames(t.sub)[0];
     if(!name || name === 'To Be Confirmed') return;
     (byName[name] = byName[name] || []).push(t);
   });
 
-  // A job that's already clear to proceed — either it never needed client sign-off, or the
-  // client has already given it — should jump the queue ahead of jobs still sitting in prep
+  // A job that's already clear to proceed â either it never needed client sign-off, or the
+  // client has already given it â should jump the queue ahead of jobs still sitting in prep
   // pre-approval-request. Awaiting-approval jobs are excluded above entirely, so this only
   // distinguishes "already approved / never needed it" from "not sent for approval yet".
   const hasClientApproval = (job) => !job.requires_client_approval || !!job.actual_approval_received_date;
@@ -2850,13 +2850,13 @@ function teamScheduleSummaryHtml(){
       const { sub, job } = t;
       const isLast = idx === top3.length - 1;
       const label = job.is_internal
-        ? `<span class="taskboard-tag-internal">Internal</span>${escapeHtml(job.item_name||'—')}`
-        : `${escapeHtml(job.so_number || '—')} — ${escapeHtml(job.company_name || job.item_name || '')}`;
+        ? `<span class="taskboard-tag-internal">Internal</span>${escapeHtml(job.item_name||'â')}`
+        : `${escapeHtml(job.so_number || 'â')} â ${escapeHtml(job.company_name || job.item_name || '')}`;
       const approvedTag = (job.requires_client_approval && job.actual_approval_received_date)
-        ? `<span class="teamsched-approved-tag" title="Client has already approved — cleared to proceed">✓ Approved</span>` : '';
+        ? `<span class="teamsched-approved-tag" title="Client has already approved â cleared to proceed">â Approved</span>` : '';
       const subLabel = sub.subitem_type === 'Internal Time' ? 'Time log' : sub.subitem_type;
       const dateRange = (sub.schedule_start_date || sub.schedule_end_date)
-        ? `${fmtDate(sub.schedule_start_date)} → ${fmtDate(sub.schedule_end_date)}`
+        ? `${fmtDate(sub.schedule_start_date)} â ${fmtDate(sub.schedule_end_date)}`
         : 'Not scheduled';
       const moreTag = (isLast && extra > 0) ? `<span class="teamsched-more" onclick="event.stopPropagation(); openTaskBoard(); setTaskBoardFilter('${escapeAttr(p.name)}');" title="Open ${escapeAttr(p.name)}'s full task board">+${extra} more</span>` : '';
       const nameCell = idx === 0
@@ -2865,7 +2865,7 @@ function teamScheduleSummaryHtml(){
       return `<div class="teamsched-row${isLast ? ' teamsched-row-last' : ''}" onclick="scrollToItem('${job.id}')" title="Jump to this item">
         ${nameCell}
         <span class="teamsched-priority">Priority ${idx+1}</span>
-        <span class="teamsched-task">${label} <span class="teamsched-stage">— ${escapeHtml(subLabel)}</span>${approvedTag}</span>
+        <span class="teamsched-task">${label} <span class="teamsched-stage">â ${escapeHtml(subLabel)}</span>${approvedTag}</span>
         <span class="teamsched-dates">${dateRange}</span>
         ${moreTag}
       </div>`;
@@ -2873,7 +2873,7 @@ function teamScheduleSummaryHtml(){
   }).join('');
 
   return `<div class="teamsched-panel">
-    <div class="teamsched-title">📋 Team Schedule — What's Next, In Order</div>
+    <div class="teamsched-title">ð Team Schedule â What's Next, In Order</div>
     <div class="teamsched-rows" id="teamschedRowsBox">${rowsHtml}</div>
   </div>`;
 }
@@ -2903,24 +2903,24 @@ function onBreakPanelHtml(){
   breakEntries.sort((a,b) => new Date(b.loggedOutAt||0) - new Date(a.loggedOutAt||0));
   const rowsHtml = breakEntries.map(({sub,parent,loggedOutAt}) => {
     const metaHtml = sub.on_break_auto
-      ? `<div class="break-panel-meta"><span class="break-panel-auto-tag" title="No response within 5 minutes — clocked off automatically">⏱ Auto-stopped, no response</span></div>`
+      ? `<div class="break-panel-meta"><span class="break-panel-auto-tag" title="No response within 5 minutes â clocked off automatically">â± Auto-stopped, no response</span></div>`
       : '';
     return `
     <div class="break-panel-entry">
       <div class="break-panel-row" ${parent ? `onclick="scrollToItem('${parent.id}')" title="Jump to this item"` : ''}>
-        <span class="break-panel-item">${escapeHtml(parent?.so_number || '—')}</span>
-        <span class="break-panel-company">${escapeHtml(parent?.company_name || '—')}</span>
-        <span class="break-panel-itemname">${escapeHtml(parent?.item_name || '—')}</span>
+        <span class="break-panel-item">${escapeHtml(parent?.so_number || 'â')}</span>
+        <span class="break-panel-company">${escapeHtml(parent?.company_name || 'â')}</span>
+        <span class="break-panel-itemname">${escapeHtml(parent?.item_name || 'â')}</span>
         <span class="break-panel-stage">${escapeHtml(sub.subitem_type)}</span>
-        <span class="break-panel-who">${escapeHtml(sub.draftee||'—')}</span>
-        <span class="break-panel-loggedout">${loggedOutAt ? fmtLogTime(loggedOutAt) : '—'}</span>
-        <button class="break-panel-resume-btn" onclick="event.stopPropagation(); toggleClock('${sub.id}')" title="Resume where you left off">▶ Resume</button>
+        <span class="break-panel-who">${escapeHtml(sub.draftee||'â')}</span>
+        <span class="break-panel-loggedout">${loggedOutAt ? fmtLogTime(loggedOutAt) : 'â'}</span>
+        <button class="break-panel-resume-btn" onclick="event.stopPropagation(); toggleClock('${sub.id}')" title="Resume where you left off">â¶ Resume</button>
       </div>
       ${metaHtml}
     </div>`;
   }).join('');
   return `<div class="break-panel">
-    <div class="break-panel-title"><span class="break-panel-dot"></span>Paused — resume where you left off (${breakEntries.length})</div>
+    <div class="break-panel-title"><span class="break-panel-dot"></span>Paused â resume where you left off (${breakEntries.length})</div>
     ${rowsHtml}
   </div>`;
 }
@@ -2968,15 +2968,15 @@ function rowHtml(r, opts){
   const classColors = {Container:'pill-class-container', Standard:'pill-class-standard', Lubestation:'pill-class-lubestation', Custom:'pill-class-custom'};
   const std = r.product_class
     ? `<span class="pill ${classColors[r.product_class]||'pill-blank'}">${escapeHtml(r.product_class)}</span>`
-    : `<span class="pill pill-blank">—</span>`;
+    : `<span class="pill pill-blank">â</span>`;
   const rcdRc = r.rcd_or_rc
     ? `<span class="pill ${r.rcd_or_rc === 'RCD' ? 'pill-rcd' : 'pill-rc'}">${escapeHtml(r.rcd_or_rc)}</span>`
-    : `<span class="pill pill-blank">—</span>`;
+    : `<span class="pill pill-blank">â</span>`;
   const excess = excessSpan(r.computed_oa_excess_days);
   const hasSubs = (subitemsByParent[r.id] || []).length > 0;
   const isCollapsed = collapsedSubitems.has(r.id);
   const subToggle = hasSubs
-    ? `<span class="subtoggle" onclick="event.stopPropagation(); toggleSubitems('${r.id}')" title="${isCollapsed?'Show':'Hide'} sub-processes">${isCollapsed ? '▸' : '▾'}</span>`
+    ? `<span class="subtoggle" onclick="event.stopPropagation(); toggleSubitems('${r.id}')" title="${isCollapsed?'Show':'Hide'} sub-processes">${isCollapsed ? 'â¸' : 'â¾'}</span>`
     : `<span class="subtoggle subtoggle-empty"></span>`;
   const relevantGroupList = r.is_internal ? INTERNAL_GROUP_ORDER : (r.job_type === 'OPPTS' ? OPPTS_GROUP_ORDER : SO_STAGE_GROUP_ORDER);
   const autoOption = (!r.is_internal && r.job_type !== 'OPPTS')
@@ -2993,20 +2993,20 @@ function rowHtml(r, opts){
   const filledSubs = subsForFill.filter(s => s.schedule_start_date && s.schedule_end_date).length;
   const schedFillPct = subsForFill.length ? Math.round((filledSubs / subsForFill.length) * 100) : null;
   const schedFillTier = schedFillPct === null ? '' : (schedFillPct >= 100 ? 'sched-fill-full' : schedFillPct >= 50 ? 'sched-fill-mid' : 'sched-fill-low');
-  const schedFillBadge = schedFillPct === null ? '' : `<span class="sched-fill-badge ${schedFillTier}" title="${filledSubs} of ${subsForFill.length} sub-processes scheduled">📅 ${schedFillPct}%</span>`;
+  const schedFillBadge = schedFillPct === null ? '' : `<span class="sched-fill-badge ${schedFillTier}" title="${filledSubs} of ${subsForFill.length} sub-processes scheduled">ð ${schedFillPct}%</span>`;
   const rowSeq = drafteeRowSeq[r.id];
   const drafteeSeqBadge = rowSeq ? `<span class="draftee-seq-badge" title="${escapeHtml(r.draftee)}'s priority queue position, by scheduled date">Priority ${rowSeq.seq}/${rowSeq.total}</span>` : '';
   const isUntouched = subsForFill.length > 0 && filledSubs === 0;
   const newItemBadge = isUntouched ? `<span class="new-item-badge" title="No draftee or schedule set on any sub-process yet">NEW</span>` : '';
 
-  const cellSoNumber = `<td class="so-number-cell">${escapeHtml(r.so_number||'—')}</td>`;
+  const cellSoNumber = `<td class="so-number-cell">${escapeHtml(r.so_number||'â')}</td>`;
   const cellSubtoggle = `<td class="subtoggle-col" onclick="event.stopPropagation()">${subToggle}${newItemBadge}${schedFillBadge}</td>`;
-  const cellCompany = `<td>${escapeHtml(r.company_name||'—')}</td>`;
+  const cellCompany = `<td>${escapeHtml(r.company_name||'â')}</td>`;
   const cellItem = `<td class="item-name">${escapeHtml(r.item_name||'(untitled)')}</td>`;
-  const cellDraftee = `<td>${escapeHtml(r.draftee||'—')}${drafteeSeqBadge}</td>`;
-  const cellSalesPerson = `<td>${escapeHtml(r.sales_person||'—')}</td>`;
+  const cellDraftee = `<td>${escapeHtml(r.draftee||'â')}${drafteeSeqBadge}</td>`;
+  const cellSalesPerson = `<td>${escapeHtml(r.sales_person||'â')}</td>`;
   const cellDifot = `<td>${difot}</td>`;
-  const cellDifotDays = `<td class="dim">${r.computed_difot_10days ?? '—'}</td>`;
+  const cellDifotDays = `<td class="dim">${r.computed_difot_10days ?? 'â'}</td>`;
   const cellClass = `<td>${std}</td>`;
   const cellRcdRc = `<td>${rcdRc}</td>`;
   const cellDraftingTransfer = `<td class="dim">${fmtDate(r.drafting_transfer_date)}</td>`;
@@ -3014,7 +3014,7 @@ function rowHtml(r, opts){
   const cellTargetRelease = `<td class="dim">${fmtDate(r.target_release_date)}</td>`;
   const cellActualRelease = `<td class="dim">${fmtDate(r.actual_release_to_prodn_date)}</td>`;
   const cellProjectSales = `<td class="dim">${fmtMoney(r.project_sales)}</td>`;
-  const cellAging = `<td class="dim">${r.computed_aging_days ?? '—'}</td>`;
+  const cellAging = `<td class="dim">${r.computed_aging_days ?? 'â'}</td>`;
   const cellActualHrs = `<td class="dim">${(r.computed_actual_hrs ?? 0).toFixed(1)}h</td>`;
   const cellExcess = `<td>${excess}</td>`;
   const cellMoveGroup = `<td onclick="event.stopPropagation()"><select class="move-group-select" onchange="moveToGroup('${r.id}', this.value)">${groupOptions}</select></td>`;
@@ -3038,7 +3038,7 @@ function rowHtml(r, opts){
         if(liveSubs.length){
           const latestLiveEnd = liveSubs.reduce((max,s) => s.schedule_end_date > max ? s.schedule_end_date : max, liveSubs[0].schedule_end_date);
           if(latestLiveEnd > baselineStage.end){
-            overBadge = `<span class="baseline-over-badge" title="Currently due ${fmtDate(latestLiveEnd)}, vs Schedule ${baseline.number}'s ${fmtDate(baselineStage.end)}">⚠ Out of Sched ${baseline.number}</span>`;
+            overBadge = `<span class="baseline-over-badge" title="Currently due ${fmtDate(latestLiveEnd)}, vs Schedule ${baseline.number}'s ${fmtDate(baselineStage.end)}">â  Out of Sched ${baseline.number}</span>`;
           }
         }
       }
@@ -3080,9 +3080,9 @@ function subRowHtml(s, jobType, rcdOrRc, requiresClientApproval){
     return `<tr class="subrow subrow-disabled" onclick="event.stopPropagation()">
     <td colspan="19">
       <div class="sub-content sub-content-disabled">
-        <span class="sub-indent-icon">↳</span>
+        <span class="sub-indent-icon">â³</span>
         <span class="sub-label">${escapeHtml(s.subitem_type)}</span>
-        <span class="sub-disabled-badge">Not required — RC job</span>
+        <span class="sub-disabled-badge">Not required â RC job</span>
       </div>
     </td>
   </tr>`;
@@ -3095,22 +3095,22 @@ function subRowHtml(s, jobType, rcdOrRc, requiresClientApproval){
   ).join('');
   const isAutoDraftee = jobType === 'OPPTS' ? (s.subitem_type === 'Costing Prep') : (s.subitem_type === 'GA For Approval Prep' || s.subitem_type === 'Detailing/PDF/DXF Prep');
   const drafteeCell = isAutoDraftee
-    ? `<span class="sub-draftee-readonly" title="Auto-set from line item draftee">${escapeHtml(s.draftee || '—')}</span>`
+    ? `<span class="sub-draftee-readonly" title="Auto-set from line item draftee">${escapeHtml(s.draftee || 'â')}</span>`
     : `<select class="sub-draftee" onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleSubDrafteeChange(this, '${s.id}')">${lookupOptionsHtml('draftee', s.draftee)}</select>`;
   const scheduleCellHtml = (isClass2Ga || isInternalSub)
     ? `<span class="sub-schedule">
          <span class="sub-sched-label">Schedule:</span>
          <span class="inline-sched-wrap">
-           <span class="sub-sched-disabled" title="${isInternalSub ? 'Internal/non-project work — no Gantt slot needed, just clock in.' : 'Standard product — no reserved slot needed. Marking GA Done schedules Detailing onward automatically.'}">${isInternalSub ? 'Not scheduled — internal work' : 'Not scheduled — standard product'}</span>
+           <span class="sub-sched-disabled" title="${isInternalSub ? 'Internal/non-project work â no Gantt slot needed, just clock in.' : 'Standard product â no reserved slot needed. Marking GA Done schedules Detailing onward automatically.'}">${isInternalSub ? 'Not scheduled â internal work' : 'Not scheduled â standard product'}</span>
            <input type="number" class="inline-sched-duration" disabled placeholder="d">
          </span>
          <input type="date" class="inline-sched-typed-date" disabled>
-         <span class="sub-sched-arrow">→</span>
+         <span class="sub-sched-arrow">â</span>
          <input type="date" class="inline-sched-typed-date" disabled>
          <span class="inline-sched-clear-spacer"></span>
-         <span class="inline-sched-datelabel">—</span>
+         <span class="inline-sched-datelabel">â</span>
          <select class="sub-sched-hour" disabled>${hourOptionsHtml(null)}</select>
-         <span class="sub-sched-arrow">→</span>
+         <span class="sub-sched-arrow">â</span>
          <select class="sub-sched-hour" disabled>${hourOptionsHtml(null)}</select>
        </span>`
     : `<span class="sub-schedule">
@@ -3118,20 +3118,20 @@ function subRowHtml(s, jobType, rcdOrRc, requiresClientApproval){
          ${inlineScheduleBarHtml(s)}
          <select class="sub-sched-hour" title="Schedule start hour" onclick="event.stopPropagation()"
            onchange="event.stopPropagation(); handleSubScheduleChange(this, '${s.id}', 'schedule_start_hour')">${hourOptionsHtml(s.schedule_start_hour)}</select>
-         <span class="sub-sched-arrow">→</span>
+         <span class="sub-sched-arrow">â</span>
          <select class="sub-sched-hour" title="Schedule end hour" onclick="event.stopPropagation()"
            onchange="event.stopPropagation(); handleSubScheduleChange(this, '${s.id}', 'schedule_end_hour')">${hourOptionsHtml(s.schedule_end_hour)}</select>
        </span>`;
   return `<tr class="subrow" onclick="event.stopPropagation()">
     <td colspan="19">
       <div class="sub-content">
-        <span class="sub-indent-icon">↳</span>
+        <span class="sub-indent-icon">â³</span>
         <span class="sub-label">${escapeHtml(s.subitem_type)}</span>
         ${drafteeCell}
         ${scheduleCellHtml}
         <select class="sub-status" onchange="updateSubStatus('${s.id}', this.value, this)" onclick="event.stopPropagation()">${statusOptions}</select>
         <button class="clock-btn ${s.clock_running?'running':''}" onclick="event.stopPropagation(); toggleClock('${s.id}')"
-          title="${isSupervisor() && !(s.draftee||'').split(',').map(x=>x.trim()).includes(getMyDrafteeName()) ? `Supervisor override — clocking on behalf of ${escapeHtml(s.draftee||'unassigned')}` : ''}">
+          title="${isSupervisor() && !(s.draftee||'').split(',').map(x=>x.trim()).includes(getMyDrafteeName()) ? `Supervisor override â clocking on behalf of ${escapeHtml(s.draftee||'unassigned')}` : ''}">
           <span class="dot"></span>${s.clock_running ? 'Stop' : 'Start'}
         </button>
         <span class="clock-hover-wrap">
@@ -3139,16 +3139,16 @@ function subRowHtml(s, jobType, rcdOrRc, requiresClientApproval){
           ${logTooltipHtml(s.id)}
         </span>
         <span class="remarks-wrap">
-          <button class="remarks-btn ${s.remarks ? 'has-remarks' : ''}" onclick="event.stopPropagation(); toggleRemarksPopover(this)" title="Remarks">📝${s.remarks ? '•' : ''}</button>
+          <button class="remarks-btn ${s.remarks ? 'has-remarks' : ''}" onclick="event.stopPropagation(); toggleRemarksPopover(this)" title="Remarks">ð${s.remarks ? 'â¢' : ''}</button>
           <div class="remarks-popover hidden">
-            <div class="remarks-popover-title">Remarks — ${escapeHtml(s.subitem_type)}</div>
-            <textarea class="remarks-textarea" placeholder="Add remarks (max 250 words)…" maxlength="1800"
+            <div class="remarks-popover-title">Remarks â ${escapeHtml(s.subitem_type)}</div>
+            <textarea class="remarks-textarea" placeholder="Add remarks (max 250 words)â¦" maxlength="1800"
               onclick="event.stopPropagation()" onblur="event.stopPropagation(); saveSubRemarks(this, '${s.id}')">${escapeHtml(s.remarks||'')}</textarea>
             <div class="remarks-wordcount"></div>
           </div>
         </span>
-        ${isSupervisor() ? `<button class="log-edit-btn" onclick="event.stopPropagation(); openLogEditor('${s.id}')" title="Edit time logs">🛠</button>` : ''}
-        ${isInternalSub && isSupervisor() ? `<button class="btn-danger-mini" onclick="event.stopPropagation(); removeInternalPerson('${s.id}')" title="Remove ${escapeAttr(s.draftee||'this person')} from this category">✕</button>` : ''}
+        ${isSupervisor() ? `<button class="log-edit-btn" onclick="event.stopPropagation(); openLogEditor('${s.id}')" title="Edit time logs">ð </button>` : ''}
+        ${isInternalSub && isSupervisor() ? `<button class="btn-danger-mini" onclick="event.stopPropagation(); removeInternalPerson('${s.id}')" title="Remove ${escapeAttr(s.draftee||'this person')} from this category">â</button>` : ''}
       </div>
     </td>
   </tr>`;
@@ -3164,7 +3164,7 @@ function logTooltipHtml(subitemId){
     const end = l.ended_at ? fmtDateTime(l.ended_at) : null;
     const dur = l.ended_at ? fmtDuration(l.duration_seconds||0) : fmtDuration(liveElapsedFromStart(l.started_at));
     return `<div class="log-entry">
-      <div class="log-entry-times">${start} ${end ? '→ ' + end : '<span class=\"log-live\">→ in progress</span>'}</div>
+      <div class="log-entry-times">${start} ${end ? 'â ' + end : '<span class=\"log-live\">â in progress</span>'}</div>
       <div class="log-entry-dur">${dur}</div>
     </div>`;
   }).join('');
@@ -3205,7 +3205,7 @@ async function toggleClock(subitemId){
   const parentRow = rows.find(r => r.id === sub.parent_id);
   if(parentRow && parentRow.job_type === 'OPPTS' && parentRow.rcd_or_rc === 'RC' &&
      (sub.subitem_type === 'Drawing/BOM Prep' || sub.subitem_type === 'Checking')){
-    alert("This sub-process isn't required for RC jobs — clocking is disabled.");
+    alert("This sub-process isn't required for RC jobs â clocking is disabled.");
     return;
   }
   const myName = getMyDrafteeName();
@@ -3220,18 +3220,18 @@ async function toggleClock(subitemId){
     const isClass2Ga = (sub.subitem_type === 'GA For Approval Prep' || sub.subitem_type === 'Sales Handover') && parentRow && !parentRow.requires_client_approval;
     const isInternalSub = sub.subitem_type === 'Internal Time';
     if(!isClass2Ga && !isInternalSub && (!sub.schedule_start_date || !sub.schedule_end_date)){
-      alert("This sub-process doesn't have a Schedule (start/end date) set yet — set its schedule dates first before clocking in.");
+      alert("This sub-process doesn't have a Schedule (start/end date) set yet â set its schedule dates first before clocking in.");
       return;
     }
     if(sub.status === 'Done' || sub.status === 'On-Hold'){
-      alert(`This sub-process is marked "${sub.status}" — clocking is disabled. Change its status to Not Started or In Progress first.`);
+      alert(`This sub-process is marked "${sub.status}" â clocking is disabled. Change its status to Not Started or In Progress first.`);
       return;
     }
     if(!supervisorOverride){
       const conflict = allSubs.find(s => s.id !== subitemId && s.clock_running &&
         (s.draftee||'').split(',').map(x=>x.trim()).includes(myName));
       if(conflict){
-        alert(`You're already clocked into "${conflict.subitem_type}". Stop that timer before starting another — only one job can be clocked at a time.`);
+        alert(`You're already clocked into "${conflict.subitem_type}". Stop that timer before starting another â only one job can be clocked at a time.`);
         return;
       }
     }
@@ -3254,7 +3254,7 @@ async function toggleClock(subitemId){
         clockedByName = subDraftees[0];
       } else if(subDraftees.length > 1){
         const picked = prompt(`This sub-process is jointly assigned to: ${subDraftees.join(', ')}. Who is actually clocking in right now?`, subDraftees[0]);
-        if(!picked || !subDraftees.includes(picked.trim())){ alert('Clock-in cancelled — enter one of the assigned names exactly.'); return; }
+        if(!picked || !subDraftees.includes(picked.trim())){ alert('Clock-in cancelled â enter one of the assigned names exactly.'); return; }
         clockedByName = picked.trim();
       }
     }
@@ -3283,7 +3283,7 @@ function refreshTopPanels(){
     if(el) savedScrolls[id] = el.scrollTop;
   });
   root.innerHTML = isAnyFilterActive()
-    ? '' // filtering active — these panels aren't filter-aware, so hide them rather than show unfiltered/misleading data
+    ? '' // filtering active â these panels aren't filter-aware, so hide them rather than show unfiltered/misleading data
     : (attendancePanelHtml() + notClockedInHtml() + activePanelHtml() + teamScheduleSummaryHtml() + onBreakPanelHtml() + openSoSummaryHtml());
   SCROLLABLE_PANEL_IDS.forEach(id => {
     const el = document.getElementById(id);
@@ -3373,7 +3373,7 @@ function fortnightLabel(startStr){
   const start = new Date(startStr+'T00:00:00');
   const end = new Date(start); end.setDate(end.getDate()+13);
   const fmt = d => d.toLocaleDateString('en-AU', {day:'numeric', month:'short'});
-  return `${fmt(start)} – ${fmt(end)}`;
+  return `${fmt(start)} â ${fmt(end)}`;
 }
 
 function fmtDateShort(dateStr){
@@ -3416,8 +3416,8 @@ function attendancePanelHtml(){
         : `<span class="attendance-badge attendance-badge-clear">All caught up</span>`);
 
   return `<div class="attendance-strip">
-    <div class="attendance-strip-left">📋 <b>Fortnight Attendance &amp; Leave Decisions</b> — ${fortnightLabel(fnStart)} ${badge}</div>
-    <button class="attendance-strip-btn" onclick="${openFn}">Open Reconciliation →</button>
+    <div class="attendance-strip-left">ð <b>Fortnight Attendance &amp; Leave Decisions</b> â ${fortnightLabel(fnStart)} ${badge}</div>
+    <button class="attendance-strip-btn" onclick="${openFn}">Open Reconciliation â</button>
   </div>`;
 }
 
@@ -3440,7 +3440,7 @@ function openDrafteeIndividualWindow(drafteeName){
   document.getElementById('attendanceSupervisorModalBackdrop').classList.add('hidden');
   individualWindowViewedName = drafteeName;
   viewedFortnightStart = null;
-  document.getElementById('attendanceReconTitle').textContent = `Attendance & Leave Reconciliation — ${drafteeName} (supervisor view)`;
+  document.getElementById('attendanceReconTitle').textContent = `Attendance & Leave Reconciliation â ${drafteeName} (supervisor view)`;
   refreshFortnightHoursSummary().then(renderAttendanceReconBody);
   document.getElementById('attendanceReconModalBackdrop').classList.remove('hidden');
 }
@@ -3463,9 +3463,9 @@ function renderAttendanceReconBody(){
   const fnStart = getViewedFortnightStart();
   const isCurrentFn = fnStart >= currentFortnightStart();
   const fortnightNavHtml = `<div class="fortnight-nav">
-    <button class="icon-btn" onclick="reconGoPriorFortnight()">← Prior</button>
+    <button class="icon-btn" onclick="reconGoPriorFortnight()">â Prior</button>
     <span class="fortnight-nav-label">${fortnightLabel(fnStart)}</span>
-    <button class="icon-btn" onclick="reconGoNextFortnight()" ${isCurrentFn?'disabled':''}>Next →</button>
+    <button class="icon-btn" onclick="reconGoNextFortnight()" ${isCurrentFn?'disabled':''}>Next â</button>
     <button class="icon-btn" onclick="reconGoThisFortnight()" ${isCurrentFn?'disabled':''}>This fortnight</button>
   </div>`;
   const myDecisions = attendanceDecisions.filter(d => d.draftee_name === viewedName && d.fortnight_start === fnStart);
@@ -3476,9 +3476,9 @@ function renderAttendanceReconBody(){
 
   if(myDecisions.length === 0){
     document.getElementById('attendanceReconBody').innerHTML = `
-      ${supervisorViewing ? `<div style="margin-bottom:12px;"><span class="attendance-draftee-link" onclick="backToSupervisorTable()">← Back to team view</span></div>` : ''}
+      ${supervisorViewing ? `<div style="margin-bottom:12px;"><span class="attendance-draftee-link" onclick="backToSupervisorTable()">â Back to team view</span></div>` : ''}
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
-        <button class="btn-primary-sm" onclick="openInvoiceForDraftee('${viewedName}', '${fnStart}')">🖨 Print Invoice</button>
+        <button class="btn-primary-sm" onclick="openInvoiceForDraftee('${viewedName}', '${fnStart}')">ð¨ Print Invoice</button>
         ${fortnightNavHtml}
       </div>
       <div class="attendance-balance-summary">
@@ -3487,10 +3487,10 @@ function renderAttendanceReconBody(){
         <div class="attendance-balance-item"><span class="attendance-balance-label">Bank Hours</span><span class="attendance-balance-value">${bank.toFixed(2)} hrs</span></div>
         <div class="attendance-balance-item"><span class="attendance-balance-label">Sick Leave</span><span class="attendance-balance-value">${sick.remaining}/10 days</span></div>
       </div>
-      <p style="color:var(--text-dim);font-size:13px;">No shortfall days this fortnight${supervisorViewing ? ` for ${escapeHtml(viewedName)}` : ''} — nothing to confirm. 🎉</p>
+      <p style="color:var(--text-dim);font-size:13px;">No shortfall days this fortnight${supervisorViewing ? ` for ${escapeHtml(viewedName)}` : ''} â nothing to confirm. ð</p>
       <div class="attendance-breakdown-heading">Full Fortnight Breakdown</div>
       <table class="attendance-table daily-breakdown-table">
-        <thead><tr><th>Date</th><th style="text-align:right;">Worked</th><th style="text-align:right;">Internal</th><th style="text-align:right;">Bank Δ</th><th style="text-align:right;">Sick</th><th>Status</th></tr></thead>
+        <thead><tr><th>Date</th><th style="text-align:right;">Worked</th><th style="text-align:right;">Internal</th><th style="text-align:right;">Bank Î</th><th style="text-align:right;">Sick</th><th>Status</th></tr></thead>
         <tbody>${renderDailyBreakdownRows(viewedName, fnStart)}</tbody>
       </table>`;
     return;
@@ -3501,10 +3501,10 @@ function renderAttendanceReconBody(){
     const resolved = d.status !== 'pending';
     const choice = (val, label, cls) => `<div class="attendance-choice ${sel===val?('selected '+cls):''}" ${resolved?'':`onclick="selectAttendanceChoice('${d.id}','${val}')"`}>${label}</div>`;
     let preview = '';
-    if(sel === 'bank') preview = `Bank: ${bank.toFixed(2)} → ${(bank - d.shortfall_hours).toFixed(2)} hrs. Sick leave unaffected.`;
-    else if(sel === 'sick_leave') preview = `Sick leave: ${sick.remaining} → ${sick.remaining - 1} day${(sick.remaining-1)===1?'':'s'} remaining. Bank unaffected.`;
-    else if(sel === 'owe_hours') preview = `Bank: ${bank.toFixed(2)} → ${(bank - d.shortfall_hours).toFixed(2)} hrs (owed). Still paid today — your next overtime pays this down.`;
-    else if(sel === 'no_shortfall') preview = `No deduction — hours already corrected. Bank and sick leave unaffected.`;
+    if(sel === 'bank') preview = `Bank: ${bank.toFixed(2)} â ${(bank - d.shortfall_hours).toFixed(2)} hrs. Sick leave unaffected.`;
+    else if(sel === 'sick_leave') preview = `Sick leave: ${sick.remaining} â ${sick.remaining - 1} day${(sick.remaining-1)===1?'':'s'} remaining. Bank unaffected.`;
+    else if(sel === 'owe_hours') preview = `Bank: ${bank.toFixed(2)} â ${(bank - d.shortfall_hours).toFixed(2)} hrs (owed). Still paid today â your next overtime pays this down.`;
+    else if(sel === 'no_shortfall') preview = `No deduction â hours already corrected. Bank and sick leave unaffected.`;
 
     return `<tr>
       <td>${fmtDateShort(d.work_date)}<br><span style="color:var(--text-dim);">Shortfall: ${d.shortfall_hours} hrs</span></td>
@@ -3526,9 +3526,9 @@ function renderAttendanceReconBody(){
   }).join('');
 
   document.getElementById('attendanceReconBody').innerHTML = `
-    ${supervisorViewing ? `<div style="margin-bottom:12px;"><span class="attendance-draftee-link" onclick="backToSupervisorTable()">← Back to team view</span></div>` : (isCurrentFn ? `<div class="attendance-deadline-banner">⏰ Please confirm by end of day Thursday (day before payday). If you haven't chosen by then, a supervisor will fill it in for you.</div>` : '')}
+    ${supervisorViewing ? `<div style="margin-bottom:12px;"><span class="attendance-draftee-link" onclick="backToSupervisorTable()">â Back to team view</span></div>` : (isCurrentFn ? `<div class="attendance-deadline-banner">â° Please confirm by end of day Thursday (day before payday). If you haven't chosen by then, a supervisor will fill it in for you.</div>` : '')}
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
-      <button class="btn-primary-sm" onclick="openInvoiceForDraftee('${viewedName}', '${fnStart}')">🖨 Print Invoice</button>
+      <button class="btn-primary-sm" onclick="openInvoiceForDraftee('${viewedName}', '${fnStart}')">ð¨ Print Invoice</button>
       ${fortnightNavHtml}
     </div>
     <div class="attendance-balance-summary">
@@ -3543,7 +3543,7 @@ function renderAttendanceReconBody(){
     </table>
     <div class="attendance-breakdown-heading">Full Fortnight Breakdown</div>
     <table class="attendance-table daily-breakdown-table">
-      <thead><tr><th>Date</th><th style="text-align:right;">Worked</th><th style="text-align:right;">Internal</th><th style="text-align:right;">Bank Δ</th><th style="text-align:right;">Sick</th><th>Status</th></tr></thead>
+      <thead><tr><th>Date</th><th style="text-align:right;">Worked</th><th style="text-align:right;">Internal</th><th style="text-align:right;">Bank Î</th><th style="text-align:right;">Sick</th><th>Status</th></tr></thead>
       <tbody>${renderDailyBreakdownRows(viewedName, fnStart)}</tbody>
     </table>`;
 }
@@ -3600,14 +3600,14 @@ async function buildInvoiceHtml(drafteeName, totalHours, periodLabel, paydayLabe
 async function openInvoiceForDraftee(drafteeName, fnStartOverride){
   const invoiceWindow = window.open('', '_blank');
   if(!invoiceWindow){ alert('Please allow popups to generate the invoice.'); return; }
-  invoiceWindow.document.write('<p style="font-family:sans-serif;padding:40px;color:#585d73;">Generating invoice…</p>');
+  invoiceWindow.document.write('<p style="font-family:sans-serif;padding:40px;color:#585d73;">Generating invoiceâ¦</p>');
 
   const fnStart = fnStartOverride || currentFortnightStart();
   const fnStartDate = new Date(fnStart+'T00:00:00');
   const fnEndDate = new Date(fnStartDate); fnEndDate.setDate(fnEndDate.getDate()+13);
   const paydayDate = new Date(fnStartDate); paydayDate.setDate(paydayDate.getDate()+15);
   const fmtDay = (d, withYear) => d.toLocaleDateString('en-AU', {weekday:'short', day:'numeric', month:'short', year: withYear?'numeric':undefined});
-  const periodLabel = `${fmtDay(fnStartDate,false)} – ${fmtDay(fnEndDate,true)}`;
+  const periodLabel = `${fmtDay(fnStartDate,false)} â ${fmtDay(fnEndDate,true)}`;
   const paydayLabel = fmtDay(paydayDate, true);
   const generatedLabel = fmtDay(new Date(), true);
 
@@ -3647,7 +3647,7 @@ async function submitAttendanceDecision(decisionId, isSupervisorFill){
 }
 
 async function resetAttendanceDecision(decisionId){
-  if(!confirm('Reset this day back to pending? This undoes the Bank/Sick Leave/Owe Hours effect — the draftee (or a supervisor) will need to make a fresh decision.')) return;
+  if(!confirm('Reset this day back to pending? This undoes the Bank/Sick Leave/Owe Hours effect â the draftee (or a supervisor) will need to make a fresh decision.')) return;
   const { error } = await sb.rpc('so_reset_attendance_decision', {
     p_decision_id: decisionId,
     p_resolved_by: getFriendlyName(session.user.email)
@@ -3757,8 +3757,8 @@ function toggleDailyBreakdown(name){
 
 // Per-day, per-job breakdown of a draftee's worked hours: which SO/subitem contributed
 // how much, so the daily total can be inspected on hover instead of taken on faith.
-// A log belongs to this draftee if clocked_by says so directly, or — for older
-// entries logged before clocked_by existed — if this subitem only ever had one
+// A log belongs to this draftee if clocked_by says so directly, or â for older
+// entries logged before clocked_by existed â if this subitem only ever had one
 // assignee, matching the same prefer-clocked_by-fallback-to-single-assignee rule
 // the so_daily_hours view itself uses (see handover notes on so_time_logs.clocked_by).
 function logBelongsToDraftee(log, sub, name){
@@ -3784,7 +3784,7 @@ function getDailyJobBreakdown(name, dateStr){
     if(seconds > 0){
       const parent = rows.find(r => r.id === sub.parent_id);
       const soLabel = parent ? (parent.so_number || parent.item_name || (parent.is_internal ? 'Internal / Non-Project' : 'Unknown')) : 'Unknown';
-      breakdown.push({ so: soLabel, process: sub.subitem_type || '—', hours: seconds/3600 });
+      breakdown.push({ so: soLabel, process: sub.subitem_type || 'â', hours: seconds/3600 });
     }
   });
   breakdown.sort((a,b) => b.hours - a.hours);
@@ -3820,7 +3820,7 @@ document.addEventListener('mouseout', e => {
 });
 
 // Builds the per-day rows for one draftee across the current fortnight (weekdays only,
-// matching the Mon–Fri assumption used elsewhere e.g. computeTotalBillableHours).
+// matching the MonâFri assumption used elsewhere e.g. computeTotalBillableHours).
 function renderDailyBreakdownRows(name, fnStart){
   const start = new Date(fnStart+'T00:00:00');
   const decisionsByDate = {};
@@ -3844,7 +3844,7 @@ function renderDailyBreakdownRows(name, fnStart){
     const isWeekend = (day.getDay() === 0 || day.getDay() === 6);
     if(decision){
       const resolved = decision.status !== 'pending';
-      const label = decisionLabel[decision.decision] || '—';
+      const label = decisionLabel[decision.decision] || 'â';
       statusHtml = `<span class="attendance-status-pill ${decision.status}">${
         decision.status === 'pending' ? 'Pending' : (resolved ? label + (decision.status === 'supervisor_filled' ? ' (supervisor)' : '') : label)
       }</span>`;
@@ -3867,7 +3867,7 @@ function renderDailyBreakdownRows(name, fnStart){
         statusHtml = `<span class="attendance-status-pill banked">Banked (${isWeekend ? 'Weekend' : 'Overtime'})</span>`;
         bankDeltaHtml = `<span style="color:var(--green);font-weight:700;">+${otCredit.toFixed(2)}</span>`;
       } else {
-        statusHtml = worked > 0 ? `<span class="attendance-status-pill ok">OK</span>` : `<span class="attendance-status-pill none">—</span>`;
+        statusHtml = worked > 0 ? `<span class="attendance-status-pill ok">OK</span>` : `<span class="attendance-status-pill none">â</span>`;
         bankDeltaHtml = '0.00';
       }
       sickHtml = '0';
@@ -3905,7 +3905,7 @@ function renderTeamSummaryHtml(fnStart, relevant){
     const resolvedCount = decisionsForName.length - pendingCount;
     const expanded = expandedDrafteeDailyRows.has(name);
     const mainRow = `<tr>
-      <td><span class="expand-toggle" onclick="toggleDailyBreakdown('${name}')" title="${expanded?'Hide':'Show'} daily breakdown">${expanded?'▾':'▸'}</span></td>
+      <td><span class="expand-toggle" onclick="toggleDailyBreakdown('${name}')" title="${expanded?'Hide':'Show'} daily breakdown">${expanded?'â¾':'â¸'}</span></td>
       <td><span class="attendance-draftee-link" onclick="openDrafteeIndividualWindow('${name}')">${escapeHtml(name)}</span></td>
       <td style="text-align:right;">${hrs.toFixed(2)}</td>
       <td style="text-align:right;color:var(--text-dim);">${internalHrs.toFixed(2)}</td>
@@ -3917,7 +3917,7 @@ function renderTeamSummaryHtml(fnStart, relevant){
     const dailyRow = expanded ? `<tr class="daily-breakdown-row">
       <td colspan="8">
         <table class="attendance-table daily-breakdown-table">
-          <thead><tr><th>Date</th><th style="text-align:right;">Worked</th><th style="text-align:right;">Internal</th><th style="text-align:right;">Bank Δ</th><th style="text-align:right;">Sick</th><th>Status</th></tr></thead>
+          <thead><tr><th>Date</th><th style="text-align:right;">Worked</th><th style="text-align:right;">Internal</th><th style="text-align:right;">Bank Î</th><th style="text-align:right;">Sick</th><th>Status</th></tr></thead>
           <tbody>${renderDailyBreakdownRows(name, fnStart)}</tbody>
         </table>
       </td>
@@ -3926,7 +3926,7 @@ function renderTeamSummaryHtml(fnStart, relevant){
   }).join('');
 
   return `<div style="margin-bottom:20px;">
-    <div class="attendance-deadline-banner" style="background:#eef2ff;color:var(--primary-dark);border-color:var(--primary);">📊 Team summary at a glance — ${fortnightLabel(fnStart)}</div>
+    <div class="attendance-deadline-banner" style="background:#eef2ff;color:var(--primary-dark);border-color:var(--primary);">ð Team summary at a glance â ${fortnightLabel(fnStart)}</div>
     <table class="attendance-table team-summary-table">
       <thead><tr><th></th><th>Draftee</th><th style="text-align:right;">Hrs Worked</th><th style="text-align:right;">Internal Hrs</th><th style="text-align:right;">Bank Bal.</th><th style="text-align:right;">Sick Used</th><th style="text-align:right;">Pending</th><th style="text-align:right;">Resolved</th></tr></thead>
       <tbody>${rows}</tbody>
@@ -3938,9 +3938,9 @@ function renderSupervisorReviewBody(){
   const fnStart = getViewedFortnightStart();
   const isCurrentFn = fnStart >= currentFortnightStart();
   const fortnightNavHtml = `<div class="fortnight-nav">
-    <button class="icon-btn" onclick="supervisorGoPriorFortnight()">← Prior</button>
+    <button class="icon-btn" onclick="supervisorGoPriorFortnight()">â Prior</button>
     <span class="fortnight-nav-label">${fortnightLabel(fnStart)}</span>
-    <button class="icon-btn" onclick="supervisorGoNextFortnight()" ${isCurrentFn?'disabled':''}>Next →</button>
+    <button class="icon-btn" onclick="supervisorGoNextFortnight()" ${isCurrentFn?'disabled':''}>Next â</button>
     <button class="icon-btn" onclick="supervisorGoThisFortnight()" ${isCurrentFn?'disabled':''}>This fortnight</button>
   </div>`;
   const navWrapHtml = `<div style="display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-bottom:12px;flex-wrap:wrap;">${fortnightNavHtml}</div>`;
@@ -3961,7 +3961,7 @@ function renderSupervisorReviewBody(){
       const editing = supervisorEditingId === d.id;
       const sel = attendanceSelections[d.id] || d.decision || null;
       const choice = (val, label, cls) => `<div class="attendance-choice ${sel===val?('selected '+cls):''}" onclick="selectAttendanceChoice('${d.id}','${val}')">${label}</div>`;
-      const decisionLabel = { bank: 'Bank Hours', sick_leave: 'Sick Leave', owe_hours: 'Owe Hours', no_shortfall: 'No Shortfall' }[d.decision] || '—';
+      const decisionLabel = { bank: 'Bank Hours', sick_leave: 'Sick Leave', owe_hours: 'Owe Hours', no_shortfall: 'No Shortfall' }[d.decision] || 'â';
       const statusPill = `<span class="attendance-status-pill ${d.status}">${
         d.status === 'pending' ? 'Pending' : d.status === 'supervisor_filled' ? 'Filled in by ' + escapeHtml(d.decided_by||'') : 'Submitted'
       }</span>`;
@@ -3989,7 +3989,7 @@ function renderSupervisorReviewBody(){
   }).join('');
 
   document.getElementById('attendanceSupervisorBody').innerHTML = navWrapHtml + summaryHtml + `
-    <div class="attendance-deadline-banner">⏰ Fortnight ${fortnightLabel(fnStart)} — locks for payroll ahead of Friday's pay run.</div>
+    <div class="attendance-deadline-banner">â° Fortnight ${fortnightLabel(fnStart)} â locks for payroll ahead of Friday's pay run.</div>
     <table class="attendance-table">
       <thead><tr><th>Draftee</th><th>Flagged Day</th><th>Choice</th><th>Status</th><th></th></tr></thead>
       <tbody>${rowsHtml}</tbody>
@@ -4017,10 +4017,10 @@ function showDailyCheckinPopup(myName, hoursToday){
   const over = hoursToday >= 8;
   const pct = Math.min(100, (hoursToday/8)*100);
   const body = over
-    ? `<div class="daily-checkin-title">4:50 PM Check-In — Extended Hours</div>
+    ? `<div class="daily-checkin-title">4:50 PM Check-In â Extended Hours</div>
        <div class="daily-checkin-sub">Today's hours so far: <b>${hoursToday.toFixed(2)} / 8.00</b></div>
        <div class="daily-checkin-bar-track"><div class="daily-checkin-bar-fill over" style="width:${pct}%;"></div></div>
-       <div class="daily-checkin-sub">You've completed your 8 hrs — you're now in <b>Extended Hours</b>. Everything from here (+${(hoursToday-8).toFixed(2)} hrs so far) goes to your Bank.</div>
+       <div class="daily-checkin-sub">You've completed your 8 hrs â you're now in <b>Extended Hours</b>. Everything from here (+${(hoursToday-8).toFixed(2)} hrs so far) goes to your Bank.</div>
        <div class="daily-checkin-btn-row"><button class="btn-secondary" onclick="closeDailyCheckin()">Dismiss</button></div>`
     : `<div class="daily-checkin-title">4:50 PM Check-In</div>
        <div class="daily-checkin-sub">Today's hours so far: <b>${hoursToday.toFixed(2)} / 8.00</b></div>
@@ -4072,7 +4072,7 @@ function renderLogEditorRows(){
     <tr data-idx="${idx}">
       <td><input type="datetime-local" class="log-edit-start" value="${toLocalInputValue(entry.started_at)}"></td>
       <td><input type="datetime-local" class="log-edit-end" value="${toLocalInputValue(entry.ended_at)}"></td>
-      <td><button type="button" class="btn-danger-mini" onclick="removeLogEditorRow(${idx})">✕</button></td>
+      <td><button type="button" class="btn-danger-mini" onclick="removeLogEditorRow(${idx})">â</button></td>
     </tr>`).join('');
 }
 
@@ -4136,13 +4136,13 @@ async function updateSubStatus(subitemId, status, selectEl){
       const otherGaRows = allSubs.filter(s => s.parent_id === sub.parent_id && s.subitem_type === 'GA For Approval Prep' && s.id !== subitemId);
       const allOthersDone = otherGaRows.every(s => s.status === 'Done');
       if(parentRecord && parentRecord.requires_client_approval){
-        // Class 1 — the 53-item checklist gate still applies before GA can be marked Done.
+        // Class 1 â the 53-item checklist gate still applies before GA can be marked Done.
         if(allOthersDone){
           openGaCheckpointModal(subitemId, selectEl);
           return;
         }
       } else if(allOthersDone){
-        // Class 2 — GA has no schedule of its own and no checklist gate; marking it Done directly
+        // Class 2 â GA has no schedule of its own and no checklist gate; marking it Done directly
         // triggers the cascade (Detailing/Checking/Release) starting from today.
         await sb.from('so_subitems').update({ status, on_break: false, on_break_auto: false }).eq('id', subitemId);
         const todayStr = todayLocalISO();
@@ -4180,7 +4180,7 @@ function inlineGanttDayOff(dateStr, windowStart){
 // shifts a date back by one day in any timezone ahead of UTC (e.g. all of Australia) whenever you
 // construct/mutate a Date using LOCAL components (new Date(str+'T00:00:00'), setDate, etc.) and then
 // read it back this way. That was happening throughout this file's date math (addWorkdaysJS,
-// shiftDateStr, "today" for overdue/gantt calcs, hour-log bucketing, the CSV filename...) — every one
+// shiftDateStr, "today" for overdue/gantt calcs, hour-log bucketing, the CSV filename...) â every one
 // of those could come out a day early depending on the browser's timezone. These two always read the
 // LOCAL calendar date instead, no UTC round-trip.
 function toLocalISODate(d){
@@ -4193,7 +4193,7 @@ function todayLocalISO(){
   return toLocalISODate(new Date());
 }
 // Shared by rendering and the drag handler so both agree on where a bar sits. A bar whose real dates
-// fall partly or wholly outside the visible window used to compute a huge negative/positive left —
+// fall partly or wholly outside the visible window used to compute a huge negative/positive left â
 // invisible under the track's overflow:hidden, AND it broke dragging (the clamp math in pointermove
 // assumed origLeftPx was already within [0, trackWidth], so a drag on an off-window bar always
 // snapped to a fixed spot instead of tracking the mouse). Clamping each edge into the visible window
@@ -4244,13 +4244,13 @@ function inlineScheduleBarHtml(s){
     const rect = inlineBarClampedRect(s.schedule_start_date, s.schedule_end_date, windowStart);
     const { left, width, clampedBefore, clampedAfter } = rect;
     const barCls = s.status==='Done' ? 'done' : (isOverdue ? 'overdue' : '');
-    const titleSuffix = isOverdue ? ` — ${overdueDays}d overdue` : '';
+    const titleSuffix = isOverdue ? ` â ${overdueDays}d overdue` : '';
     const offWindowTitle = (clampedBefore || clampedAfter)
-      ? ` (actual dates outside the visible window — drag or use Recalculate to bring it in range)` : '';
-    const clampTag = clampedBefore ? `<span class="inline-sched-clamp-tag before">«</span>`
-      : clampedAfter ? `<span class="inline-sched-clamp-tag after">»</span>` : '';
+      ? ` (actual dates outside the visible window â drag or use Recalculate to bring it in range)` : '';
+    const clampTag = clampedBefore ? `<span class="inline-sched-clamp-tag before">Â«</span>`
+      : clampedAfter ? `<span class="inline-sched-clamp-tag after">Â»</span>` : '';
     barHtml = `<div class="inline-sched-bar ${barCls}" style="left:${left}px; width:${width}px;" data-subid="${s.id}"
-        title="${fmtDate(s.schedule_start_date)} → ${fmtDate(s.schedule_end_date)}${titleSuffix}${offWindowTitle}">
+        title="${fmtDate(s.schedule_start_date)} â ${fmtDate(s.schedule_end_date)}${titleSuffix}${offWindowTitle}">
       <div class="inline-sched-handle left" data-mode="resize-start"></div>
       <div class="inline-sched-body" data-mode="move"></div>
       <div class="inline-sched-handle right" data-mode="resize-end"></div>
@@ -4269,16 +4269,16 @@ function inlineScheduleBarHtml(s){
       ${barHtml}
     </div>
     <input type="number" class="inline-sched-duration" data-subid="${s.id}" min="1" max="60" value="${durationVal}"
-      placeholder="d" title="Days planned — type a number to set the duration directly, or drag the bar above"
+      placeholder="d" title="Days planned â type a number to set the duration directly, or drag the bar above"
       ${s.schedule_start_date ? '' : 'disabled'}
       onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleDurationInputChange(this, '${s.id}')">
     <input type="date" class="inline-sched-typed-date" value="${s.schedule_start_date||''}" title="Type the start date directly"
       onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleTypedDateChange(this, '${s.id}', 'start')">
-    <span class="sub-sched-arrow">→</span>
+    <span class="sub-sched-arrow">â</span>
     <input type="date" class="inline-sched-typed-date" value="${s.schedule_end_date||''}" title="Type the end date directly"
       onclick="event.stopPropagation()" onchange="event.stopPropagation(); handleTypedDateChange(this, '${s.id}', 'end')">
-    ${s.schedule_start_date ? `<button class="inline-sched-clear" title="Clear this schedule" onclick="event.stopPropagation(); clearSubSchedule('${s.id}')">✕</button>` : `<span class="inline-sched-clear-spacer"></span>`}
-    <span class="inline-sched-datelabel" data-subid="${s.id}">${s.schedule_start_date ? shortDateRange(s.schedule_start_date, s.schedule_end_date) : '—'}</span>${overdueDays > 0 ? `<span class="inline-sched-overdue-label">⚠ ${overdueDays}d over</span>` : ''}
+    ${s.schedule_start_date ? `<button class="inline-sched-clear" title="Clear this schedule" onclick="event.stopPropagation(); clearSubSchedule('${s.id}')">â</button>` : `<span class="inline-sched-clear-spacer"></span>`}
+    <span class="inline-sched-datelabel" data-subid="${s.id}">${s.schedule_start_date ? shortDateRange(s.schedule_start_date, s.schedule_end_date) : 'â'}</span>${overdueDays > 0 ? `<span class="inline-sched-overdue-label">â  ${overdueDays}d over</span>` : ''}
   </span>`;
 }
 
@@ -4287,11 +4287,11 @@ function shortDateRange(startStr, endStr){
   const s = new Date(startStr+'T00:00:00').toLocaleDateString('en-AU', opts);
   if(startStr === endStr) return s;
   const e = new Date(endStr+'T00:00:00').toLocaleDateString('en-AU', opts);
-  return `${s} → ${e}`;
+  return `${s} â ${e}`;
 }
 
 async function handleInlineTrackClick(e, subitemId){
-  if(e.target.closest('.inline-sched-bar')) return; // clicked an existing bar, not empty track — drag handles that
+  if(e.target.closest('.inline-sched-bar')) return; // clicked an existing bar, not empty track â drag handles that
   const track = e.currentTarget;
   const rect = track.getBoundingClientRect();
   const dayIndex = Math.floor((e.clientX - rect.left) / INLINE_GANTT_DAY_W);
@@ -4310,7 +4310,7 @@ async function handleInlineTrackClick(e, subitemId){
 //   Class 1: Sales Handover = day 1-2, GA For Approval Prep = day 3-5 after drafting_transfer_date.
 //   Class 2: Detailing/PDF/DXF Prep = day 1-8, Checking / Release = day 9-10, Production Handover = day 11.
 // See DTD_ANCHORED_STAGES / applyDraftingTransferAutoSchedule() below. Only fills in stages that are
-// still blank/untouched — never overwrites a stage someone has already scheduled or started.
+// still blank/untouched â never overwrites a stage someone has already scheduled or started.
 const STAGE_DURATIONS_CASCADE = { 'Sales Handover': 2, 'GA For Approval Prep': 3, 'Detailing/PDF/DXF Prep': 8, 'Checking / Release': 2, 'Production Handover': 1, 'Cost Analysis': 1 };
 const CASCADE_NEXT = {
   'Sales Handover': 'GA For Approval Prep',
@@ -4347,7 +4347,7 @@ function workdaySpanEnd(startDateStr, durationDays){
 }
 
 // Finds the next slot of `durationWorkdays` for these draftees that doesn't overlap anything
-// they're already scheduled on (any job, any stage, not just this one) — reuses the exact same
+// they're already scheduled on (any job, any stage, not just this one) â reuses the exact same
 // conflict-detection convention as the manual drag/drop hard-block, so "auto-scheduled" and
 // "manually scheduled" always agree on what counts as a conflict. This is what lets the cascade
 // respect that a draftee moves on to a different job's drawings after finishing GA, rather than
@@ -4395,7 +4395,7 @@ async function cascadeScheduleForward(parentId, fromStageType, fromEndDate){
   while(CASCADE_NEXT[currentType]){
     const nextType = CASCADE_NEXT[currentType];
 
-    // GA -> Detailing only auto-cascades if this isn't a still-pending (unapproved) Class 1 job —
+    // GA -> Detailing only auto-cascades if this isn't a still-pending (unapproved) Class 1 job â
     // Detailing genuinely can't be dated until the client's response is known.
     if(currentType === 'GA For Approval Prep' && record.requires_client_approval && !record.actual_approval_received_date){
       break;
@@ -4429,7 +4429,7 @@ async function cascadeScheduleForward(parentId, fromStageType, fromEndDate){
 
 // Drafting-transfer-date anchored auto-scheduler. Fills in the first stage(s) off
 // drafting_transfer_date using the same workday-aware math as cascadeScheduleForward, but only for
-// stages that are still blank and untouched (no schedule_start_date, status still 'Not Started') —
+// stages that are still blank and untouched (no schedule_start_date, status still 'Not Started') â
 // so it never fights a manual drag/edit someone already made. Class 2 hands off to the existing
 // cascade chain from Production Handover onward so Cost Analysis still gets picked up.
 async function applyDraftingTransferAutoSchedule(parentId, force){
@@ -4442,10 +4442,10 @@ async function applyDraftingTransferAutoSchedule(parentId, force){
   for(const stage of plan){
     const sub = subs.find(s => s.subitem_type === stage.type);
     if(!sub) continue;
-    if(!force && (sub.schedule_start_date || sub.status !== 'Not Started')) continue; // already scheduled/touched — leave it alone unless forced
+    if(!force && (sub.schedule_start_date || sub.status !== 'Not Started')) continue; // already scheduled/touched â leave it alone unless forced
 
     // Earliest desired start is the plan's fixed offset from drafting_transfer_date, UNLESS an
-    // earlier stage in this same pass got pushed out by a conflict — in which case this stage
+    // earlier stage in this same pass got pushed out by a conflict â in which case this stage
     // starts the day after wherever that one actually landed, so a delay correctly cascades
     // forward instead of every stage independently re-anchoring to its theoretical day-offset.
     const plannedStart = addWorkdaysJS(record.drafting_transfer_date, stage.startDay);
@@ -4536,8 +4536,8 @@ async function commitSubScheduleDrag(subitemId, newStartDate, newEndDate){
     if(conflicts.length){
       const list = conflicts.map(c => {
         const parent = rows.find(r => r.id === c.parent_id);
-        const jobBits = parent ? [parent.so_number, parent.company_name, parent.item_name].filter(Boolean).join(' — ') : 'another job';
-        return `• ${jobBits}: ${c.subitem_type} (${fmtDate(c.schedule_start_date)} → ${fmtDate(c.schedule_end_date)})`;
+        const jobBits = parent ? [parent.so_number, parent.company_name, parent.item_name].filter(Boolean).join(' â ') : 'another job';
+        return `â¢ ${jobBits}: ${c.subitem_type} (${fmtDate(c.schedule_start_date)} â ${fmtDate(c.schedule_end_date)})`;
       }).join('\n');
 
       const allNames = (drafteeOptions && drafteeOptions.length) ? drafteeOptions : Object.values(AUTHORIZED_DRAFTEES);
@@ -4554,7 +4554,7 @@ async function commitSubScheduleDrag(subitemId, newStartDate, newEndDate){
         ? `\n\nFree during this window: ${availableDraftees.join(', ')}`
         : `\n\nNobody else on the team is free during this exact window either.`;
 
-      const proceed = confirm(`Heads up — this overlaps with ${draftees.join(', ')}'s existing schedule:\n${list}${availableLine}\n\nSave anyway?`);
+      const proceed = confirm(`Heads up â this overlaps with ${draftees.join(', ')}'s existing schedule:\n${list}${availableLine}\n\nSave anyway?`);
       if(!proceed) return false;
     }
   }
@@ -4567,7 +4567,7 @@ async function commitSubScheduleDrag(subitemId, newStartDate, newEndDate){
 let inlineDragState = null;
 
 document.addEventListener('pointerdown', (e) => {
-  if(inlineDragState) return; // a drag is already in progress — ignore any additional pointerdown until it resolves
+  if(inlineDragState) return; // a drag is already in progress â ignore any additional pointerdown until it resolves
   const handle = e.target.closest('.inline-sched-handle, .inline-sched-body');
   if(!handle) return;
   const barEl = handle.closest('.inline-sched-bar');
@@ -4601,7 +4601,7 @@ document.addEventListener('pointermove', (e) => {
   const origLeftPx = origRect.left;
   const origWidthPx = origRect.width;
 
-  // Clamp the pixel delta to the track's visible bounds FIRST — both the bar's visual position
+  // Clamp the pixel delta to the track's visible bounds FIRST â both the bar's visual position
   // and the resulting committed dates are derived from this SAME clamped value, so the two can
   // never disagree (previously the bar could visually stop at an edge while the underlying date
   // kept changing unseen, causing it to "teleport" once you released the drag).
@@ -4637,7 +4637,7 @@ document.addEventListener('pointermove', (e) => {
 
   inlineDragState.barEl.style.left = newLeft + 'px';
   inlineDragState.barEl.style.width = newWidthPx + 'px';
-  inlineDragState.barEl.title = `${fmtDate(newStart)} → ${fmtDate(newEnd)}`;
+  inlineDragState.barEl.title = `${fmtDate(newStart)} â ${fmtDate(newEnd)}`;
   const lbl = document.querySelector(`.inline-sched-datelabel[data-subid="${inlineDragState.subitemId}"]`);
   if(lbl) lbl.textContent = shortDateRange(newStart, newEnd);
   const durInput = document.querySelector(`.inline-sched-duration[data-subid="${inlineDragState.subitemId}"]`);
@@ -4756,7 +4756,7 @@ function updateGaCheckpointSummary(){
   const summaryEl = document.getElementById('gaCheckpointSummary');
   const confirmBtn = document.getElementById('gaCheckpointConfirmBtn');
   if(v.complete){
-    summaryEl.innerHTML = `<span class="gc-summary-ok">✓ All ${v.totalItems} checkpoints filled — ready to mark Done.</span>`;
+    summaryEl.innerHTML = `<span class="gc-summary-ok">â All ${v.totalItems} checkpoints filled â ready to mark Done.</span>`;
     confirmBtn.disabled = false;
   } else {
     summaryEl.innerHTML = `<span class="gc-summary-count">${v.filledItems} / ${v.totalItems} checkpoints filled</span>`;
@@ -4791,7 +4791,7 @@ async function confirmGaCheckpoint(){
   }).eq('id', subitemId);
   if(gaSub){
     const parentRecord = rows.find(r => r.id === gaSub.parent_id);
-    // Only Class 2 (no approval needed) auto-cascades straight from GA — Class 1 jobs no longer
+    // Only Class 2 (no approval needed) auto-cascades straight from GA â Class 1 jobs no longer
     // auto-cascade past this point; once the client approves, schedule the remaining stages manually.
     if(parentRecord && !parentRecord.requires_client_approval && gaSub.schedule_end_date){
       await cascadeScheduleForward(gaSub.parent_id, 'GA For Approval Prep', gaSub.schedule_end_date);
@@ -4854,8 +4854,8 @@ async function handleSubScheduleChange(inputEl, subitemId, column){
     if(conflicts.length){
       const list = conflicts.map(c => {
         const parent = rows.find(r => r.id === c.parent_id);
-        const jobBits = parent ? [parent.so_number, parent.company_name, parent.item_name].filter(Boolean).join(' — ') : 'another job';
-        return `• ${jobBits}: ${c.subitem_type} (${fmtDate(c.schedule_start_date)}${c.schedule_start_hour!=null?' '+String(c.schedule_start_hour).padStart(2,'0')+':00':''} → ${fmtDate(c.schedule_end_date)}${c.schedule_end_hour!=null?' '+String(c.schedule_end_hour).padStart(2,'0')+':00':''})`;
+        const jobBits = parent ? [parent.so_number, parent.company_name, parent.item_name].filter(Boolean).join(' â ') : 'another job';
+        return `â¢ ${jobBits}: ${c.subitem_type} (${fmtDate(c.schedule_start_date)}${c.schedule_start_hour!=null?' '+String(c.schedule_start_hour).padStart(2,'0')+':00':''} â ${fmtDate(c.schedule_end_date)}${c.schedule_end_hour!=null?' '+String(c.schedule_end_hour).padStart(2,'0')+':00':''})`;
       }).join('\n');
 
       const allNames = (drafteeOptions && drafteeOptions.length) ? drafteeOptions : Object.values(AUTHORIZED_DRAFTEES);
@@ -4872,7 +4872,7 @@ async function handleSubScheduleChange(inputEl, subitemId, column){
         ? `\n\nFree during this window: ${availableDraftees.join(', ')}`
         : `\n\nNobody else on the team is free during this exact window either.`;
 
-      const proceed = confirm(`Heads up — this overlaps with ${draftees.join(', ')}'s existing schedule:\n${list}${availableLine}\n\nSave anyway?`);
+      const proceed = confirm(`Heads up â this overlaps with ${draftees.join(', ')}'s existing schedule:\n${list}${availableLine}\n\nSave anyway?`);
       if(!proceed){ inputEl.value = prevValue; return; }
     }
   }
@@ -4905,14 +4905,14 @@ async function saveSubRemarks(textareaEl, subitemId){
   const text = textareaEl.value;
   const words = text.trim().split(/\s+/).filter(Boolean);
   if(words.length > 250){
-    alert('Remarks must be 250 words or fewer. Currently ' + words.length + ' words — please shorten it before it saves.');
+    alert('Remarks must be 250 words or fewer. Currently ' + words.length + ' words â please shorten it before it saves.');
     return;
   }
   await sb.from('so_subitems').update({ remarks: text || null }).eq('id', subitemId);
   const btn = textareaEl.closest('.remarks-wrap').querySelector('.remarks-btn');
   if(btn){
     btn.classList.toggle('has-remarks', !!text);
-    btn.innerHTML = '📝' + (text ? '•' : '');
+    btn.innerHTML = 'ð' + (text ? 'â¢' : '');
   }
 }
 
@@ -4924,9 +4924,9 @@ document.addEventListener('click', (e) => {
 
 function lookupOptionsHtml(category, selected){
   const opts = category === 'sales_person' ? salesPersonOptions : drafteeOptions;
-  let html = `<option value="">—</option>`;
+  let html = `<option value="">â</option>`;
   html += opts.map(n => `<option value="${escapeAttr(n)}" ${n===selected?'selected':''}>${escapeHtml(n)}</option>`).join('');
-  html += `<option value="__ADD_NEW__">+ Add new…</option>`;
+  html += `<option value="__ADD_NEW__">+ Add newâ¦</option>`;
   return html;
 }
 
@@ -4951,7 +4951,7 @@ async function handleLookupChange(selectEl, category){
 function manageStatusRowHtml(row){
   if(row.is_locked){
     return `<div class="manage-status-row locked">
-      <span class="manage-status-lock" title="Used by automation — can't be renamed or deleted">🔒</span>
+      <span class="manage-status-lock" title="Used by automation â can't be renamed or deleted">ð</span>
       <span class="manage-status-name">${escapeHtml(row.name)}</span>
     </div>`;
   }
@@ -4967,7 +4967,7 @@ function renderManageStatusesBody(){
   document.getElementById('manageStatusesBody').innerHTML = `
     <div class="manage-status-list">${rowsHtml}</div>
     <div class="manage-status-add">
-      <input type="text" id="newStatusNameInput" placeholder="New status name…">
+      <input type="text" id="newStatusNameInput" placeholder="New status nameâ¦">
       <button type="button" class="btn-primary-sm" onclick="addStatusOption()">+ Add</button>
     </div>
   `;
@@ -5144,33 +5144,33 @@ function exportCsv(){
 }
 
 function difotPill(status){
-  if(status === 'DIFOT_ON_TIME') return `<span class="pill pill-ontime">DIFOT ✓</span>`;
-  if(status === 'DIFOT_LATE') return `<span class="pill pill-late">Late ✕</span>`;
+  if(status === 'DIFOT_ON_TIME') return `<span class="pill pill-ontime">DIFOT â</span>`;
+  if(status === 'DIFOT_LATE') return `<span class="pill pill-late">Late â</span>`;
   return `<span class="pill pill-ongoing">On-Going</span>`;
 }
 
-// Informational only — shows the sent-for-approval/waiting/approved status and day counter for a
+// Informational only â shows the sent-for-approval/waiting/approved status and day counter for a
 // Class 1 job, purely reflecting whatever's on record in the actual date fields. No buttons here:
-// this used to also drive automatic status flips + schedule cascades, but that's been removed —
+// this used to also drive automatic status flips + schedule cascades, but that's been removed â
 // approving or resending is now just a manual edit via the item modal like any other field.
 function clientApprovalInlineRowHtml(r){
   const sentDate = r.first_sent_for_approval_date || r.actual_sent_for_approval;
   const revCount = revisionCountByParent[r.id] || 0;
   const currentRevLetter = revCount > 0 ? String.fromCharCode(65 + revCount - 1) : 'A';
-  const revNote = sentDate ? ` · Rev ${currentRevLetter}` : '';
+  const revNote = sentDate ? ` Â· Rev ${currentRevLetter}` : '';
   let statusHtml;
   if(r.actual_approval_received_date){
-    statusHtml = `<span class="approval-inline-status approved">✓ Approved — ${fmtDate(r.actual_approval_received_date)}${revNote}</span>`;
+    statusHtml = `<span class="approval-inline-status approved">â Approved â ${fmtDate(r.actual_approval_received_date)}${revNote}</span>`;
   } else if(sentDate){
     const daysWaiting = Math.floor((new Date() - new Date(sentDate+'T00:00:00')) / 86400000);
-    statusHtml = `<span class="approval-inline-status waiting">⏳ Awaiting Approval — Day ${daysWaiting}${revNote}</span>`;
+    statusHtml = `<span class="approval-inline-status waiting">â³ Awaiting Approval â Day ${daysWaiting}${revNote}</span>`;
   } else {
     statusHtml = `<span class="approval-inline-status pending">Not sent yet</span>`;
   }
   return `<tr class="subrow subrow-approval" onclick="event.stopPropagation()">
     <td colspan="19">
       <div class="sub-content">
-        <span class="sub-indent-icon">↳</span>
+        <span class="sub-indent-icon">â³</span>
         <span class="sub-label">Client Approval</span>
         ${statusHtml}
       </div>
@@ -5179,7 +5179,7 @@ function clientApprovalInlineRowHtml(r){
 }
 
 // Manual revision date log (Rev A, Rev B, Rev C...) for a Class 1 job's approval history. Rev A's
-// date is the one that matters for the board's "Day N" waiting counter — kept in sync onto
+// date is the one that matters for the board's "Day N" waiting counter â kept in sync onto
 // so_schedule.first_sent_for_approval_date every time this list changes, so the fast board-level
 // badge (which reads that column directly rather than joining this table per row) always reflects
 // the earliest send, no matter how many resend rounds (Rev B, C...) have happened since.
@@ -5200,13 +5200,13 @@ function renderApprovalRevisionsBody(recordId){
     return `<div class="approval-revision-row">
       <span class="approval-revision-letter">Rev ${letter}</span>
       <input type="date" class="approval-revision-date" value="${rev.sent_date || ''}" onchange="saveJobRevisionDate('${rev.id}', '${recordId}', this.value)">
-      <button type="button" class="approval-revision-remove" onclick="deleteJobRevision('${rev.id}', '${recordId}')" title="Remove this revision">✕</button>
+      <button type="button" class="approval-revision-remove" onclick="deleteJobRevision('${rev.id}', '${recordId}')" title="Remove this revision">â</button>
     </div>`;
   }).join('');
-  const emptyHtml = `<div class="approval-revisions-empty">No revisions logged yet — Rev A is the first time this job was sent for approval.</div>`;
+  const emptyHtml = `<div class="approval-revisions-empty">No revisions logged yet â Rev A is the first time this job was sent for approval.</div>`;
   const record = rows.find(r => r.id === recordId);
   const drawingApprovalHtml = `<div class="approval-revision-final-row">
-    <span class="approval-revision-letter">✓ Drawing Approval</span>
+    <span class="approval-revision-letter">â Drawing Approval</span>
     <input type="date" class="approval-revision-date" value="${record?.actual_approval_received_date || ''}" onchange="saveDrawingApprovalDate('${recordId}', this.value)">
   </div>`;
   container.innerHTML = (rowsHtml || emptyHtml)
@@ -5271,10 +5271,10 @@ const JOB_GANTT_STAGE_LABELS = {
   'Review/Release': 'Review/Release',
 };
 
-// Pure display-only projection — never written anywhere, purely a reference overlay. Walks the
+// Pure display-only projection â never written anywhere, purely a reference overlay. Walks the
 // same stage sequence and day-budgets as the real cascade, but resets its anchor from whichever
 // milestone is MOST RECENTLY REAL (a stage actually marked Done, or a real approval date) rather
-// than the job's original day-1 offset — so it always answers "given where things actually stand
+// than the job's original day-1 offset â so it always answers "given where things actually stand
 // right now, where would the rest land on the standard rule," not "where was this supposed to be
 // on day one." Stops projecting entirely through an unresolved approval wait, since there's no
 // reliable anchor to build forward from until the client actually responds.
@@ -5294,21 +5294,21 @@ function computePlannedStages(record){
         anchorEnd = record.actual_approval_received_date;
         anchorIsReal = true;
       } else {
-        anchorIsReal = false; // genuinely unknown until the client responds — can't project past this
+        anchorIsReal = false; // genuinely unknown until the client responds â can't project past this
       }
       return;
     }
 
     const sub = subs.find(s => s.subitem_type === type);
     // Any stage with a real schedule already set (typed, dragged, or marked Done) is solid
-    // ground to build forward from — not only ones marked Done. Since schedules can now be
+    // ground to build forward from â not only ones marked Done. Since schedules can now be
     // set independently of sequence/status, a manually-dated stage is just as real an anchor,
     // and this lets a later stage's real date recover the chain even after an earlier gap
     // (like an unresolved approval wait) would otherwise block it.
     if(sub && sub.schedule_end_date){
       anchorEnd = sub.schedule_end_date;
       anchorIsReal = true;
-      return; // has its own real date — nothing to project for this stage itself
+      return; // has its own real date â nothing to project for this stage itself
     }
 
     if(!anchorIsReal) return;
@@ -5323,7 +5323,7 @@ function computePlannedStages(record){
   return planned;
 }
 
-let jobBaselinesCache = {}; // { parentId: [{number, stages}, ...] } — every APPROVED baseline, oldest first
+let jobBaselinesCache = {}; // { parentId: [{number, stages}, ...] } â every APPROVED baseline, oldest first
 let jobPendingBaselineCache = {}; // { parentId: pendingRowOrNull }
 
 const BASELINE_COLORS = ['#7c5cf0', '#0aa3a3', '#e0921a', '#d6539f', '#546e7a', '#2c9c4a'];
@@ -5354,7 +5354,7 @@ async function refreshGanttPanel(parentId){
 }
 
 async function saveNewBaseline(parentId){
-  if(!confirm("Submit the current plan as a new schedule? A supervisor will need to approve it before it becomes official — it can't be edited or removed once approved.")) return;
+  if(!confirm("Submit the current plan as a new schedule? A supervisor will need to approve it before it becomes official â it can't be edited or removed once approved.")) return;
   const record = rows.find(r => r.id === parentId);
   if(!record) return;
   const subs = subitemsByParent[parentId] || [];
@@ -5374,7 +5374,7 @@ async function saveNewBaseline(parentId){
   const requestedBy = getMyDrafteeName() || getFriendlyName(session.user.email);
   const { error } = await sb.from('so_schedule_baselines').insert({ parent_id: parentId, status: 'pending', requested_by: requestedBy, stages });
   if(error){ alert("Couldn't submit: " + error.message); return; }
-  alert("Submitted — a supervisor needs to approve this before it becomes an official schedule.");
+  alert("Submitted â a supervisor needs to approve this before it becomes an official schedule.");
   delete jobPendingBaselineCache[parentId];
   await silentReload();
   await refreshGanttPanel(parentId);
@@ -5420,7 +5420,7 @@ function renderJobGanttPanel(record){
     : subs.slice().sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).map(s=>s.subitem_type);
 
   const todayStr = todayLocalISO();
-  // Base window strictly on today + real schedule dates first — these are actual scheduled work,
+  // Base window strictly on today + real schedule dates first â these are actual scheduled work,
   // always worth showing in full even if stale.
   const scheduleDates = [todayStr];
   subs.forEach(s => { if(s.schedule_start_date) scheduleDates.push(s.schedule_start_date); if(s.schedule_end_date) scheduleDates.push(s.schedule_end_date); });
@@ -5429,7 +5429,7 @@ function renderJobGanttPanel(record){
   let windowEnd = sortedBase[sortedBase.length-1];
 
   // Secondary reference dates (transfer, approval-sent/received, target release) only extend the window
-  // if they're reasonably close (<=30 days) — otherwise a job delayed by months/years would blow the
+  // if they're reasonably close (<=30 days) â otherwise a job delayed by months/years would blow the
   // visual timeline out to be unusably wide and default-scroll away from anything relevant.
   const MAX_EXTRA_GAP_DAYS = 30;
   function maybeExtend(dateStr){
@@ -5477,7 +5477,7 @@ function renderJobGanttPanel(record){
         barHtml = `<div class="gantt-bar status-wait" style="left:${start*DAY_W}px; width:${width}px;">Awaiting Client Approval</div>`;
       } else if(record.actual_approval_received_date){
         const at = dayOff(record.actual_approval_received_date);
-        barHtml = `<div class="gantt-bar" style="left:${at*DAY_W}px; width:60px; background:${stageColorFor('GA For Approval Prep')};">✓ Approved</div>`;
+        barHtml = `<div class="gantt-bar" style="left:${at*DAY_W}px; width:60px; background:${stageColorFor('GA For Approval Prep')};">â Approved</div>`;
       } else {
         barHtml = `<div class="gantt-bar" style="left:${todayOffset*DAY_W}px; width:110px; background:repeating-linear-gradient(45deg,#c3c8d6,#c3c8d6 6px,#dfe2ec 6px,#dfe2ec 12px); color:var(--text-dim); border:1.5px dashed var(--text-dim); box-shadow:none;">Not sent yet</div>`;
       }
@@ -5513,13 +5513,13 @@ function renderJobGanttPanel(record){
             const bWidth = Math.max((bEnd - bStart) * DAY_W - 4, 40);
             const color = BASELINE_COLORS[(b.number - 1) % BASELINE_COLORS.length];
             const bottomOffset = 1 + idx * 5;
-            return `<div class="gantt-baseline-bar" style="left:${bStart*DAY_W}px; width:${bWidth}px; bottom:${bottomOffset}px; background:${color};" title="Schedule ${b.number}: ${fmtDate(stageData.start)} → ${fmtDate(stageData.end)}"></div>`;
+            return `<div class="gantt-baseline-bar" style="left:${bStart*DAY_W}px; width:${bWidth}px; bottom:${bottomOffset}px; background:${color};" title="Schedule ${b.number}: ${fmtDate(stageData.start)} â ${fmtDate(stageData.end)}"></div>`;
           }).join('')}
           ${plannedStages[type] && !hasRealSchedule ? (() => {
             const pStart = dayOff(plannedStages[type].start);
             const pEnd = dayOff(plannedStages[type].end) + 1;
             const pWidth = Math.max((pEnd - pStart) * DAY_W - 4, 40);
-            return `<div class="gantt-plan-ghost" style="left:${pStart*DAY_W}px; width:${pWidth}px;" title="Planned: ${fmtDate(plannedStages[type].start)} → ${fmtDate(plannedStages[type].end)} (projected from the last real milestone, not a commitment)"></div>`;
+            return `<div class="gantt-plan-ghost" style="left:${pStart*DAY_W}px; width:${pWidth}px;" title="Planned: ${fmtDate(plannedStages[type].start)} â ${fmtDate(plannedStages[type].end)} (projected from the last real milestone, not a commitment)"></div>`;
           })() : ''}
           ${barHtml}
         </div>
@@ -5528,12 +5528,12 @@ function renderJobGanttPanel(record){
   });
 
   const baselineControlHtml = pendingBaseline
-    ? `<span>⏳ Schedule requested by <b>${escapeHtml(pendingBaseline.requested_by || 'someone')}</b> on ${fmtDate(toLocalISODate(new Date(pendingBaseline.captured_at)))} — awaiting supervisor approval.</span>
+    ? `<span>â³ Schedule requested by <b>${escapeHtml(pendingBaseline.requested_by || 'someone')}</b> on ${fmtDate(toLocalISODate(new Date(pendingBaseline.captured_at)))} â awaiting supervisor approval.</span>
        ${isSupervisor() ? `<div class="baseline-approval-actions">
          <button class="btn-primary-sm" onclick="approveBaseline('${record.id}')">Approve</button>
          <button class="btn-secondary" onclick="rejectBaseline('${record.id}')">Reject</button>
        </div>` : ''}`
-    : `<button class="btn-ghost-sm gantt-save-baseline-btn" onclick="saveNewBaseline('${record.id}')">💾 Save current plan as new schedule</button>`;
+    : `<button class="btn-ghost-sm gantt-save-baseline-btn" onclick="saveNewBaseline('${record.id}')">ð¾ Save current plan as new schedule</button>`;
 
   const baselineLegendHtml = baselines.map(b => {
     const color = BASELINE_COLORS[(b.number - 1) % BASELINE_COLORS.length];
@@ -5553,18 +5553,18 @@ function renderJobGanttPanel(record){
 }
 
 function excessSpan(v){
-  if(v === null || v === undefined) return `<span class="excess-zero">—</span>`;
+  if(v === null || v === undefined) return `<span class="excess-zero">â</span>`;
   if(v > 0) return `<span class="excess-pos">+${v}d</span>`;
   if(v < 0) return `<span class="excess-neg">${v}d</span>`;
   return `<span class="excess-zero">0d</span>`;
 }
 function fmtDate(d){
-  if(!d) return '—';
+  if(!d) return 'â';
   const dt = new Date(d+'T00:00:00');
   return dt.toLocaleDateString('en-AU', {day:'numeric',month:'short',year:'numeric'});
 }
 function fmtMoney(v){
-  if(v === null || v === undefined || v === '') return '—';
+  if(v === null || v === undefined || v === '') return 'â';
   return Number(v).toLocaleString('en-AU', {style:'currency', currency:'AUD', minimumFractionDigits:0, maximumFractionDigits:0});
 }
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -5600,7 +5600,7 @@ function scrollToItem(id){
     return false;
   };
   if(!attemptScroll()){
-    // Item is hidden by an active filter — clear filters and try again
+    // Item is hidden by an active filter â clear filters and try again
     document.getElementById('clearFiltersBtn').click();
     setTimeout(attemptScroll, 50);
   }
@@ -5653,8 +5653,8 @@ function openModal(id, presetGroup, presetJobType){
         <div class="insights-header">
           <div class="insights-status">${difotPill(record.computed_difot_status)}</div>
           <div class="insights-kpis">
-            <div class="kpi"><span class="kpi-value">${record.computed_aging_days ?? '—'}</span><span class="kpi-label">Aging Days</span></div>
-            <div class="kpi"><span class="kpi-value">${record.computed_difot_10days ?? '—'}</span><span class="kpi-label">DIFOT Days</span></div>
+            <div class="kpi"><span class="kpi-value">${record.computed_aging_days ?? 'â'}</span><span class="kpi-label">Aging Days</span></div>
+            <div class="kpi"><span class="kpi-value">${record.computed_difot_10days ?? 'â'}</span><span class="kpi-label">DIFOT Days</span></div>
             <div class="kpi"><span class="kpi-value">${excessSpan(record.computed_oa_excess_days)}</span><span class="kpi-label">O/A Excess</span></div>
           </div>
         </div>
@@ -5673,27 +5673,27 @@ function openModal(id, presetGroup, presetJobType){
           <div class="insights-row">
             <div class="mini-stat"><b>${(record.computed_budget_hrs ?? 0).toFixed(2)}</b>Budget</div>
             <div class="mini-stat"><b>${(record.computed_actual_hrs ?? 0).toFixed(2)}</b>Actual</div>
-            <div class="mini-stat"><b>${record.computed_remainder_hrs !== null && record.computed_remainder_hrs !== undefined ? record.computed_remainder_hrs.toFixed(2) : '—'}</b>Remainder</div>
+            <div class="mini-stat"><b>${record.computed_remainder_hrs !== null && record.computed_remainder_hrs !== undefined ? record.computed_remainder_hrs.toFixed(2) : 'â'}</b>Remainder</div>
           </div>
         </div>
 
         <div class="insights-section">
           <div class="insights-section-label">Auto-Computed Dates</div>
           <div class="insights-row">
-            <div class="mini-stat mini-stat-wide"><b>${fmtDate(record.schedule_start_date)} → ${fmtDate(record.schedule_end_date)}</b>Schedule (GA start → Release end)</div>
+            <div class="mini-stat mini-stat-wide"><b>${fmtDate(record.schedule_start_date)} â ${fmtDate(record.schedule_end_date)}</b>Schedule (GA start â Release end)</div>
             <div class="mini-stat"><b>${fmtDate(record.target_start_date)}</b>Target Start</div>
             <div class="mini-stat"><b>${fmtDate(record.target_release_date)}</b>Target Release</div>
           </div>
         </div>
       </div>
       ${record.requires_client_approval ? `<div class="approval-revisions-card" id="approvalRevisionsContainer">
-        <div class="approval-revisions-header">📨 Client Approval Revisions</div>
-        <div class="approval-revisions-body">Loading…</div>
+        <div class="approval-revisions-header">ð¨ Client Approval Revisions</div>
+        <div class="approval-revisions-body">Loadingâ¦</div>
       </div>` : ''}
       <div class="job-gantt-card">
         <div class="job-gantt-header" onclick="toggleJobGantt()">
-          <span>📅 Job Timeline</span>
-          <span class="chevron" id="jobGanttChevron">▾</span>
+          <span>ð Job Timeline</span>
+          <span class="chevron" id="jobGanttChevron">â¾</span>
         </div>
         <div id="jobGanttBody" class="job-gantt-body">${renderJobGanttPanel(record)}</div>
       </div>
@@ -5723,7 +5723,7 @@ function openModal(id, presetGroup, presetJobType){
         } else {
           selectOptions = currentPresetJobType === 'OPPTS' ? OPPTS_GROUP_ORDER : SO_STAGE_GROUP_ORDER;
           if(currentPresetJobType !== 'OPPTS'){
-            autoOptHtml = `<option value="" ${!val?'selected':''}>Auto (current stage: ${escapeHtml(record ? computeCurrentStageGroup(record) : '—')})</option>`;
+            autoOptHtml = `<option value="" ${!val?'selected':''}>Auto (current stage: ${escapeHtml(record ? computeCurrentStageGroup(record) : 'â')})</option>`;
           }
         }
       }
@@ -5735,10 +5735,10 @@ function openModal(id, presetGroup, presetJobType){
       // unset, or a project_status like "Awaiting Client Approval - SENT"/"- TQ" that predates this
       // field's fixed option list) gets preserved as its own selected option instead of being
       // overwritten the next time this record is saved for an unrelated reason.
-      const blankOptHtml = (!autoOptHtml && !val) ? `<option value="" selected>—</option>` : '';
+      const blankOptHtml = (!autoOptHtml && !val) ? `<option value="" selected>â</option>` : '';
       const preserveUnknownOptHtml = (val && !selectOptions.includes(val)) ? `<option value="${escapeAttr(val)}" selected>${escapeHtml(val)}</option>` : '';
       const opts = autoOptHtml + blankOptHtml + preserveUnknownOptHtml + selectOptions.map(opt => `<option value="${escapeAttr(opt)}" ${val===opt?'selected':''}>${escapeHtml(opt)}</option>`).join('');
-      const manageLinkHtml = f.key === 'project_status' ? ` <button type="button" class="field-manage-link" onclick="openManageStatusesModal()">⚙ Manage</button>` : '';
+      const manageLinkHtml = f.key === 'project_status' ? ` <button type="button" class="field-manage-link" onclick="openManageStatusesModal()">â Manage</button>` : '';
       return `<div class="field">
         <label>${fieldLabel}${manageLinkHtml}</label>
         <select id="f_${f.key}">${opts}</select>
@@ -5756,7 +5756,7 @@ function openModal(id, presetGroup, presetJobType){
       return `<div class="field" style="grid-column:1 / -1;">
         <label>${fieldLabel}</label>
         <select id="f_${f.key}" multiple size="6" class="multiselect">${opts}</select>
-        <button type="button" class="btn-ghost" onclick="addDrafteeOption(this)" style="padding:6px 0;">+ Add new name…</button>
+        <button type="button" class="btn-ghost" onclick="addDrafteeOption(this)" style="padding:6px 0;">+ Add new nameâ¦</button>
       </div>`;
     }
     return `<div class="field">
@@ -5768,11 +5768,11 @@ function openModal(id, presetGroup, presetJobType){
   const activityHtml = record ? `
     <div class="activity-log-card">
       <div class="activity-log-header" onclick="toggleActivityLog()">
-        <span>📋 Activity Log</span>
-        <span class="chevron" id="activityLogChevron">▾</span>
+        <span>ð Activity Log</span>
+        <span class="chevron" id="activityLogChevron">â¾</span>
       </div>
       <div id="activityLogBody" class="activity-log-body">
-        <div class="activity-log-loading">Loading activity…</div>
+        <div class="activity-log-loading">Loading activityâ¦</div>
       </div>
     </div>` : '';
 
@@ -5802,20 +5802,20 @@ function toggleActivityLog(){
   const chevron = document.getElementById('activityLogChevron');
   const collapsed = body.style.display === 'none';
   body.style.display = collapsed ? 'block' : 'none';
-  chevron.textContent = collapsed ? '▾' : '▸';
+  chevron.textContent = collapsed ? 'â¾' : 'â¸';
 }
 function toggleJobGantt(){
   const body = document.getElementById('jobGanttBody');
   const chevron = document.getElementById('jobGanttChevron');
   const isCollapsed = body.classList.toggle('collapsed');
-  chevron.textContent = isCollapsed ? '▸' : '▾';
+  chevron.textContent = isCollapsed ? 'â¸' : 'â¾';
 }
 
 const ACTIVITY_ICONS = {
-  created: '🟢', group_moved: '📦', draftee_changed: '👤', sales_person_changed: '👤',
-  rcd_rc_changed: '🏷️', class_changed: '🏷️', date_changed: '📅', released: '🚀',
-  sales_changed: '💰', subitem_created: '➕', status_changed: '🔄',
-  clock_start: '🕐', clock_stop: '⏹️', subitem_draftee_changed: '👤'
+  created: 'ð¢', group_moved: 'ð¦', draftee_changed: 'ð¤', sales_person_changed: 'ð¤',
+  rcd_rc_changed: 'ð·ï¸', class_changed: 'ð·ï¸', date_changed: 'ð', released: 'ð',
+  sales_changed: 'ð°', subitem_created: 'â', status_changed: 'ð',
+  clock_start: 'ð', clock_stop: 'â¹ï¸', subitem_draftee_changed: 'ð¤'
 };
 
 function fmtLogTime(iso){
@@ -5839,10 +5839,10 @@ async function loadActivityLog(parentId){
   }
   body.innerHTML = data.map(entry => `
     <div class="activity-log-row">
-      <span class="activity-log-icon">${ACTIVITY_ICONS[entry.event_type] || '•'}</span>
+      <span class="activity-log-icon">${ACTIVITY_ICONS[entry.event_type] || 'â¢'}</span>
       <div class="activity-log-content">
         <div class="activity-log-desc">${escapeHtml(entry.description)}</div>
-        <div class="activity-log-meta">${escapeHtml(entry.actor || 'system')} · ${fmtLogTime(entry.created_at)}</div>
+        <div class="activity-log-meta">${escapeHtml(entry.actor || 'system')} Â· ${fmtLogTime(entry.created_at)}</div>
       </div>
     </div>`).join('');
 }
@@ -5970,7 +5970,7 @@ document.getElementById('saveBtn').onclick = async () => {
   if(!payload.item_name){ alert("Item name is required."); return; }
 
   const saveBtn = document.getElementById('saveBtn');
-  saveBtn.disabled = true; saveBtn.textContent = "Saving…";
+  saveBtn.disabled = true; saveBtn.textContent = "Savingâ¦";
   try{
     let error, savedId = editingId;
     if(editingId){
@@ -6156,7 +6156,7 @@ function openDashboardModal(){
     ${dashboardCardHtml('chartBottleneck', 'Sub-Process Bottleneck (avg hours)')}
     ${dashboardCardHtml('chartPipeline', 'Pipeline Health')}
     ${owner ? `
-    <div class="dashboard-owner-divider"><span class="dashboard-owner-label">👁 Visible to you only</span></div>
+    <div class="dashboard-owner-divider"><span class="dashboard-owner-label">ð Visible to you only</span></div>
     ${dashboardCardHtml('chartOpenPerDraftee', 'Open Jobs Per Draftee')}
     ${dashboardCardHtml('chartWorkloadShare', 'Workload Share')}
     ${dashboardCardHtml('chartHoursThisWeek', 'Hours Logged This Week (Mon\u2013Fri) Per Draftee', true)}
@@ -6247,7 +6247,7 @@ function taskOrderDate(sub){
   return sub.schedule_start_date || sub.schedule_end_date || '9999-99-99';
 }
 
-// Per-person queue order, among not-yet-done tasks, earliest schedule first — "do this 1st, 2nd, …"
+// Per-person queue order, among not-yet-done tasks, earliest schedule first â "do this 1st, 2nd, â¦"
 function computeTaskSeqMap(scoped){
   const byName = {};
   scoped.forEach(t => {
@@ -6269,14 +6269,14 @@ function taskCardHtml(item, showAssignee, seqInfo){
   const todayStr = todayLocalISO();
   const overdue = !job.is_internal && sub.status !== 'Done' && sub.schedule_end_date && sub.schedule_end_date < todayStr;
   const titleHtml = job.is_internal
-    ? `<span class="taskboard-tag-internal">Internal</span>${escapeHtml(job.item_name||'—')}`
-    : `${escapeHtml(job.so_number || '—')} — ${escapeHtml(job.company_name || job.item_name || '')}`;
+    ? `<span class="taskboard-tag-internal">Internal</span>${escapeHtml(job.item_name||'â')}`
+    : `${escapeHtml(job.so_number || 'â')} â ${escapeHtml(job.company_name || job.item_name || '')}`;
   const subLabel = sub.subitem_type === 'Internal Time' ? 'Time log' : sub.subitem_type;
   const dateRangeHtml = (sub.schedule_start_date || sub.schedule_end_date)
-    ? `<div class="taskboard-card-dates">${fmtDate(sub.schedule_start_date)} → ${fmtDate(sub.schedule_end_date)}</div>`
+    ? `<div class="taskboard-card-dates">${fmtDate(sub.schedule_start_date)} â ${fmtDate(sub.schedule_end_date)}</div>`
     : '';
   const seqBadge = seqInfo ? `<span class="taskboard-seq" title="Order in the queue, earliest schedule first">#${seqInfo.seq} of ${seqInfo.total}</span>` : '';
-  const assignee = showAssignee ? `<span class="taskboard-assignee">${escapeHtml(sub.draftee||'—')}</span>` : '';
+  const assignee = showAssignee ? `<span class="taskboard-assignee">${escapeHtml(sub.draftee||'â')}</span>` : '';
   return `<div class="taskboard-card ${overdue?'taskboard-overdue':''}" onclick="closeTaskBoard(); openModal('${job.id}');">
     <div class="taskboard-card-title">${titleHtml}</div>
     <div class="taskboard-card-sub">${escapeHtml(subLabel)}</div>
@@ -6288,7 +6288,7 @@ function taskCardHtml(item, showAssignee, seqInfo){
 function renderTaskBoard(){
   const all = getAllTaskAssignments();
 
-  document.getElementById('taskBoardTitle').textContent = taskBoardFilterName ? `Task Board — ${taskBoardFilterName}` : 'Task Board — All Draftees';
+  document.getElementById('taskBoardTitle').textContent = taskBoardFilterName ? `Task Board â ${taskBoardFilterName}` : 'Task Board â All Draftees';
 
   const names = (drafteeOptions && drafteeOptions.length) ? drafteeOptions : Object.values(AUTHORIZED_DRAFTEES);
   const pills = [`<span class="taskboard-pill ${!taskBoardFilterName?'active':''}" onclick="setTaskBoardFilter(null)">All Draftees</span>`]
@@ -6410,7 +6410,7 @@ function gatherGanttEntries(windowStart, windowEnd){
       const startOffset = Math.max(0, ganttDayOffset(s.schedule_start_date, windowStart));
       const endOffsetRaw = ganttDayOffset(s.schedule_end_date, windowStart);
       const endOffset = Math.min(GANTT_WINDOW_DAYS - 0.2, endOffsetRaw + 1);
-      const label = `${parent?.so_number || parent?.item_name || '—'} — ${s.subitem_type}`;
+      const label = `${parent?.so_number || parent?.item_name || 'â'} â ${s.subitem_type}`;
       const isOverdue = s.status !== 'Done' && today > sEnd;
       names.forEach(n => {
         (byPerson[n] = byPerson[n] || []).push({
@@ -6435,7 +6435,7 @@ function gatherGanttEntries(windowStart, windowEnd){
     const names = (r.draftee||'').split(',').map(x=>x.trim()).filter(Boolean);
     names.forEach(n => {
       (byPerson[n] = byPerson[n] || []).push({
-        type: 'wait', label: `${r.so_number||r.item_name} — Awaiting Approval`,
+        type: 'wait', label: `${r.so_number||r.item_name} â Awaiting Approval`,
         startOffset, endOffset, live:false, done:false,
       });
     });
@@ -6464,7 +6464,7 @@ function renderGanttView(){
       <span class="gantt-legend-item"><span class="gantt-legend-swatch" style="background:${stageColorFor('Detailing/PDF/DXF Prep')}"></span>Detailing</span>
       <span class="gantt-legend-item"><span class="gantt-legend-swatch" style="background:${stageColorFor('Checking / Release')}"></span>Checking/Release</span>
       <span class="gantt-legend-item"><span class="gantt-legend-swatch wait"></span>Awaiting Client Approval</span>
-      <span class="gantt-legend-item">Faded = Done · Pulsing dot = clocked in now</span>
+      <span class="gantt-legend-item">Faded = Done Â· Pulsing dot = clocked in now</span>
     </div>
     <div class="gantt-shell"><div class="gantt-grid-table">
       <div class="gantt-grid-head"><div>Draftee</div><div class="gantt-timeline-head">${buildGanttDayHeader(windowStart)}</div></div>
