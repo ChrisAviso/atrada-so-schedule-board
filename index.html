@@ -1860,9 +1860,7 @@ async function checkSession(){
     return;
   }
   if(data.session){ session = data.session; enterApp(); return; }
-  if(!isInviteOrRecovery){
-    window.location.href = (location.hostname.endsWith('pages.dev') ? 'https://atrada-hub.pages.dev/' : 'https://chrisaviso.github.io/atrada-hub/');
-  }
+
 }
 
 function enterApp(){
